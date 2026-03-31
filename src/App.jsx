@@ -1,4 +1,13 @@
 import { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ─────────────────────────────────────────────
+// SUPABASE CLIENT
+// ─────────────────────────────────────────────
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 // ─────────────────────────────────────────────
 // DESIGN SYSTEM
@@ -86,7 +95,7 @@ function Badge({ children, color = "primary" }) {
   const colors = {
     primary: { bg: DS.colors.primarySoft, text: DS.colors.primary, border: DS.colors.borderAccent },
     success: { bg: DS.colors.successSoft, text: DS.colors.success, border: "rgba(0,229,160,0.25)" },
-    gold:    { bg: DS.colors.goldSoft,    text: DS.colors.gold,    border: "rgba(255,209,102,0.25)" },
+    gold: { bg: DS.colors.goldSoft, text: DS.colors.gold, border: "rgba(255,209,102,0.25)" },
   };
   const c = colors[color];
   return (
@@ -126,11 +135,10 @@ const Icons = {
 // ─────────────────────────────────────────────
 // DONNÉES MOCK
 // ─────────────────────────────────────────────
-const MOCK_USER = { name: "Alex", sport: "basketball", objectif: "explosivité", niveau: "intermédiaire", frequence: 3 };
 const MOCK_PROGRAM = {
   titre: "Explosivité Basketball", semaineCourante: 3, totalSemaines: 8, progression: 62,
   seancesDuJour: [{
-    id: "s3_j1", titre: "Force & Explosivité", type: "force_basse", statut: "a_faire", dureeMin: 48,
+    id: "s3_j1", titre: "Force & Explosivité", type: "force_basse", dureeMin: 48,
     exercices: [
       { id: "e1", nom: "Squat barre", muscles: "Quadriceps · Fessiers", sets: 4, reps: "6-8", chargeKg: 75 },
       { id: "e2", nom: "Romanian Deadlift", muscles: "Ischio · Lombaires", sets: 3, reps: "10", chargeKg: 60 },
@@ -139,7 +147,7 @@ const MOCK_PROGRAM = {
       { id: "e5", nom: "Kettlebell Swing", muscles: "Fessiers · Dorsaux", sets: 4, reps: "12", chargeKg: 20 },
     ],
   }],
-  derniereSeance: { titre: "Haut du Corps", joursPassés: 2, statut: "faite", dureeMin: 42, nbExercices: 5, gainKg: 2.5 },
+  derniereSeance: { titre: "Haut du Corps", joursPassés: 2, dureeMin: 42, nbExercices: 5, gainKg: 2.5 },
 };
 const SPORTS = [
   { id: "basketball", label: "Basketball", emoji: "🏀" },
@@ -163,68 +171,130 @@ const PLANS = [
 ];
 
 // ─────────────────────────────────────────────
-// ÉCRAN 1 — AUTH (Connexion / Inscription)
+// ÉCRAN SPLASH — chargement initial
+// ─────────────────────────────────────────────
+function SplashScreen() {
+  return (
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+      <div style={{
+        width: 64, height: 64, borderRadius: DS.radius.xl,
+        background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 28, boxShadow: DS.shadow.primary,
+        animation: "pulse 1.5s ease-in-out infinite",
+      }}>
+        ⚡
+      </div>
+      <p style={{ color: DS.colors.textSec, fontSize: 14, marginTop: 20, ...s.body }}>Chargement...</p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// ÉCRAN AUTH — Connexion / Inscription réelle
 // ─────────────────────────────────────────────
 function AuthScreen({ onAuth }) {
-  const [mode, setMode] = useState("login"); // "login" | "signup"
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleSubmit = async () => {
+    setError("");
+    setSuccess("");
     if (!email || !password) { setError("Remplis tous les champs."); return; }
     if (mode === "signup" && !name) { setError("Entre ton prénom."); return; }
+    if (password.length < 6) { setError("Mot de passe : 6 caractères minimum."); return; }
+
     setLoading(true);
-    setError("");
-    // Simulation auth — remplacer par Supabase
-    setTimeout(() => {
-      onAuth({ email, name: name || email.split("@")[0] });
-    }, 1200);
+
+    if (mode === "signup") {
+      // ── Inscription Supabase ──
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name } },
+      });
+
+      if (signUpError) {
+        setError(signUpError.message === "User already registered"
+          ? "Cet email est déjà utilisé. Connecte-toi."
+          : signUpError.message);
+        setLoading(false);
+        return;
+      }
+
+      // Supabase peut demander de confirmer l'email
+      if (data.user && !data.session) {
+        setSuccess("Vérifie ta boîte mail pour confirmer ton compte !");
+        setLoading(false);
+        return;
+      }
+
+      onAuth(data.user);
+
+    } else {
+      // ── Connexion Supabase ──
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        setError(signInError.message === "Invalid login credentials"
+          ? "Email ou mot de passe incorrect."
+          : signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      onAuth(data.user);
+    }
+
+    setLoading(false);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) { setError("Entre ton email d'abord."); return; }
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
+    if (resetError) { setError(resetError.message); return; }
+    setSuccess("Email de réinitialisation envoyé !");
   };
 
   return (
-    <div style={{
-      minHeight: "100vh", background: DS.colors.bg,
-      display: "flex", flexDirection: "column",
-      padding: "0 24px",
-    }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
       {/* Logo */}
       <div style={{ paddingTop: 80, paddingBottom: 48, textAlign: "center" }}>
         <div style={{
           width: 64, height: 64, borderRadius: DS.radius.xl,
           background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 28, margin: "0 auto 20px",
-          boxShadow: DS.shadow.primary,
+          fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary,
         }}>
           ⚡
         </div>
-        <h1 style={{ ...s.display, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>
-          Voltra
-        </h1>
+        <h1 style={{ ...s.display, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>Voltra</h1>
         <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>
           {mode === "login" ? "Content de te revoir 👋" : "Commence ton parcours"}
         </p>
       </div>
 
-      {/* Formulaire */}
       <div style={{ flex: 1 }}>
-        {/* Toggle Login / Signup */}
+        {/* Toggle */}
         <div style={{
-          display: "flex", background: DS.colors.surface,
-          border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md,
-          padding: 4, marginBottom: 32,
+          display: "flex", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`,
+          borderRadius: DS.radius.md, padding: 4, marginBottom: 32,
         }}>
           {["login", "signup"].map(m => (
-            <button key={m} onClick={() => { setMode(m); setError(""); }} style={{
+            <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{
               flex: 1, height: 40, borderRadius: DS.radius.sm - 2,
               background: mode === m ? DS.colors.primary : "transparent",
               border: "none", color: mode === m ? "white" : DS.colors.textSec,
               fontSize: 14, cursor: "pointer", transition: "all 0.2s ease",
-              boxShadow: mode === m ? DS.shadow.primary : "none",
-              ...s.heading,
+              boxShadow: mode === m ? DS.shadow.primary : "none", ...s.heading,
             }}>
               {m === "login" ? "Connexion" : "Inscription"}
             </button>
@@ -238,9 +308,15 @@ function AuthScreen({ onAuth }) {
         <Input label="Mot de passe" type="password" value={password} onChange={setPassword} placeholder="••••••••" />
 
         {error && (
-          <p style={{ color: DS.colors.warning, fontSize: 13, ...s.body, marginBottom: 16, textAlign: "center" }}>
-            {error}
-          </p>
+          <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}>
+            <p style={{ color: DS.colors.warning, fontSize: 13, ...s.body }}>⚠️ {error}</p>
+          </div>
+        )}
+
+        {success && (
+          <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(0,229,160,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}>
+            <p style={{ color: DS.colors.success, fontSize: 13, ...s.body }}>✓ {success}</p>
+          </div>
         )}
 
         {loading ? (
@@ -260,7 +336,7 @@ function AuthScreen({ onAuth }) {
         )}
 
         {mode === "login" && (
-          <button style={{
+          <button onClick={handleForgotPassword} style={{
             width: "100%", marginTop: 16, background: "none", border: "none",
             color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body,
           }}>
@@ -277,7 +353,7 @@ function AuthScreen({ onAuth }) {
 }
 
 // ─────────────────────────────────────────────
-// ÉCRAN 2 — ONBOARDING
+// ÉCRAN ONBOARDING
 // ─────────────────────────────────────────────
 function OnboardingScreen({ onComplete }) {
   const [step, setStep] = useState(0);
@@ -292,23 +368,17 @@ function OnboardingScreen({ onComplete }) {
 
   const handleFinish = () => {
     setLoading(true);
-    setTimeout(() => onComplete(data), 1800);
+    setTimeout(() => onComplete(data), 1500);
   };
 
   const canNext = [data.sport !== null, data.objectif !== null, data.niveau !== null][step];
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px" }}>
-      {/* Progress steps */}
       <div style={{ paddingTop: 60, paddingBottom: 32 }}>
         <div style={{ display: "flex", gap: 6, marginBottom: 32 }}>
           {[0, 1, 2].map(i => (
-            <div key={i} style={{
-              flex: 1, height: 3, borderRadius: DS.radius.full,
-              background: i <= step ? DS.colors.primary : DS.colors.surfaceHigh,
-              transition: "background 0.4s ease",
-              boxShadow: i === step ? `0 0 8px ${DS.colors.primary}` : "none",
-            }} />
+            <div key={i} style={{ flex: 1, height: 3, borderRadius: DS.radius.full, background: i <= step ? DS.colors.primary : DS.colors.surfaceHigh, transition: "background 0.4s ease", boxShadow: i === step ? `0 0 8px ${DS.colors.primary}` : "none" }} />
           ))}
         </div>
         <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading }}>Étape {step + 1} sur 3</p>
@@ -318,7 +388,7 @@ function OnboardingScreen({ onComplete }) {
         {step === 0 && (
           <div>
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est<br />ton sport ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera adapté à tes besoins athlétiques.</p>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera adapté à tes besoins.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
                 <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id }))} style={{
@@ -326,7 +396,6 @@ function OnboardingScreen({ onComplete }) {
                   border: `1px solid ${data.sport === sport.id ? DS.colors.primary : DS.colors.border}`,
                   borderRadius: DS.radius.md, padding: "16px 8px", textAlign: "center", cursor: "pointer",
                   transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.02)" : "scale(1)",
-                  boxShadow: data.sport === sport.id ? DS.shadow.glow : "none",
                 }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{sport.emoji}</div>
                   <div style={{ color: data.sport === sport.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 13, ...s.heading }}>{sport.label}</div>
@@ -339,15 +408,14 @@ function OnboardingScreen({ onComplete }) {
         {step === 1 && (
           <div>
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est<br />ton objectif ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>On adaptera les exercices, charges et filières.</p>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>On adaptera les exercices et charges.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {OBJECTIFS.map(obj => (
                 <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{
                   background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface,
                   border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`,
                   borderRadius: DS.radius.lg, padding: "16px 20px",
-                  display: "flex", alignItems: "center", gap: 16, cursor: "pointer",
-                  transition: "all 0.2s ease", boxShadow: data.objectif === obj.id ? DS.shadow.glow : "none",
+                  display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease",
                 }}>
                   <span style={{ fontSize: 26 }}>{obj.emoji}</span>
                   <div>
@@ -369,7 +437,6 @@ function OnboardingScreen({ onComplete }) {
           <div>
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Derniers<br />réglages</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 36 }}>Le programme se calibre sur ton profil.</p>
-
             <div style={{ marginBottom: 36 }}>
               <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Niveau actuel</p>
               <div style={{ display: "flex", gap: 10 }}>
@@ -378,14 +445,12 @@ function OnboardingScreen({ onComplete }) {
                     flex: 1, padding: "12px 0", textAlign: "center",
                     background: data.niveau === n.toLowerCase() ? DS.colors.primarySoft : DS.colors.surface,
                     border: `1px solid ${data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.border}`,
-                    borderRadius: DS.radius.md,
-                    color: data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.textSec,
+                    borderRadius: DS.radius.md, color: data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.textSec,
                     fontSize: 14, cursor: "pointer", transition: "all 0.2s ease", ...s.heading,
                   }}>{n}</div>
                 ))}
               </div>
             </div>
-
             <div>
               <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Séances par semaine</p>
               <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 20 }}>
@@ -395,8 +460,7 @@ function OnboardingScreen({ onComplete }) {
                     <div key={n} onClick={() => setData(d => ({ ...d, frequence: n }))} style={{
                       flex: 1, padding: "10px 0", textAlign: "center",
                       background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh,
-                      borderRadius: DS.radius.md,
-                      color: data.frequence === n ? "white" : DS.colors.textSec,
+                      borderRadius: DS.radius.md, color: data.frequence === n ? "white" : DS.colors.textSec,
                       fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading,
                       boxShadow: data.frequence === n ? DS.shadow.primary : "none",
                     }}>{n}</div>
@@ -411,11 +475,7 @@ function OnboardingScreen({ onComplete }) {
 
       <div style={{ paddingBottom: 48, paddingTop: 24 }}>
         {loading ? (
-          <div style={{
-            background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`,
-            borderRadius: DS.radius.md, padding: "20px 24px",
-            display: "flex", alignItems: "center", gap: 16,
-          }}>
+          <div style={{ background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "20px 24px", display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ width: 36, height: 36, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse 1s infinite", flexShrink: 0 }}>✦</div>
             <div>
               <p style={{ color: DS.colors.primary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Génération du programme...</p>
@@ -440,7 +500,7 @@ function OnboardingScreen({ onComplete }) {
 }
 
 // ─────────────────────────────────────────────
-// ÉCRAN 3 — PRICING
+// ÉCRAN PRICING
 // ─────────────────────────────────────────────
 function PricingScreen({ onSelectPlan }) {
   const [selected, setSelected] = useState("annual");
@@ -461,7 +521,6 @@ function PricingScreen({ onSelectPlan }) {
 
   const pad = n => String(n).padStart(2, "0");
   const currentPlan = PLANS.find(p => p.id === selected);
-
   const featuresPro = [
     "Progression automatique des charges ⚡",
     "Programmes illimités + regénération IA",
@@ -476,23 +535,14 @@ function PricingScreen({ onSelectPlan }) {
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40 }}>
       <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto" }}>
-        {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>Ton programme est prêt ✦</p>
-          <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 10 }}>
-            Choisis ton plan<br />pour commencer
-          </h1>
-          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>
-            Accès complet à la progression automatique et à l'IA.
-          </p>
+          <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 10 }}>Choisis ton plan<br />pour commencer</h1>
+          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>Accès complet à la progression automatique et à l'IA.</p>
         </div>
 
-        {/* Urgence Lifetime */}
-        <div style={{
-          background: DS.colors.goldSoft, border: `1px solid rgba(255,209,102,0.25)`,
-          borderRadius: DS.radius.md, padding: "12px 16px",
-          display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20,
-        }}>
+        {/* Urgence */}
+        <div style={{ background: DS.colors.goldSoft, border: `1px solid rgba(255,209,102,0.25)`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <p style={{ color: DS.colors.gold, fontSize: 12, ...s.heading, marginBottom: 2 }}>⏳ Offre Lifetime — Prix de lancement</p>
             <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>Expire dans</p>
@@ -500,9 +550,7 @@ function PricingScreen({ onSelectPlan }) {
           <div style={{ display: "flex", gap: 6 }}>
             {[timeLeft.h, timeLeft.m, timeLeft.s].map((val, i) => (
               <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.sm, padding: "4px 8px", ...s.mono, fontSize: 18, color: DS.colors.gold, fontWeight: 700, minWidth: 36, textAlign: "center" }}>
-                  {pad(val)}
-                </div>
+                <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.sm, padding: "4px 8px", ...s.mono, fontSize: 18, color: DS.colors.gold, fontWeight: 700, minWidth: 36, textAlign: "center" }}>{pad(val)}</div>
                 <span style={{ color: DS.colors.textDim, fontSize: 9, marginTop: 2 }}>{["h", "m", "s"][i]}</span>
               </div>
             ))}
@@ -520,73 +568,43 @@ function PricingScreen({ onSelectPlan }) {
               transition: "all 0.2s ease",
               boxShadow: selected === plan.id ? `0 0 32px ${plan.color}20` : DS.shadow.card,
             }}>
-              {selected === plan.id && (
-                <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 2, background: plan.color, borderRadius: DS.radius.full, boxShadow: `0 0 12px ${plan.color}` }} />
-              )}
-              {plan.badge && (
-                <div style={{ display: "inline-flex", padding: "3px 10px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: plan.color, fontSize: 11, ...s.heading, marginBottom: 10 }}>
-                  {plan.badge}
-                </div>
-              )}
+              {selected === plan.id && <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 2, background: plan.color, borderRadius: DS.radius.full }} />}
+              {plan.badge && <div style={{ display: "inline-flex", padding: "3px 10px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: plan.color, fontSize: 11, ...s.heading, marginBottom: 10 }}>{plan.badge}</div>}
               <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
                 <div>
                   <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 4 }}>{plan.label}</p>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
                     <span style={{ ...s.display, fontSize: 32, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.price}€</span>
-                    <span style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>{plan.unit}</span>
+                    <span style={{ color: DS.colors.textSec, fontSize: 14 }}>{plan.unit}</span>
                   </div>
                 </div>
-                <div style={{
-                  width: 24, height: 24, borderRadius: DS.radius.full,
-                  border: `2px solid ${selected === plan.id ? plan.color : DS.colors.textDim}`,
-                  background: selected === plan.id ? plan.color : "transparent",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "all 0.2s ease",
-                  boxShadow: selected === plan.id ? `0 0 10px ${plan.color}60` : "none",
-                }}>
+                <div style={{ width: 24, height: 24, borderRadius: DS.radius.full, border: `2px solid ${selected === plan.id ? plan.color : DS.colors.textDim}`, background: selected === plan.id ? plan.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
                   {selected === plan.id && <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: "white" }} />}
                 </div>
               </div>
               <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>{plan.priceDetail}</p>
-                {plan.savings && (
-                  <span style={{ padding: "2px 8px", background: plan.colorSoft, borderRadius: DS.radius.full, color: plan.color, fontSize: 11, ...s.heading }}>{plan.savings}</span>
-                )}
+                <p style={{ color: DS.colors.textSec, fontSize: 12 }}>{plan.priceDetail}</p>
+                {plan.savings && <span style={{ padding: "2px 8px", background: plan.colorSoft, borderRadius: DS.radius.full, color: plan.color, fontSize: 11, ...s.heading }}>{plan.savings}</span>}
               </div>
             </div>
           ))}
         </div>
 
-        {/* CTA */}
         <button onClick={() => onSelectPlan(selected)} style={{
           width: "100%", height: 58,
-          background: currentPlan.highlight
-            ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)`
-            : currentPlan.urgency
-            ? `linear-gradient(135deg, ${DS.colors.gold}, #F0B800)`
-            : `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`,
+          background: currentPlan.highlight ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : currentPlan.urgency ? `linear-gradient(135deg, ${DS.colors.gold}, #F0B800)` : `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`,
           border: "1px solid rgba(255,255,255,0.1)", borderRadius: DS.radius.md,
-          color: currentPlan.urgency ? DS.colors.bg : "white",
-          fontSize: 16, cursor: "pointer",
-          boxShadow: currentPlan.highlight ? "0 8px 32px rgba(0,229,160,0.35)" : DS.shadow.primary,
-          ...s.heading, marginBottom: 12,
+          color: currentPlan.urgency ? DS.colors.bg : "white", fontSize: 16, cursor: "pointer",
+          boxShadow: DS.shadow.primary, ...s.heading, marginBottom: 12,
         }}>
           Commencer avec {currentPlan.label} →
         </button>
 
-        {/* Garantie */}
-        <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", marginBottom: 24, ...s.body }}>
+        <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", marginBottom: 24 }}>
           🔒 Paiement sécurisé · Annulation en 1 clic · Remboursement 7 jours
         </p>
 
-        {/* Features */}
-        <button onClick={() => setShowFeatures(v => !v)} style={{
-          width: "100%", background: "none", border: `1px solid ${DS.colors.border}`,
-          borderRadius: DS.radius.md, padding: "14px 20px",
-          color: DS.colors.textSec, fontSize: 14, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "space-between", ...s.heading,
-          marginBottom: 8,
-        }}>
+        <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 20px", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", ...s.heading, marginBottom: 8 }}>
           <span>Voir ce qui est inclus</span>
           <span style={{ transform: showFeatures ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>↓</span>
         </button>
@@ -595,19 +613,14 @@ function PricingScreen({ onSelectPlan }) {
           <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 16, marginBottom: 24 }}>
             {featuresPro.map((f, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < featuresPro.length - 1 ? `1px solid ${DS.colors.border}` : "none" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill={DS.colors.successSoft} /><path d="M7 12.5L10.5 16L17 9" stroke={DS.colors.success} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                <span style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>{f}</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill={DS.colors.successSoft} /><path d="M7 12.5L10.5 16L17 9" stroke={DS.colors.success} strokeWidth="2.5" strokeLinecap="round" /></svg>
+                <span style={{ color: DS.colors.textSec, fontSize: 14 }}>{f}</span>
               </div>
             ))}
           </div>
         )}
 
-        {/* Plan gratuit */}
-        <button onClick={() => onSelectPlan("free")} style={{
-          width: "100%", background: "none", border: "none",
-          color: DS.colors.textDim, fontSize: 13, cursor: "pointer",
-          textDecoration: "underline", ...s.body,
-        }}>
+        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", textDecoration: "underline", ...s.body }}>
           Continuer avec le plan gratuit
         </button>
       </div>
@@ -616,30 +629,22 @@ function PricingScreen({ onSelectPlan }) {
 }
 
 // ─────────────────────────────────────────────
-// ÉCRAN 4 — DASHBOARD
+// DASHBOARD
 // ─────────────────────────────────────────────
 function DashboardScreen({ user, onStartSession }) {
   const prog = MOCK_PROGRAM;
   const seance = prog.seancesDuJour[0];
+  const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
-      <div style={{
-        position: "sticky", top: 0, zIndex: 50,
-        background: "rgba(10,10,15,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-        borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>Bonjour,</p>
-          <p style={{ color: DS.colors.textPrimary, fontSize: 18, ...s.heading }}>{user.name} 👋</p>
+          <p style={{ color: DS.colors.textPrimary, fontSize: 18, ...s.heading }}>{userName} 👋</p>
         </div>
-        <div style={{
-          width: 42, height: 42, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`,
-          borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center",
-          color: "white", fontSize: 16, ...s.display, boxShadow: DS.shadow.primary,
-        }}>
-          {user.name[0]}
+        <div style={{ width: 42, height: 42, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16, ...s.display, boxShadow: DS.shadow.primary }}>
+          {userName[0].toUpperCase()}
         </div>
       </div>
 
@@ -651,14 +656,11 @@ function DashboardScreen({ user, onStartSession }) {
           <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginTop: 8 }}>Programme {prog.titre} · {prog.progression}% complété</p>
         </div>
 
-        {/* Card séance */}
         <Card style={{ marginBottom: 24, overflow: "hidden", position: "relative" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${DS.colors.primary}, ${DS.colors.success})` }} />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <Badge color="primary">⚡ Aujourd'hui</Badge>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, color: DS.colors.textSec, fontSize: 13 }}>
-              {Icons.clock()} {seance.dureeMin} min
-            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: DS.colors.textSec, fontSize: 13 }}>{Icons.clock()} {seance.dureeMin} min</div>
           </div>
           <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
             {[
@@ -668,14 +670,13 @@ function DashboardScreen({ user, onStartSession }) {
             ].map((stat, i) => (
               <div key={i} style={{ textAlign: "center", flex: 1 }}>
                 <div style={{ ...s.mono, fontSize: 24, color: stat.color, fontWeight: 700 }}>{stat.val}</div>
-                <div style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>{stat.label}</div>
+                <div style={{ color: DS.colors.textSec, fontSize: 12 }}>{stat.label}</div>
               </div>
             ))}
           </div>
           <PrimaryButton onClick={onStartSession}>◉ Démarrer la séance</PrimaryButton>
         </Card>
 
-        {/* Aperçu exercices */}
         <div style={{ marginBottom: 28 }}>
           <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Au programme</p>
           <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
@@ -683,10 +684,7 @@ function DashboardScreen({ user, onStartSession }) {
               const colors = [DS.colors.primary, DS.colors.success, DS.colors.warning, DS.colors.primary, DS.colors.success];
               const color = colors[i % colors.length];
               return (
-                <div key={ex.id} style={{
-                  minWidth: 130, flexShrink: 0, background: DS.colors.surface,
-                  border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 14,
-                }}>
+                <div key={ex.id} style={{ minWidth: 130, flexShrink: 0, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 14 }}>
                   <div style={{ width: 32, height: 32, borderRadius: DS.radius.sm, background: color + "20", border: `1px solid ${color}40`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10, color, fontSize: 14, ...s.heading }}>{i + 1}</div>
                   <p style={{ color: DS.colors.textPrimary, fontSize: 13, ...s.heading, marginBottom: 4 }}>{ex.nom}</p>
                   <p style={{ color: DS.colors.textSec, fontSize: 11, ...s.body, marginBottom: 8 }}>{ex.muscles.split("·")[0].trim()}</p>
@@ -698,7 +696,6 @@ function DashboardScreen({ user, onStartSession }) {
           </div>
         </div>
 
-        {/* Dernière séance */}
         <div style={{ marginBottom: 28 }}>
           <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Dernière séance</p>
           <Card>
@@ -722,7 +719,7 @@ function DashboardScreen({ user, onStartSession }) {
 }
 
 // ─────────────────────────────────────────────
-// ÉCRAN 5 — HISTORIQUE
+// HISTORIQUE
 // ─────────────────────────────────────────────
 function HistoriqueScreen() {
   const stats = [
@@ -731,14 +728,8 @@ function HistoriqueScreen() {
     { value: "94%", label: "assiduité", color: DS.colors.warning },
   ];
   const historique = [
-    { semaine: 3, seances: [
-      { titre: "Force & Explosivité", date: "Mar 25 mars", duree: 48, exercices: 5 },
-      { titre: "Haut du Corps", date: "Jeu 27 mars", duree: 42, exercices: 5 },
-    ]},
-    { semaine: 2, seances: [
-      { titre: "Force & Base Basse", date: "Lun 18 mars", duree: 51, exercices: 5 },
-      { titre: "Explosivité", date: "Mer 20 mars", duree: 45, exercices: 4 },
-    ]},
+    { semaine: 3, seances: [{ titre: "Force & Explosivité", date: "Mar 25 mars", duree: 48, exercices: 5 }, { titre: "Haut du Corps", date: "Jeu 27 mars", duree: 42, exercices: 5 }] },
+    { semaine: 2, seances: [{ titre: "Force & Base Basse", date: "Lun 18 mars", duree: 51, exercices: 5 }, { titre: "Explosivité", date: "Mer 20 mars", duree: 45, exercices: 4 }] },
   ];
   const points = [65, 67.5, 70, 72.5, 72.5, 75, 77.5, 80];
   const w = 300, h = 80, min = 60, max = 85;
@@ -757,7 +748,7 @@ function HistoriqueScreen() {
           {stats.map((stat, i) => (
             <Card key={i} style={{ flex: 1, padding: 16, textAlign: "center" }}>
               <div style={{ ...s.mono, fontSize: 22, color: stat.color, fontWeight: 700, marginBottom: 4 }}>{stat.value}</div>
-              <div style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>{stat.label}</div>
+              <div style={{ color: DS.colors.textSec, fontSize: 12 }}>{stat.label}</div>
             </Card>
           ))}
         </div>
@@ -801,10 +792,12 @@ function HistoriqueScreen() {
 }
 
 // ─────────────────────────────────────────────
-// ÉCRAN 6 — PROFIL
+// PROFIL
 // ─────────────────────────────────────────────
 function ProfilScreen({ user, onLogout }) {
   const [notifOn, setNotifOn] = useState(true);
+  const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
+
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px" }}>
@@ -813,10 +806,10 @@ function ProfilScreen({ user, onLogout }) {
       <div style={{ padding: "32px 20px 0" }}>
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <div style={{ width: 80, height: 80, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, ...s.display, color: "white", margin: "0 auto 16px", boxShadow: DS.shadow.primary }}>
-            {user.name[0]}
+            {userName[0].toUpperCase()}
           </div>
-          <h2 style={{ ...s.display, fontSize: 22, color: DS.colors.textPrimary, marginBottom: 6 }}>{user.name}</h2>
-          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>Basketball · Intermédiaire</p>
+          <h2 style={{ ...s.display, fontSize: 22, color: DS.colors.textPrimary, marginBottom: 6 }}>{userName}</h2>
+          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>{user?.email}</p>
         </div>
 
         <Card style={{ marginBottom: 24 }}>
@@ -851,7 +844,7 @@ function ProfilScreen({ user, onLogout }) {
               <span style={{ fontSize: 20 }}>🔔</span>
               <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>Rappel séance</p>
             </div>
-            <div onClick={() => setNotifOn(v => !v)} style={{ width: 48, height: 28, background: notifOn ? DS.colors.success : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s ease", boxShadow: notifOn ? `0 0 12px ${DS.colors.success}60` : "none" }}>
+            <div onClick={() => setNotifOn(v => !v)} style={{ width: 48, height: 28, background: notifOn ? DS.colors.success : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s ease" }}>
               <div style={{ position: "absolute", top: 3, left: notifOn ? 23 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
             </div>
           </div>
@@ -891,11 +884,11 @@ function BottomNav({ activeTab, setTab }) {
 }
 
 // ─────────────────────────────────────────────
-// APP ROOT — Gestion du flow complet
+// APP ROOT
 // ─────────────────────────────────────────────
 export default function VoltraApp() {
-  // FLOW : "auth" → "onboarding" → "pricing" → "app"
-  const [screen, setScreen] = useState("auth");
+  // "splash" | "auth" | "onboarding" | "pricing" | "app"
+  const [screen, setScreen] = useState("splash");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
 
@@ -912,23 +905,46 @@ export default function VoltraApp() {
     return () => document.head.removeChild(style);
   }, []);
 
-  if (screen === "auth") {
-    return <AuthScreen onAuth={(userData) => { setUser(userData); setScreen("onboarding"); }} />;
-  }
+  useEffect(() => {
+    // ── Vérifier la session existante au démarrage ──
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        setScreen("app"); // Déjà connecté → aller direct au dashboard
+      } else {
+        setScreen("auth");
+      }
+    });
 
-  if (screen === "onboarding") {
-    return <OnboardingScreen onComplete={(data) => { setUser(u => ({ ...u, ...data })); setScreen("pricing"); }} />;
-  }
+    // ── Écouter les changements d'auth ──
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+      } else {
+        setUser(null);
+        setScreen("auth");
+      }
+    });
 
-  if (screen === "pricing") {
-    return <PricingScreen onSelectPlan={(plan) => { setUser(u => ({ ...u, plan })); setScreen("app"); }} />;
-  }
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setScreen("auth");
+    setUser(null);
+  };
+
+  if (screen === "splash") return <SplashScreen />;
+  if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
+  if (screen === "onboarding") return <OnboardingScreen onComplete={() => setScreen("pricing")} />;
+  if (screen === "pricing") return <PricingScreen onSelectPlan={() => setScreen("app")} />;
 
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
-      {activeTab === "dashboard" && <DashboardScreen user={user || MOCK_USER} onStartSession={() => alert("🏋️ Séance live — Partie 2 !")} />}
+      {activeTab === "dashboard" && <DashboardScreen user={user} onStartSession={() => alert("🏋️ Séance live — bientôt !")} />}
       {activeTab === "historique" && <HistoriqueScreen />}
-      {activeTab === "profil" && <ProfilScreen user={user || MOCK_USER} onLogout={() => { setUser(null); setScreen("auth"); }} />}
+      {activeTab === "profil" && <ProfilScreen user={user} onLogout={handleLogout} />}
       <BottomNav activeTab={activeTab} setTab={setActiveTab} />
     </div>
   );
