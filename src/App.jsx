@@ -8,7 +8,24 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
-
+// Appel réel à l'Edge Function generate-program
+async function generateProgramIA({ sport, objectif, niveau, frequence }) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-program`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ sport, objectif, niveau, frequence }),
+    }
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Erreur génération");
+  return data.programme;
+} 
 // ─────────────────────────────────────────────
 // DESIGN SYSTEM
 // ─────────────────────────────────────────────
