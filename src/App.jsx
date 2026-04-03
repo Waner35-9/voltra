@@ -935,7 +935,7 @@ export default function VoltraApp() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
-        setScreen("onboarding");
+        setScreen("app"); // Déjà connecté → aller direct au dashboard
       } else {
         setScreen("auth");
       }
