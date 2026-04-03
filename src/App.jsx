@@ -11,13 +11,17 @@ const supabase = createClient(
 // Appel réel à l'Edge Function generate-program
 async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) throw new Error("Pas de session");
+
   const res = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-program`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${session?.access_token}`,
+        "Authorization": `Bearer ${session.access_token}`,
+        "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({ sport, objectif, niveau, frequence }),
     }
