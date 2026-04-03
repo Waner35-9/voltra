@@ -939,7 +939,7 @@ export default function VoltraApp() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
-        setScreen("app"); // Déjà connecté → aller direct au dashboard
+        setScreen("onboarding");
       } else {
         setScreen("auth");
       }
