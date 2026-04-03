@@ -383,10 +383,17 @@ function OnboardingScreen({ onComplete }) {
     setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200);
   };
 
-  const handleFinish = () => {
-    setLoading(true);
-    setTimeout(() => onComplete(data), 1500);
-  };
+  const handleFinish = async () => {
+  setLoading(true);
+  try {
+    const programme = await generateProgramIA(data);
+    onComplete(data, programme);
+  } catch (err) {
+    console.error(err);
+    // Fallback mock si erreur
+    onComplete(data, null);
+  }
+};
 
   const canNext = [data.sport !== null, data.objectif !== null, data.niveau !== null][step];
 
