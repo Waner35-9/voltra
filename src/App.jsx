@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import SeanceScreen from './pages/Seance.jsx';
 
 // ─────────────────────────────────────────────
 // SUPABASE CLIENT
@@ -921,6 +922,7 @@ export default function VoltraApp() {
   const [screen, setScreen] = useState("splash");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
+  const [seanceActive, setSeanceActive] = useState(null);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -972,10 +974,16 @@ export default function VoltraApp() {
 
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
-      {activeTab === "dashboard" && <DashboardScreen user={user} onStartSession={() => alert("🏋️ Séance live — bientôt !")} />}
-      {activeTab === "historique" && <HistoriqueScreen />}
-      {activeTab === "profil" && <ProfilScreen user={user} onLogout={handleLogout} />}
-      <BottomNav activeTab={activeTab} setTab={setActiveTab} />
+      {seanceActive ? (
+  <SeanceScreen seance={seanceActive} onFinish={() => setSeanceActive(null)} onBack={() => setSeanceActive(null)} />
+) : (
+  <>
+    {activeTab === "dashboard" && <DashboardScreen user={user} onStartSession={() => setSeanceActive(MOCK_PROGRAM.seancesDuJour[0])} />}
+    {activeTab === "historique" && <HistoriqueScreen />}
+    {activeTab === "profil" && <ProfilScreen user={user} onLogout={handleLogout} />}
+    <BottomNav activeTab={activeTab} setTab={setActiveTab} />
+  </>
+)}
     </div>
   );
 }
