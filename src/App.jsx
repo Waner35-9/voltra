@@ -1,4 +1,18 @@
 // @ts-nocheck
+import { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ─────────────────────────────────────────────
+// SUPABASE CLIENT
+// ─────────────────────────────────────────────
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
+// ─────────────────────────────────────────────
+// GENERATE PROGRAM IA
+// ─────────────────────────────────────────────
 async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Pas de session");
@@ -17,17 +31,7 @@ async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Erreur génération");
   return data.programme;
-} 
-import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-// ─────────────────────────────────────────────
-// SUPABASE CLIENT
-// ─────────────────────────────────────────────
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+}
 
 // ─────────────────────────────────────────────
 // DESIGN SYSTEM
