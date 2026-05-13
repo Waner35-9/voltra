@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
-import SeanceScreen from './pages/Seance.jsx';
+import SeanceScreen from './pages/Seance';
 
 // ─────────────────────────────────────────────
 // SUPABASE CLIENT
