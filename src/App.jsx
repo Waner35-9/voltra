@@ -250,9 +250,10 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [completedSets, setCompletedSets] = useState({});
   const [showSummary, setShowSummary] = useState(false);
   const [feedback, setFeedback] = useState(null);
-
+ 
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
+  if (!currentEx) return null;
   const totalSets = currentEx?.sets || 4;
   const progressPct = Math.round(((exIdx + setIdx / totalSets) / exercices.length) * 100);
 
