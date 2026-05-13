@@ -195,6 +195,192 @@ const PLANS = [
 ];
 
 // ─────────────────────────────────────────────
+// TIMER DE REPOS
+// ─────────────────────────────────────────────
+function RestTimer({ seconds, onComplete }) {
+  const [left, setLeft] = useState(seconds);
+  const [running, setRunning] = useState(true);
+  const ref = React.useRef(null);
+
+  useEffect(() => { setLeft(seconds); setRunning(true); }, [seconds]);
+
+  useEffect(() => {
+    if (!running) return;
+    if (left <= 0) { onComplete?.(); return; }
+    ref.current = setInterval(() => setLeft(l => l - 1), 1000);
+    return () => clearInterval(ref.current);
+  }, [left, running]);
+
+  const pct = ((seconds - left) / seconds) * 100;
+  const mins = Math.floor(left / 60);
+  const secs = left % 60;
+  const pad = n => String(n).padStart(2, "0");
+  const color = left > seconds * 0.5 ? DS.colors.primary : left > seconds * 0.25 ? DS.colors.warning : DS.colors.success;
+
+  return (
+    <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: 28, textAlign: "center" }}>
+      <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.08em" }}>⏱ Temps de repos</p>
+      <div style={{ position: "relative", width: 140, height: 140, margin: "0 auto 20px" }}>
+        <svg width="140" height="140" viewBox="0 0 140 140" style={{ transform: "rotate(-90deg)" }}>
+          <circle cx="70" cy="70" r="60" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="8" />
+          <circle cx="70" cy="70" r="60" fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
+            strokeDasharray={`${2 * Math.PI * 60}`}
+            strokeDashoffset={`${2 * Math.PI * 60 * (1 - pct / 100)}`}
+            style={{ transition: "stroke-dashoffset 1s linear, stroke 0.5s ease", filter: `drop-shadow(0 0 8px ${color})` }} />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ ...s.mono, fontSize: 36, color, fontWeight: 700 }}>{pad(mins)}:{pad(secs)}</span>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={() => setRunning(r => !r)} style={{ flex: 1, height: 44, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.heading }}>{running ? "⏸ Pause" : "▶ Reprendre"}</button>
+        <button onClick={onComplete} style={{ flex: 1, height: 44, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.heading }}>Passer →</button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// ÉCRAN SÉANCE LIVE
+// ─────────────────────────────────────────────
+function SeanceScreen({ seance, onFinish, onBack }) {
+  const [exIdx, setExIdx] = useState(0);
+  const [setIdx, setSetIdx] = useState(0);
+  const [resting, setResting] = useState(false);
+  const [completedSets, setCompletedSets] = useState({});
+  const [showSummary, setShowSummary] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  const exercices = seance.exercices;
+  const currentEx = exercices[exIdx];
+  const totalSets = currentEx?.sets || 4;
+  const progressPct = Math.round(((exIdx + setIdx / totalSets) / exercices.length) * 100);
+
+  const handleSetComplete = () => {
+    const key = `${exIdx}-${setIdx}`;
+    setCompletedSets(prev => ({ ...prev, [key]: true }));
+    if (setIdx < totalSets - 1) {
+      setResting(true);
+    } else {
+      if (exIdx < exercices.length - 1) {
+        setTimeout(() => { setExIdx(i => i + 1); setSetIdx(0); }, 400);
+      } else {
+        setTimeout(() => setShowSummary(true), 400);
+      }
+    }
+  };
+
+  const accentColor = DS.colors.primary;
+
+  if (showSummary) {
+    return (
+      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", maxWidth: 430, margin: "0 auto" }}>
+        <div style={{ paddingTop: 60, flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 80, height: 80, borderRadius: DS.radius.full, background: DS.colors.successSoft, border: `2px solid ${DS.colors.success}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, marginBottom: 20, boxShadow: `0 0 40px ${DS.colors.success}40` }}>🏆</div>
+          <h1 style={{ ...s.display, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Séance terminée !</h1>
+          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>{seance.titre}</p>
+          <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 16, textAlign: "center" }}>Comment tu te sens ?</p>
+          <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 32 }}>
+            {[{ id: "easy", emoji: "😤", label: "Trop facile" }, { id: "good", emoji: "💪", label: "Bien chargé" }, { id: "hard", emoji: "😮‍💨", label: "C'était dur" }].map(fb => (
+              <button key={fb.id} onClick={() => setFeedback(fb.id)} style={{ flex: 1, padding: "14px 8px", background: feedback === fb.id ? DS.colors.primarySoft : DS.colors.surfaceHigh, border: `1px solid ${feedback === fb.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, cursor: "pointer", transition: "all 0.2s ease" }}>
+                <div style={{ fontSize: 24, marginBottom: 6 }}>{fb.emoji}</div>
+                <div style={{ color: feedback === fb.id ? DS.colors.primary : DS.colors.textSec, fontSize: 11, ...s.heading }}>{fb.label}</div>
+              </button>
+            ))}
+          </div>
+          <button onClick={onFinish} disabled={!feedback} style={{ width: "100%", height: 56, background: feedback ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? DS.colors.bg : DS.colors.textDim, fontSize: 16, cursor: feedback ? "pointer" : "not-allowed", ...s.heading }}>
+            {feedback ? "✦ Enregistrer & continuer" : "Sélectionne ton ressenti"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, maxWidth: 430, margin: "0 auto" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
+          <div style={{ textAlign: "center" }}>
+            <p style={{ color: DS.colors.textSec, fontSize: 12 }}>Exercice {exIdx + 1} sur {exercices.length}</p>
+            <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>{seance.titre}</p>
+          </div>
+          <div style={{ background: DS.colors.surfaceUp, borderRadius: DS.radius.full, padding: "4px 12px", fontSize: 12, color: DS.colors.textSec, ...s.mono }}>{seance.dureeMin}′</div>
+        </div>
+        <div style={{ height: 3, background: DS.colors.surfaceHigh }}>
+          <div style={{ height: "100%", width: `${progressPct}%`, background: `linear-gradient(90deg, ${accentColor}, ${DS.colors.success})`, transition: "width 0.5s ease" }} />
+        </div>
+      </div>
+
+      <div style={{ padding: "24px 20px 120px" }}>
+        <div style={{ background: DS.colors.surface, border: `1.5px solid ${accentColor}40`, borderRadius: DS.radius.xl, padding: 24, marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ background: accentColor + "20", border: `1px solid ${accentColor}40`, borderRadius: DS.radius.full, padding: "4px 12px", color: accentColor, fontSize: 11, ...s.heading }}>{exIdx + 1} / {exercices.length}</span>
+            {currentEx.chargeKg > 0 && <span style={{ ...s.mono, fontSize: 28, color: accentColor, fontWeight: 700 }}>{currentEx.chargeKg} <span style={{ fontSize: 14, color: DS.colors.textSec }}>kg</span></span>}
+          </div>
+          <h2 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary, marginBottom: 6 }}>{currentEx.nom}</h2>
+          <p style={{ color: DS.colors.textSec, fontSize: 14, marginBottom: 16 }}>{currentEx.muscles}</p>
+          <div style={{ display: "flex", gap: 12 }}>
+            {[{ val: currentEx.sets, label: "séries" }, { val: currentEx.reps, label: "reps" }, { val: `${currentEx.reposSec}″`, label: "repos" }].map((stat, i) => (
+              <div key={i} style={{ flex: 1, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 16px", textAlign: "center" }}>
+                <span style={{ ...s.mono, fontSize: 22, color: i === 0 ? accentColor : DS.colors.textPrimary, fontWeight: 700 }}>{stat.val}</span>
+                <p style={{ color: DS.colors.textSec, fontSize: 11, marginTop: 2 }}>{stat.label}</p>
+              </div>
+            ))}
+          </div>
+          {currentEx.conseil && (
+            <div style={{ marginTop: 16, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px", display: "flex", gap: 10 }}>
+              <span style={{ fontSize: 14 }}>💡</span>
+              <p style={{ color: DS.colors.textSec, fontSize: 13 }}>{currentEx.conseil}</p>
+            </div>
+          )}
+        </div>
+
+        {resting ? (
+          <RestTimer seconds={currentEx.reposSec} onComplete={() => { setResting(false); setSetIdx(i => i + 1); }} />
+        ) : (
+          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "4px 20px 16px", marginBottom: 20 }}>
+            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, padding: "14px 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sets</p>
+            {Array.from({ length: totalSets }).map((_, i) => {
+              const done = completedSets[`${exIdx}-${i}`];
+              const isActive = i === setIdx && !done;
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: i < totalSets - 1 ? `1px solid ${DS.colors.border}` : "none", opacity: done ? 0.5 : 1 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: DS.radius.full, background: done ? DS.colors.success : isActive ? DS.colors.primarySoft : DS.colors.surfaceHigh, border: `1px solid ${done ? DS.colors.success : isActive ? DS.colors.primary : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: done ? DS.colors.bg : isActive ? DS.colors.primary : DS.colors.textSec, ...s.heading, flexShrink: 0 }}>
+                    {done ? "✓" : i + 1}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.mono }}>{currentEx.sets} × {currentEx.reps} {currentEx.chargeKg > 0 ? `@ ${currentEx.chargeKg}kg` : ""}</p>
+                  </div>
+                  <button onClick={() => isActive && handleSetComplete()} disabled={!isActive || done} style={{ width: 44, height: 44, borderRadius: DS.radius.md, background: isActive ? DS.colors.primary : DS.colors.surfaceHigh, border: `1px solid ${isActive ? DS.colors.primary : DS.colors.border}`, cursor: isActive ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: isActive ? DS.shadow.primary : "none", flexShrink: 0 }}>
+                    {done ? "✓" : "→"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {exIdx < exercices.length - 1 && (
+          <div>
+            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ensuite</p>
+            {exercices.slice(exIdx + 1, exIdx + 3).map((ex, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 8, opacity: i === 0 ? 1 : 0.5 }}>
+                <div>
+                  <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{ex.nom}</p>
+                  <p style={{ color: DS.colors.textSec, fontSize: 12 }}>{ex.muscles?.split("·")[0]}</p>
+                </div>
+                <span style={{ ...s.mono, color: DS.colors.textSec, fontSize: 13 }}>{ex.sets}×{ex.reps}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // ÉCRAN SPLASH — chargement initial
 // ─────────────────────────────────────────────
 function SplashScreen() {
