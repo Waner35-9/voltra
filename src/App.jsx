@@ -2,17 +2,11 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// ─────────────────────────────────────────────
-// SUPABASE CLIENT
-// ─────────────────────────────────────────────
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-// ─────────────────────────────────────────────
-// GENERATE PROGRAM IA
-// ─────────────────────────────────────────────
 async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Pas de session");
@@ -29,13 +23,10 @@ async function generateProgramIA({ sport, objectif, niveau, frequence }) {
     }
   );
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Erreur génération");
+  if (!res.ok) throw new Error(data.error || "Erreur generation");
   return data.programme;
 }
 
-// ─────────────────────────────────────────────
-// DESIGN SYSTEM
-// ─────────────────────────────────────────────
 const DS = {
   colors: {
     bg: "#0A0A0F", surface: "#13131A", surfaceUp: "#1C1C26", surfaceHigh: "#242433",
@@ -56,9 +47,6 @@ const s = {
   body: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 },
 };
 
-// ─────────────────────────────────────────────
-// COMPOSANTS UI
-// ─────────────────────────────────────────────
 function PrimaryButton({ children, onClick, disabled, style = {} }) {
   const [p, setP] = useState(false);
   return (
@@ -156,23 +144,21 @@ const Icons = {
   clock: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={DS.colors.textSec} strokeWidth="2" /><path d="M12 7V12L15 15" stroke={DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
 };
 
-// ─────────────────────────────────────────────
-// DONNÉES MOCK
-// ─────────────────────────────────────────────
 const MOCK_PROGRAM = {
-  titre: "Explosivité Basketball", semaineCourante: 3, totalSemaines: 8, progression: 62,
+  titre: "Explosivite Basketball", semaineCourante: 3, totalSemaines: 8, progression: 62,
   seancesDuJour: [{
-    id: "s3_j1", titre: "Force & Explosivité", type: "force_basse", dureeMin: 48,
+    id: "s3_j1", titre: "Force & Explosivite", type: "force_basse", dureeMin: 48,
     exercices: [
-      { id: "e1", nom: "Squat barre", muscles: "Quadriceps · Fessiers", sets: 4, reps: "6-8", chargeKg: 75 },
-      { id: "e2", nom: "Romanian Deadlift", muscles: "Ischio · Lombaires", sets: 3, reps: "10", chargeKg: 60 },
-      { id: "e3", nom: "Box Jump", muscles: "Quadriceps · Mollets", sets: 5, reps: "5", chargeKg: 0 },
-      { id: "e4", nom: "Hip Thrust", muscles: "Fessiers", sets: 3, reps: "12", chargeKg: 70 },
-      { id: "e5", nom: "Kettlebell Swing", muscles: "Fessiers · Dorsaux", sets: 4, reps: "12", chargeKg: 20 },
+      { id: "e1", nom: "Squat barre", muscles: "Quadriceps Fessiers", sets: 4, reps: "6-8", chargeKg: 75, reposSec: 120, conseil: "Descendre sous le parallele, genoux dans l'axe." },
+      { id: "e2", nom: "Romanian Deadlift", muscles: "Ischio Lombaires", sets: 3, reps: "10", chargeKg: 60, reposSec: 90, conseil: "Dos plat, tension dans les ischios en bas." },
+      { id: "e3", nom: "Box Jump", muscles: "Quadriceps Mollets", sets: 5, reps: "5", chargeKg: 0, reposSec: 150, conseil: "Atterrissage souple, amorti complet." },
+      { id: "e4", nom: "Hip Thrust", muscles: "Fessiers", sets: 3, reps: "12", chargeKg: 70, reposSec: 75, conseil: "Pause 1s en haut, contraction max." },
+      { id: "e5", nom: "Kettlebell Swing", muscles: "Fessiers Dorsaux", sets: 4, reps: "12", chargeKg: 20, reposSec: 90, conseil: "Puissance vient des hanches, pas des bras." },
     ],
   }],
-  derniereSeance: { titre: "Haut du Corps", joursPassés: 2, dureeMin: 42, nbExercices: 5, gainKg: 2.5 },
+  derniereSeance: { titre: "Haut du Corps", joursPasses: 2, dureeMin: 42, nbExercices: 5, gainKg: 2.5 },
 };
+
 const SPORTS = [
   { id: "basketball", label: "Basketball", emoji: "🏀" },
   { id: "football", label: "Football", emoji: "⚽" },
@@ -182,17 +168,94 @@ const SPORTS = [
   { id: "sprint", label: "Sprint", emoji: "🏃" },
 ];
 const OBJECTIFS = [
-  { id: "explosivite", label: "Explosivité", desc: "Puissance & vitesse", emoji: "⚡" },
+  { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
   { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
   { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
-  { id: "detente", label: "Détente verticale", desc: "Jump & réactivité", emoji: "🚀" },
+  { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
 ];
-const NIVEAUX = ["Débutant", "Intermédiaire", "Avancé"];
+const NIVEAUX = ["Debutant", "Intermediaire", "Avance"];
 const PLANS = [
-  { id: "monthly", label: "Mensuel", price: 12.99, unit: "/ mois", priceDetail: "Résiliable à tout moment", savings: null, color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: null, highlight: false },
-  { id: "annual", label: "Annuel", price: 69.99, unit: "/ an", priceDetail: "soit 5,83€ / mois", savings: "Économise 58%", color: DS.colors.success, colorSoft: DS.colors.successSoft, colorBorder: "rgba(0,229,160,0.35)", badge: "⭐ Le plus populaire", highlight: true },
-  { id: "lifetime", label: "À vie", price: 149, unit: "une fois", priceDetail: "Accès permanent · Toutes les features", savings: "Offre de lancement", color: DS.colors.gold, colorSoft: DS.colors.goldSoft, colorBorder: "rgba(255,209,102,0.35)", badge: "⏳ Limité", highlight: false, urgency: true },
+  { id: "monthly", label: "Mensuel", price: 12.99, unit: "/ mois", priceDetail: "Resiliable a tout moment", savings: null, color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: null, highlight: false },
+  { id: "annual", label: "Annuel", price: 69.99, unit: "/ an", priceDetail: "soit 5,83 / mois", savings: "Economise 58%", color: DS.colors.success, colorSoft: DS.colors.successSoft, colorBorder: "rgba(0,229,160,0.35)", badge: "Le plus populaire", highlight: true },
+  { id: "lifetime", label: "A vie", price: 149, unit: "une fois", priceDetail: "Acces permanent", savings: "Offre de lancement", color: DS.colors.gold, colorSoft: DS.colors.goldSoft, colorBorder: "rgba(255,209,102,0.35)", badge: "Limite", highlight: false, urgency: true },
 ];
+
+// ─────────────────────────────────────────────
+// MUSCLE ICONS SVG
+// ─────────────────────────────────────────────
+function getMuscleIcon(muscles, color) {
+  const m = (muscles || "").toLowerCase();
+  if (m.includes("quad")) return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <ellipse cx="16" cy="28" rx="7" ry="12" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
+      <ellipse cx="32" cy="28" rx="7" ry="12" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
+      <ellipse cx="16" cy="24" rx="4" ry="8" fill={color + "60"}/>
+      <ellipse cx="32" cy="24" rx="4" ry="8" fill={color + "60"}/>
+    </svg>
+  );
+  if (m.includes("fessier")) return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <ellipse cx="16" cy="30" rx="10" ry="10" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
+      <ellipse cx="32" cy="30" rx="10" ry="10" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
+      <ellipse cx="16" cy="28" rx="6" ry="6" fill={color + "60"}/>
+      <ellipse cx="32" cy="28" rx="6" ry="6" fill={color + "60"}/>
+    </svg>
+  );
+  if (m.includes("pectoral") || m.includes("chest")) return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <path d="M8 20 Q16 12 24 16 Q32 12 40 20 L40 32 Q32 38 24 34 Q16 38 8 32 Z" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
+      <path d="M12 22 Q20 16 24 18 L24 32 Q16 36 12 30 Z" fill={color + "50"}/>
+      <path d="M36 22 Q28 16 24 18 L24 32 Q32 36 36 30 Z" fill={color + "50"}/>
+    </svg>
+  );
+  if (m.includes("dorsal") || m.includes("dos")) return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <path d="M8 12 Q16 8 24 10 Q32 8 40 12 L38 36 Q30 42 24 40 Q18 42 10 36 Z" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
+      <path d="M12 14 Q20 10 24 12 L22 36 Q16 40 12 34 Z" fill={color + "50"}/>
+      <path d="M36 14 Q28 10 24 12 L26 36 Q32 40 36 34 Z" fill={color + "50"}/>
+    </svg>
+  );
+  if (m.includes("ischio")) return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <ellipse cx="16" cy="26" rx="7" ry="13" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
+      <ellipse cx="32" cy="26" rx="7" ry="13" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
+      <ellipse cx="16" cy="28" rx="4" ry="9" fill={color + "60"}/>
+      <ellipse cx="32" cy="28" rx="4" ry="9" fill={color + "60"}/>
+    </svg>
+  );
+  if (m.includes("mollet")) return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <ellipse cx="16" cy="30" rx="6" ry="10" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
+      <ellipse cx="32" cy="30" rx="6" ry="10" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
+      <ellipse cx="16" cy="32" rx="3" ry="6" fill={color + "60"}/>
+      <ellipse cx="32" cy="32" rx="3" ry="6" fill={color + "60"}/>
+    </svg>
+  );
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="24" r="18" fill={color + "20"} stroke={color} strokeWidth="1.5"/>
+      <path d="M16 24 Q20 16 24 20 Q28 16 32 24 Q28 32 24 28 Q20 32 16 24Z" fill={color + "60"}/>
+    </svg>
+  );
+}
+
+function getExerciceColor(type, index) {
+  const palettes = {
+    force_basse: ["#6C63FF", "#7B6EFF", "#8A7AFF", "#9B8BFF", "#AC9CFF"],
+    force_haute: ["#FF63D4", "#FF70DA", "#FF7EE0", "#FF8CE6", "#FF9AEC"],
+    explosivite: ["#FF6B35", "#FF7A45", "#FF8A55", "#FF9A66", "#FFAA77"],
+    gainage: ["#00E5A0", "#10EBA8", "#20F1B0", "#30F7B8", "#40FDC0"],
+  };
+  const colors = palettes[type] || palettes.force_basse;
+  return colors[index % colors.length];
+}
+
+const MOTIVATION = {
+  rest: ["Recupere bien.", "Souffle, t'as bien bosse.", "Presque fini.", "Tu geres.", "Keep going."],
+  complete: ["Propre !", "Excellent !", "Belle serie !", "On continue.", "Top !"],
+  finish: ["Seance terminee", "Travail accompli.", "Champion.", "Incroyable.", "Respect."],
+};
+const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // ─────────────────────────────────────────────
 // TIMER DE REPOS
@@ -201,9 +264,9 @@ function RestTimer({ seconds, onComplete }) {
   const [left, setLeft] = useState(seconds);
   const [running, setRunning] = useState(true);
   const ref = useRef(null);
+  const [motivText] = useState(() => getRandom(MOTIVATION.rest));
 
   useEffect(() => { setLeft(seconds); setRunning(true); }, [seconds]);
-
   useEffect(() => {
     if (!running) return;
     if (left <= 0) { onComplete?.(); return; }
@@ -212,36 +275,43 @@ function RestTimer({ seconds, onComplete }) {
   }, [left, running]);
 
   const pct = ((seconds - left) / seconds) * 100;
-  const mins = Math.floor(left / 60);
-  const secs = left % 60;
   const pad = n => String(n).padStart(2, "0");
-  const color = left > seconds * 0.5 ? DS.colors.primary : left > seconds * 0.25 ? DS.colors.warning : DS.colors.success;
+  const color = left > seconds * 0.6 ? DS.colors.primary : left > seconds * 0.3 ? DS.colors.warning : DS.colors.success;
+  const circumference = 2 * Math.PI * 54;
 
   return (
-    <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: 28, textAlign: "center" }}>
-      <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.08em" }}>⏱ Temps de repos</p>
-      <div style={{ position: "relative", width: 140, height: 140, margin: "0 auto 20px" }}>
-        <svg width="140" height="140" viewBox="0 0 140 140" style={{ transform: "rotate(-90deg)" }}>
-          <circle cx="70" cy="70" r="60" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="8" />
-          <circle cx="70" cy="70" r="60" fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
-            strokeDasharray={`${2 * Math.PI * 60}`}
-            strokeDashoffset={`${2 * Math.PI * 60 * (1 - pct / 100)}`}
-            style={{ transition: "stroke-dashoffset 1s linear, stroke 0.5s ease", filter: `drop-shadow(0 0 8px ${color})` }} />
+    <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "28px 24px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 50% 40%, ${color}10, transparent 70%)`, transition: "background 0.5s ease", pointerEvents: "none" }} />
+      <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.1em" }}>Temps de repos</p>
+      <div style={{ position: "relative", width: 148, height: 148, margin: "0 auto 16px" }}>
+        <svg width="148" height="148" viewBox="0 0 148 148" style={{ transform: "rotate(-90deg)" }}>
+          <circle cx="74" cy="74" r="54" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="10" />
+          <circle cx="74" cy="74" r="54" fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
+            strokeDasharray={circumference} strokeDashoffset={circumference * (1 - pct / 100)}
+            style={{ transition: "stroke-dashoffset 1s linear, stroke 0.5s ease" }} />
         </svg>
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ ...s.mono, fontSize: 36, color, fontWeight: 700 }}>{pad(mins)}:{pad(secs)}</span>
+          <span style={{ ...s.mono, fontSize: 38, color, fontWeight: 700, lineHeight: 1, transition: "color 0.5s ease" }}>
+            {pad(Math.floor(left / 60))}:{pad(left % 60)}
+          </span>
+          <span style={{ color: DS.colors.textDim, fontSize: 11, marginTop: 4 }}>sec</span>
         </div>
       </div>
+      <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 20, fontStyle: "italic" }}>"{motivText}"</p>
       <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={() => setRunning(r => !r)} style={{ flex: 1, height: 44, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.heading }}>{running ? "⏸ Pause" : "▶ Reprendre"}</button>
-        <button onClick={onComplete} style={{ flex: 1, height: 44, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.heading }}>Passer →</button>
+        <button onClick={() => setRunning(r => !r)} style={{ flex: 1, height: 44, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.heading }}>
+          {running ? "Pause" : "Reprendre"}
+        </button>
+        <button onClick={onComplete} style={{ flex: 1, height: 44, background: DS.colors.successSoft, border: `1px solid rgba(0,229,160,0.3)`, borderRadius: DS.radius.md, color: DS.colors.success, fontSize: 14, cursor: "pointer", ...s.heading }}>
+          Passer
+        </button>
       </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────
-// ÉCRAN SÉANCE LIVE
+// ECRAN SEANCE LIVE
 // ─────────────────────────────────────────────
 function SeanceScreen({ seance, onFinish, onBack }) {
   const [exIdx, setExIdx] = useState(0);
@@ -250,47 +320,77 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [completedSets, setCompletedSets] = useState({});
   const [showSummary, setShowSummary] = useState(false);
   const [feedback, setFeedback] = useState(null);
- 
+  const [animKey, setAnimKey] = useState(0);
+  const [toast, setToast] = useState(null);
+
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
-  if (!currentEx) return null;
-  const totalSets = currentEx?.sets || 4;
-  const progressPct = Math.round(((exIdx + setIdx / totalSets) / exercices.length) * 100);
+  if (!currentEx && !showSummary) return null;
+
+  const totalSets = currentEx ? (currentEx.sets || 4) : 4;
+  const progressPct = currentEx ? Math.round(((exIdx + setIdx / totalSets) / exercices.length) * 100) : 100;
+  const accentColor = getExerciceColor(seance.type, exIdx);
 
   const handleSetComplete = () => {
     const key = `${exIdx}-${setIdx}`;
     setCompletedSets(prev => ({ ...prev, [key]: true }));
+    const msg = getRandom(MOTIVATION.complete);
+    setToast(msg);
+    setTimeout(() => setToast(null), 1400);
+
     if (setIdx < totalSets - 1) {
       setResting(true);
     } else {
       if (exIdx < exercices.length - 1) {
-        setTimeout(() => { setExIdx(i => i + 1); setSetIdx(0); }, 400);
+        setTimeout(() => { setExIdx(i => i + 1); setSetIdx(0); setAnimKey(k => k + 1); }, 400);
       } else {
-        setTimeout(() => setShowSummary(true), 400);
+        setTimeout(() => setShowSummary(true), 600);
       }
     }
   };
 
-  const accentColor = DS.colors.primary;
-
   if (showSummary) {
+    const totalSetsCount = exercices.reduce((acc, ex) => acc + (ex.sets || 3), 0);
     return (
       <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", maxWidth: 430, margin: "0 auto" }}>
-        <div style={{ paddingTop: 60, flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ width: 80, height: 80, borderRadius: DS.radius.full, background: DS.colors.successSoft, border: `2px solid ${DS.colors.success}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, marginBottom: 20, boxShadow: `0 0 40px ${DS.colors.success}40` }}>🏆</div>
-          <h1 style={{ ...s.display, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Séance terminée !</h1>
-          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>{seance.titre}</p>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 40 }}>
+          <div style={{ width: 100, height: 100, borderRadius: DS.radius.full, background: `radial-gradient(circle, ${DS.colors.success}30, ${DS.colors.success}10)`, border: `2px solid ${DS.colors.success}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, marginBottom: 24, boxShadow: `0 0 60px ${DS.colors.success}40`, animation: "pulse 2s ease-in-out infinite" }}>
+            🏆
+          </div>
+          <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8, textAlign: "center" }}>
+            {getRandom(MOTIVATION.finish)}
+          </h1>
+          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32, textAlign: "center" }}>{seance.titre}</p>
+
+          <div style={{ display: "flex", gap: 12, width: "100%", marginBottom: 32 }}>
+            {[
+              { val: exercices.length, label: "exercices", color: accentColor },
+              { val: totalSetsCount, label: "series", color: DS.colors.success },
+              { val: `${seance.dureeMin}m`, label: "minutes", color: DS.colors.warning },
+            ].map((stat, i) => (
+              <div key={i} style={{ flex: 1, background: DS.colors.surface, border: `1px solid ${stat.color}30`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center" }}>
+                <div style={{ ...s.mono, fontSize: 26, color: stat.color, fontWeight: 700, marginBottom: 4 }}>{stat.val}</div>
+                <div style={{ color: DS.colors.textSec, fontSize: 11 }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
           <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 16, textAlign: "center" }}>Comment tu te sens ?</p>
-          <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 32 }}>
-            {[{ id: "easy", emoji: "😤", label: "Trop facile" }, { id: "good", emoji: "💪", label: "Bien chargé" }, { id: "hard", emoji: "😮‍💨", label: "C'était dur" }].map(fb => (
-              <button key={fb.id} onClick={() => setFeedback(fb.id)} style={{ flex: 1, padding: "14px 8px", background: feedback === fb.id ? DS.colors.primarySoft : DS.colors.surfaceHigh, border: `1px solid ${feedback === fb.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, cursor: "pointer", transition: "all 0.2s ease" }}>
-                <div style={{ fontSize: 24, marginBottom: 6 }}>{fb.emoji}</div>
-                <div style={{ color: feedback === fb.id ? DS.colors.primary : DS.colors.textSec, fontSize: 11, ...s.heading }}>{fb.label}</div>
+          <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 28 }}>
+            {[
+              { id: "easy", emoji: "😤", label: "Trop facile", color: DS.colors.primary },
+              { id: "good", emoji: "💪", label: "Bien charge", color: DS.colors.success },
+              { id: "hard", emoji: "😮‍💨", label: "Dur", color: DS.colors.warning },
+            ].map(fb => (
+              <button key={fb.id} onClick={() => setFeedback(fb.id)} style={{ flex: 1, padding: "16px 8px", background: feedback === fb.id ? fb.color + "20" : DS.colors.surface, border: `1.5px solid ${feedback === fb.id ? fb.color : DS.colors.border}`, borderRadius: DS.radius.lg, cursor: "pointer", transition: "all 0.2s ease", transform: feedback === fb.id ? "scale(1.04)" : "scale(1)" }}>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>{fb.emoji}</div>
+                <div style={{ color: feedback === fb.id ? fb.color : DS.colors.textSec, fontSize: 11, ...s.heading }}>{fb.label}</div>
               </button>
             ))}
           </div>
-          <button onClick={onFinish} disabled={!feedback} style={{ width: "100%", height: 56, background: feedback ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? DS.colors.bg : DS.colors.textDim, fontSize: 16, cursor: feedback ? "pointer" : "not-allowed", ...s.heading }}>
-            {feedback ? "✦ Enregistrer & continuer" : "Sélectionne ton ressenti"}
+
+          <button onClick={onFinish} disabled={!feedback} style={{ width: "100%", height: 58, background: feedback ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? DS.colors.bg : DS.colors.textDim, fontSize: 16, cursor: feedback ? "pointer" : "not-allowed", ...s.heading, boxShadow: feedback ? "0 8px 32px rgba(0,229,160,0.35)" : "none", transition: "all 0.3s ease" }}>
+            {feedback ? "Enregistrer & continuer" : "Selectionne ton ressenti"}
           </button>
         </div>
       </div>
@@ -299,62 +399,96 @@ function SeanceScreen({ seance, onFinish, onBack }) {
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, maxWidth: 430, margin: "0 auto" }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px 0" }}>
+      {/* Toast motivation */}
+      {toast && (
+        <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: DS.colors.success, color: DS.colors.bg, padding: "8px 20px", borderRadius: DS.radius.full, fontSize: 14, ...s.heading, zIndex: 200, boxShadow: `0 4px 20px ${DS.colors.success}60`, whiteSpace: "nowrap" }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "14px 20px 0" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
           <div style={{ textAlign: "center" }}>
-            <p style={{ color: DS.colors.textSec, fontSize: 12 }}>Exercice {exIdx + 1} sur {exercices.length}</p>
-            <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>{seance.titre}</p>
+            <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{exIdx + 1} / {exercices.length} exercices</p>
+            <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{seance.titre}</p>
           </div>
-          <div style={{ background: DS.colors.surfaceUp, borderRadius: DS.radius.full, padding: "4px 12px", fontSize: 12, color: DS.colors.textSec, ...s.mono }}>{seance.dureeMin}′</div>
+          <div style={{ background: accentColor + "20", border: `1px solid ${accentColor}40`, borderRadius: DS.radius.full, padding: "4px 12px", fontSize: 12, color: accentColor, ...s.mono, fontWeight: 700 }}>
+            {seance.dureeMin}m
+          </div>
         </div>
-        <div style={{ height: 3, background: DS.colors.surfaceHigh }}>
-          <div style={{ height: "100%", width: `${progressPct}%`, background: `linear-gradient(90deg, ${accentColor}, ${DS.colors.success})`, transition: "width 0.5s ease" }} />
+        <div style={{ height: 3, background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${progressPct}%`, background: `linear-gradient(90deg, ${accentColor}, ${DS.colors.success})`, transition: "width 0.6s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: `0 0 8px ${accentColor}` }} />
         </div>
       </div>
 
-      <div style={{ padding: "24px 20px 120px" }}>
-        <div style={{ background: DS.colors.surface, border: `1.5px solid ${accentColor}40`, borderRadius: DS.radius.xl, padding: 24, marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ background: accentColor + "20", border: `1px solid ${accentColor}40`, borderRadius: DS.radius.full, padding: "4px 12px", color: accentColor, fontSize: 11, ...s.heading }}>{exIdx + 1} / {exercices.length}</span>
-            {currentEx.chargeKg > 0 && <span style={{ ...s.mono, fontSize: 28, color: accentColor, fontWeight: 700 }}>{currentEx.chargeKg} <span style={{ fontSize: 14, color: DS.colors.textSec }}>kg</span></span>}
+      <div style={{ padding: "20px 20px 120px" }}>
+        {/* Card exercice */}
+        <div key={animKey} style={{ background: DS.colors.surface, border: `1.5px solid ${accentColor}40`, borderRadius: DS.radius.xl, padding: 24, marginBottom: 16, position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: DS.radius.full, background: `radial-gradient(circle, ${accentColor}12, transparent 70%)`, pointerEvents: "none" }} />
+
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "inline-flex", padding: "3px 12px", background: accentColor + "20", border: `1px solid ${accentColor}40`, borderRadius: DS.radius.full, color: accentColor, fontSize: 11, ...s.heading, marginBottom: 10 }}>
+                Exercice {exIdx + 1}
+              </div>
+              <h2 style={{ ...s.display, fontSize: 22, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 4 }}>{currentEx.nom}</h2>
+              <p style={{ color: DS.colors.textSec, fontSize: 13 }}>{currentEx.muscles}</p>
+            </div>
+            <div style={{ width: 72, height: 72, flexShrink: 0, background: accentColor + "10", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.lg, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: 12 }}>
+              {getMuscleIcon(currentEx.muscles, accentColor)}
+            </div>
           </div>
-          <h2 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary, marginBottom: 6 }}>{currentEx.nom}</h2>
-          <p style={{ color: DS.colors.textSec, fontSize: 14, marginBottom: 16 }}>{currentEx.muscles}</p>
-          <div style={{ display: "flex", gap: 12 }}>
-            {[{ val: currentEx.sets, label: "séries" }, { val: currentEx.reps, label: "reps" }, { val: `${currentEx.reposSec}″`, label: "repos" }].map((stat, i) => (
-              <div key={i} style={{ flex: 1, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 16px", textAlign: "center" }}>
-                <span style={{ ...s.mono, fontSize: 22, color: i === 0 ? accentColor : DS.colors.textPrimary, fontWeight: 700 }}>{stat.val}</span>
-                <p style={{ color: DS.colors.textSec, fontSize: 11, marginTop: 2 }}>{stat.label}</p>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: currentEx.conseil ? 16 : 0 }}>
+            {[
+              { val: currentEx.sets, label: "series", highlight: true },
+              { val: currentEx.reps, label: "reps", highlight: false },
+              ...(currentEx.chargeKg > 0 ? [{ val: `${currentEx.chargeKg}kg`, label: "charge", highlight: false }] : []),
+              { val: `${currentEx.reposSec || 90}s`, label: "repos", highlight: false },
+            ].map((stat, i) => (
+              <div key={i} style={{ flex: 1, background: stat.highlight ? accentColor + "15" : DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center", border: stat.highlight ? `1px solid ${accentColor}30` : "none" }}>
+                <div style={{ ...s.mono, fontSize: 18, color: stat.highlight ? accentColor : DS.colors.textPrimary, fontWeight: 700 }}>{stat.val}</div>
+                <div style={{ color: DS.colors.textDim, fontSize: 10, marginTop: 2 }}>{stat.label}</div>
               </div>
             ))}
           </div>
+
           {currentEx.conseil && (
-            <div style={{ marginTop: 16, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px", display: "flex", gap: 10 }}>
-              <span style={{ fontSize: 14 }}>💡</span>
-              <p style={{ color: DS.colors.textSec, fontSize: 13 }}>{currentEx.conseil}</p>
+            <div style={{ marginTop: 14, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
+              <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, lineHeight: 1.5 }}>{currentEx.conseil}</p>
             </div>
           )}
         </div>
 
+        {/* Repos ou Sets */}
         {resting ? (
-          <RestTimer seconds={currentEx.reposSec} onComplete={() => { setResting(false); setSetIdx(i => i + 1); }} />
+          <RestTimer seconds={currentEx.reposSec || 90} onComplete={() => { setResting(false); setSetIdx(i => i + 1); }} />
         ) : (
-          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "4px 20px 16px", marginBottom: 20 }}>
-            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, padding: "14px 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Sets</p>
+          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16 }}>
+            <div style={{ background: DS.colors.surfaceHigh, padding: "12px 20px", display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ color: DS.colors.textDim, fontSize: 10, ...s.heading, textTransform: "uppercase", letterSpacing: "0.06em" }}>Serie</span>
+              <span style={{ flex: 1, color: DS.colors.textDim, fontSize: 10, ...s.heading, textTransform: "uppercase", letterSpacing: "0.06em" }}>Objectif</span>
+            </div>
             {Array.from({ length: totalSets }).map((_, i) => {
               const done = completedSets[`${exIdx}-${i}`];
               const isActive = i === setIdx && !done;
               return (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: i < totalSets - 1 ? `1px solid ${DS.colors.border}` : "none", opacity: done ? 0.5 : 1 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: DS.radius.full, background: done ? DS.colors.success : isActive ? DS.colors.primarySoft : DS.colors.surfaceHigh, border: `1px solid ${done ? DS.colors.success : isActive ? DS.colors.primary : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: done ? DS.colors.bg : isActive ? DS.colors.primary : DS.colors.textSec, ...s.heading, flexShrink: 0 }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", borderBottom: i < totalSets - 1 ? `1px solid ${DS.colors.border}` : "none", background: isActive ? accentColor + "08" : "transparent", opacity: done ? 0.45 : 1, transition: "all 0.25s ease" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: DS.radius.full, background: done ? DS.colors.success + "20" : isActive ? accentColor + "20" : DS.colors.surfaceHigh, border: `1.5px solid ${done ? DS.colors.success : isActive ? accentColor : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, ...s.heading, color: done ? DS.colors.success : isActive ? accentColor : DS.colors.textDim, flexShrink: 0, boxShadow: done ? `0 0 8px ${DS.colors.success}40` : isActive ? `0 0 8px ${accentColor}40` : "none" }}>
                     {done ? "✓" : i + 1}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.mono }}>{currentEx.sets} × {currentEx.reps} {currentEx.chargeKg > 0 ? `@ ${currentEx.chargeKg}kg` : ""}</p>
+                    <p style={{ ...s.mono, fontSize: 15, color: isActive ? DS.colors.textPrimary : DS.colors.textSec, fontWeight: done ? 400 : 600 }}>
+                      {currentEx.sets} x {currentEx.reps}
+                      {currentEx.chargeKg > 0 && <span style={{ color: accentColor }}> @ {currentEx.chargeKg}kg</span>}
+                    </p>
+                    {isActive && <p style={{ color: accentColor, fontSize: 11, marginTop: 2 }}>Serie active</p>}
                   </div>
-                  <button onClick={() => isActive && handleSetComplete()} disabled={!isActive || done} style={{ width: 44, height: 44, borderRadius: DS.radius.md, background: isActive ? DS.colors.primary : DS.colors.surfaceHigh, border: `1px solid ${isActive ? DS.colors.primary : DS.colors.border}`, cursor: isActive ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: isActive ? DS.shadow.primary : "none", flexShrink: 0 }}>
-                    {done ? "✓" : "→"}
+                  <button onClick={() => isActive && handleSetComplete()} disabled={!isActive || done} style={{ width: 44, height: 44, borderRadius: DS.radius.md, background: done ? DS.colors.success + "20" : isActive ? accentColor : DS.colors.surfaceHigh, border: `1px solid ${done ? DS.colors.success : isActive ? accentColor : DS.colors.border}`, cursor: isActive && !done ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, transition: "all 0.2s ease", boxShadow: isActive && !done ? `0 4px 16px ${accentColor}50` : "none", flexShrink: 0 }}>
+                    {done ? <span style={{ color: DS.colors.success }}>✓</span> : <span style={{ color: isActive ? "white" : DS.colors.textDim }}>→</span>}
                   </button>
                 </div>
               );
@@ -362,18 +496,25 @@ function SeanceScreen({ seance, onFinish, onBack }) {
           </div>
         )}
 
-        {exIdx < exercices.length - 1 && (
+        {/* Exercices suivants */}
+        {exIdx < exercices.length - 1 && !resting && (
           <div>
-            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ensuite</p>
-            {exercices.slice(exIdx + 1, exIdx + 3).map((ex, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 8, opacity: i === 0 ? 1 : 0.5 }}>
-                <div>
-                  <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{ex.nom}</p>
-                  <p style={{ color: DS.colors.textSec, fontSize: 12 }}>{ex.muscles?.split("·")[0]}</p>
+            <p style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>Ensuite</p>
+            {exercices.slice(exIdx + 1, exIdx + 3).map((ex, i) => {
+              const nextColor = getExerciceColor(seance.type, exIdx + 1 + i);
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 8, opacity: i === 0 ? 0.9 : 0.5 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: DS.radius.sm, background: nextColor + "20", border: `1px solid ${nextColor}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: nextColor, ...s.heading, flexShrink: 0 }}>
+                    {exIdx + 2 + i}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{ex.nom}</p>
+                    <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{(ex.muscles || "").split(" ")[0]}</p>
+                  </div>
+                  <span style={{ ...s.mono, color: nextColor, fontSize: 13, fontWeight: 600 }}>{ex.sets}x{ex.reps}</span>
                 </div>
-                <span style={{ ...s.mono, color: DS.colors.textSec, fontSize: 13 }}>{ex.sets}×{ex.reps}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -382,18 +523,12 @@ function SeanceScreen({ seance, onFinish, onBack }) {
 }
 
 // ─────────────────────────────────────────────
-// ÉCRAN SPLASH — chargement initial
+// ECRAN SPLASH
 // ─────────────────────────────────────────────
 function SplashScreen() {
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-      <div style={{
-        width: 64, height: 64, borderRadius: DS.radius.xl,
-        background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 28, boxShadow: DS.shadow.primary,
-        animation: "pulse 1.5s ease-in-out infinite",
-      }}>
+      <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, boxShadow: DS.shadow.primary, animation: "pulse 1.5s ease-in-out infinite" }}>
         ⚡
       </div>
       <p style={{ color: DS.colors.textSec, fontSize: 14, marginTop: 20, ...s.body }}>Chargement...</p>
@@ -402,7 +537,7 @@ function SplashScreen() {
 }
 
 // ─────────────────────────────────────────────
-// ÉCRAN AUTH — Connexion / Inscription réelle
+// ECRAN AUTH
 // ─────────────────────────────────────────────
 function AuthScreen({ onAuth }) {
   const [mode, setMode] = useState("login");
@@ -414,157 +549,69 @@ function AuthScreen({ onAuth }) {
   const [success, setSuccess] = useState("");
 
   const handleSubmit = async () => {
-    setError("");
-    setSuccess("");
+    setError(""); setSuccess("");
     if (!email || !password) { setError("Remplis tous les champs."); return; }
-    if (mode === "signup" && !name) { setError("Entre ton prénom."); return; }
-    if (password.length < 6) { setError("Mot de passe : 6 caractères minimum."); return; }
-
+    if (mode === "signup" && !name) { setError("Entre ton prenom."); return; }
+    if (password.length < 6) { setError("Mot de passe : 6 caracteres minimum."); return; }
     setLoading(true);
 
     if (mode === "signup") {
-      // ── Inscription Supabase ──
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { name } },
-      });
-
-      if (signUpError) {
-        setError(signUpError.message === "User already registered"
-          ? "Cet email est déjà utilisé. Connecte-toi."
-          : signUpError.message);
-        setLoading(false);
-        return;
-      }
-
-      // Supabase peut demander de confirmer l'email
-      if (data.user && !data.session) {
-        setSuccess("Vérifie ta boîte mail pour confirmer ton compte !");
-        setLoading(false);
-        return;
-      }
-
+      const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+      if (e) { setError(e.message === "User already registered" ? "Email deja utilise." : e.message); setLoading(false); return; }
+      if (data.user && !data.session) { setSuccess("Verifie ta boite mail !"); setLoading(false); return; }
       onAuth(data.user);
-
     } else {
-      // ── Connexion Supabase ──
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        setError(signInError.message === "Invalid login credentials"
-          ? "Email ou mot de passe incorrect."
-          : signInError.message);
-        setLoading(false);
-        return;
-      }
-
+      const { data, error: e } = await supabase.auth.signInWithPassword({ email, password });
+      if (e) { setError(e.message === "Invalid login credentials" ? "Email ou mot de passe incorrect." : e.message); setLoading(false); return; }
       onAuth(data.user);
     }
-
     setLoading(false);
   };
 
   const handleForgotPassword = async () => {
     if (!email) { setError("Entre ton email d'abord."); return; }
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
-    if (resetError) { setError(resetError.message); return; }
-    setSuccess("Email de réinitialisation envoyé !");
+    const { error: e } = await supabase.auth.resetPasswordForEmail(email);
+    if (e) { setError(e.message); return; }
+    setSuccess("Email de reinitialisation envoye !");
   };
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
-      {/* Logo */}
       <div style={{ paddingTop: 80, paddingBottom: 48, textAlign: "center" }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: DS.radius.xl,
-          background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary,
-        }}>
-          ⚡
-        </div>
+        <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>⚡</div>
         <h1 style={{ ...s.display, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>Voltra</h1>
-        <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>
-          {mode === "login" ? "Content de te revoir 👋" : "Commence ton parcours"}
-        </p>
+        <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>{mode === "login" ? "Content de te revoir" : "Commence ton parcours"}</p>
       </div>
-
       <div style={{ flex: 1 }}>
-        {/* Toggle */}
-        <div style={{
-          display: "flex", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`,
-          borderRadius: DS.radius.md, padding: 4, marginBottom: 32,
-        }}>
+        <div style={{ display: "flex", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: 4, marginBottom: 32 }}>
           {["login", "signup"].map(m => (
-            <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{
-              flex: 1, height: 40, borderRadius: DS.radius.sm - 2,
-              background: mode === m ? DS.colors.primary : "transparent",
-              border: "none", color: mode === m ? "white" : DS.colors.textSec,
-              fontSize: 14, cursor: "pointer", transition: "all 0.2s ease",
-              boxShadow: mode === m ? DS.shadow.primary : "none", ...s.heading,
-            }}>
+            <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{ flex: 1, height: 40, borderRadius: DS.radius.sm - 2, background: mode === m ? DS.colors.primary : "transparent", border: "none", color: mode === m ? "white" : DS.colors.textSec, fontSize: 14, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>
               {m === "login" ? "Connexion" : "Inscription"}
             </button>
           ))}
         </div>
-
-        {mode === "signup" && (
-          <Input label="Prénom" value={name} onChange={setName} placeholder="Alex" />
-        )}
+        {mode === "signup" && <Input label="Prenom" value={name} onChange={setName} placeholder="Alex" />}
         <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="alex@email.com" />
-        <Input label="Mot de passe" type="password" value={password} onChange={setPassword} placeholder="••••••••" />
-
-        {error && (
-          <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}>
-            <p style={{ color: DS.colors.warning, fontSize: 13, ...s.body }}>⚠️ {error}</p>
-          </div>
-        )}
-
-        {success && (
-          <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(0,229,160,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}>
-            <p style={{ color: DS.colors.success, fontSize: 13, ...s.body }}>✓ {success}</p>
-          </div>
-        )}
-
+        <Input label="Mot de passe" type="password" value={password} onChange={setPassword} placeholder="Min. 6 caracteres" />
+        {error && <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.warning, fontSize: 13 }}>⚠ {error}</p></div>}
+        {success && <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(0,229,160,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.success, fontSize: 13 }}>✓ {success}</p></div>}
         {loading ? (
-          <div style={{
-            height: 56, borderRadius: DS.radius.md,
-            background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-            color: DS.colors.primary, fontSize: 15, ...s.heading,
-          }}>
+          <div style={{ height: 56, borderRadius: DS.radius.md, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: DS.colors.primary, fontSize: 15, ...s.heading }}>
             <div style={{ width: 16, height: 16, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite" }} />
-            {mode === "login" ? "Connexion..." : "Création du compte..."}
+            {mode === "login" ? "Connexion..." : "Creation du compte..."}
           </div>
         ) : (
-          <PrimaryButton onClick={handleSubmit}>
-            {mode === "login" ? "Se connecter →" : "Créer mon compte →"}
-          </PrimaryButton>
+          <PrimaryButton onClick={handleSubmit}>{mode === "login" ? "Se connecter" : "Creer mon compte"}</PrimaryButton>
         )}
-
-        {mode === "login" && (
-          <button onClick={handleForgotPassword} style={{
-            width: "100%", marginTop: 16, background: "none", border: "none",
-            color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body,
-          }}>
-            Mot de passe oublié ?
-          </button>
-        )}
+        {mode === "login" && <button onClick={handleForgotPassword} style={{ width: "100%", marginTop: 16, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Mot de passe oublie ?</button>}
       </div>
-
-      <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", paddingBottom: 40, ...s.body }}>
-        En continuant, tu acceptes nos CGU et politique de confidentialité.
-      </p>
+      <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", paddingBottom: 40, ...s.body }}>En continuant, tu acceptes nos CGU.</p>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────
-// ÉCRAN ONBOARDING
+// ECRAN ONBOARDING
 // ─────────────────────────────────────────────
 function OnboardingScreen({ onComplete }) {
   const [step, setStep] = useState(0);
@@ -572,48 +619,30 @@ function OnboardingScreen({ onComplete }) {
   const [loading, setLoading] = useState(false);
   const [animIn, setAnimIn] = useState(true);
 
-  const goNext = () => {
-    setAnimIn(false);
-    setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200);
-  };
-
+  const goNext = () => { setAnimIn(false); setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200); };
   const handleFinish = async () => {
-  setLoading(true);
-  try {
-    const programme = await generateProgramIA(data);
-    onComplete(data, programme);
-  } catch (err) {
-    alert("Erreur : " + err.message);
-    onComplete(data, null);
-  }
-};
-
+    setLoading(true);
+    try { const programme = await generateProgramIA(data); onComplete(data, programme); }
+    catch (err) { alert("Erreur : " + err.message); onComplete(data, null); }
+  };
   const canNext = [data.sport !== null, data.objectif !== null, data.niveau !== null][step];
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px" }}>
       <div style={{ paddingTop: 60, paddingBottom: 32 }}>
         <div style={{ display: "flex", gap: 6, marginBottom: 32 }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{ flex: 1, height: 3, borderRadius: DS.radius.full, background: i <= step ? DS.colors.primary : DS.colors.surfaceHigh, transition: "background 0.4s ease", boxShadow: i === step ? `0 0 8px ${DS.colors.primary}` : "none" }} />
-          ))}
+          {[0, 1, 2].map(i => <div key={i} style={{ flex: 1, height: 3, borderRadius: DS.radius.full, background: i <= step ? DS.colors.primary : DS.colors.surfaceHigh, transition: "background 0.4s ease" }} />)}
         </div>
-        <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading }}>Étape {step + 1} sur 3</p>
+        <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading }}>Etape {step + 1} sur 3</p>
       </div>
-
       <div style={{ flex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(12px)", transition: "all 0.25s ease" }}>
         {step === 0 && (
           <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est<br />ton sport ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera adapté à tes besoins.</p>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton sport ?</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera adapte a tes besoins.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
-                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id }))} style={{
-                  background: data.sport === sport.id ? DS.colors.primarySoft : DS.colors.surface,
-                  border: `1px solid ${data.sport === sport.id ? DS.colors.primary : DS.colors.border}`,
-                  borderRadius: DS.radius.md, padding: "16px 8px", textAlign: "center", cursor: "pointer",
-                  transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.02)" : "scale(1)",
-                }}>
+                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id }))} style={{ background: data.sport === sport.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.sport === sport.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease" }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{sport.emoji}</div>
                   <div style={{ color: data.sport === sport.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 13, ...s.heading }}>{sport.label}</div>
                 </div>
@@ -621,67 +650,40 @@ function OnboardingScreen({ onComplete }) {
             </div>
           </div>
         )}
-
         {step === 1 && (
           <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est<br />ton objectif ?</h1>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>On adaptera les exercices et charges.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {OBJECTIFS.map(obj => (
-                <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{
-                  background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface,
-                  border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`,
-                  borderRadius: DS.radius.lg, padding: "16px 20px",
-                  display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease",
-                }}>
+                <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
                   <span style={{ fontSize: 26 }}>{obj.emoji}</span>
                   <div>
                     <div style={{ color: data.objectif === obj.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{obj.label}</div>
                     <div style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>{obj.desc}</div>
                   </div>
-                  {data.objectif === obj.id && (
-                    <div style={{ marginLeft: "auto", width: 20, height: 20, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg>
-                    </div>
-                  )}
+                  {data.objectif === obj.id && <div style={{ marginLeft: "auto", width: 20, height: 20, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
                 </div>
               ))}
             </div>
           </div>
         )}
-
         {step === 2 && (
           <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Derniers<br />réglages</h1>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Derniers reglages</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 36 }}>Le programme se calibre sur ton profil.</p>
             <div style={{ marginBottom: 36 }}>
               <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Niveau actuel</p>
               <div style={{ display: "flex", gap: 10 }}>
-                {NIVEAUX.map(n => (
-                  <div key={n} onClick={() => setData(d => ({ ...d, niveau: n.toLowerCase() }))} style={{
-                    flex: 1, padding: "12px 0", textAlign: "center",
-                    background: data.niveau === n.toLowerCase() ? DS.colors.primarySoft : DS.colors.surface,
-                    border: `1px solid ${data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.border}`,
-                    borderRadius: DS.radius.md, color: data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.textSec,
-                    fontSize: 14, cursor: "pointer", transition: "all 0.2s ease", ...s.heading,
-                  }}>{n}</div>
-                ))}
+                {NIVEAUX.map(n => <div key={n} onClick={() => setData(d => ({ ...d, niveau: n.toLowerCase() }))} style={{ flex: 1, padding: "12px 0", textAlign: "center", background: data.niveau === n.toLowerCase() ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, color: data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.textSec, fontSize: 14, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>)}
               </div>
             </div>
             <div>
-              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Séances par semaine</p>
+              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Seances par semaine</p>
               <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 20 }}>
                 <div style={{ ...s.display, fontSize: 48, color: DS.colors.primary, textAlign: "center", marginBottom: 16 }}>{data.frequence}</div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  {[2, 3, 4, 5].map(n => (
-                    <div key={n} onClick={() => setData(d => ({ ...d, frequence: n }))} style={{
-                      flex: 1, padding: "10px 0", textAlign: "center",
-                      background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh,
-                      borderRadius: DS.radius.md, color: data.frequence === n ? "white" : DS.colors.textSec,
-                      fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading,
-                      boxShadow: data.frequence === n ? DS.shadow.primary : "none",
-                    }}>{n}</div>
-                  ))}
+                  {[2, 3, 4, 5].map(n => <div key={n} onClick={() => setData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "10px 0", textAlign: "center", background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: data.frequence === n ? "white" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>)}
                 </div>
                 <p style={{ color: DS.colors.textSec, fontSize: 13, textAlign: "center", marginTop: 12, ...s.body }}>jours / semaine</p>
               </div>
@@ -689,26 +691,19 @@ function OnboardingScreen({ onComplete }) {
           </div>
         )}
       </div>
-
       <div style={{ paddingBottom: 48, paddingTop: 24 }}>
         {loading ? (
           <div style={{ background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "20px 24px", display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ width: 36, height: 36, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse 1s infinite", flexShrink: 0 }}>✦</div>
             <div>
-              <p style={{ color: DS.colors.primary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Génération du programme...</p>
+              <p style={{ color: DS.colors.primary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Generation du programme...</p>
               <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>L'IA calibre ton programme 8 semaines</p>
             </div>
           </div>
         ) : (
           <>
-            <PrimaryButton onClick={step < 2 ? goNext : handleFinish} disabled={!canNext}>
-              {step < 2 ? "Continuer →" : "✦ Générer mon programme"}
-            </PrimaryButton>
-            {step > 0 && (
-              <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>
-                ← Retour
-              </button>
-            )}
+            <PrimaryButton onClick={step < 2 ? goNext : handleFinish} disabled={!canNext}>{step < 2 ? "Continuer" : "Generer mon programme"}</PrimaryButton>
+            {step > 0 && <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>}
           </>
         )}
       </div>
@@ -717,7 +712,7 @@ function OnboardingScreen({ onComplete }) {
 }
 
 // ─────────────────────────────────────────────
-// ÉCRAN PRICING
+// ECRAN PRICING
 // ─────────────────────────────────────────────
 function PricingScreen({ onSelectPlan }) {
   const [selected, setSelected] = useState("annual");
@@ -738,30 +733,19 @@ function PricingScreen({ onSelectPlan }) {
 
   const pad = n => String(n).padStart(2, "0");
   const currentPlan = PLANS.find(p => p.id === selected);
-  const featuresPro = [
-    "Progression automatique des charges ⚡",
-    "Programmes illimités + regénération IA",
-    "Adaptation si séance skippée",
-    "Déload automatique intelligent",
-    "Historique complet + graphiques",
-    "Jusqu'à 5 séances / semaine",
-    "Coach IA intégré",
-    "Export PDF du programme",
-  ];
+  const featuresPro = ["Progression automatique des charges", "Programmes illimites + regeneration IA", "Adaptation si seance skippee", "Deload automatique intelligent", "Historique complet + graphiques", "Jusqu'a 5 seances / semaine", "Coach IA integre", "Export PDF du programme"];
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40 }}>
       <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>Ton programme est prêt ✦</p>
-          <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 10 }}>Choisis ton plan<br />pour commencer</h1>
-          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>Accès complet à la progression automatique et à l'IA.</p>
+          <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>Ton programme est pret</p>
+          <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 10 }}>Choisis ton plan pour commencer</h1>
+          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>Acces complet a la progression automatique et a l'IA.</p>
         </div>
-
-        {/* Urgence */}
         <div style={{ background: DS.colors.goldSoft, border: `1px solid rgba(255,209,102,0.25)`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <p style={{ color: DS.colors.gold, fontSize: 12, ...s.heading, marginBottom: 2 }}>⏳ Offre Lifetime — Prix de lancement</p>
+            <p style={{ color: DS.colors.gold, fontSize: 12, ...s.heading, marginBottom: 2 }}>Offre Lifetime - Prix de lancement</p>
             <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>Expire dans</p>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
@@ -773,18 +757,9 @@ function PricingScreen({ onSelectPlan }) {
             ))}
           </div>
         </div>
-
-        {/* Plans */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
           {PLANS.map(plan => (
-            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{
-              position: "relative",
-              background: selected === plan.id ? plan.colorSoft : DS.colors.surface,
-              border: `1.5px solid ${selected === plan.id ? plan.colorBorder : DS.colors.border}`,
-              borderRadius: DS.radius.xl, padding: "18px 20px", cursor: "pointer",
-              transition: "all 0.2s ease",
-              boxShadow: selected === plan.id ? `0 0 32px ${plan.color}20` : DS.shadow.card,
-            }}>
+            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: selected === plan.id ? plan.colorSoft : DS.colors.surface, border: `1.5px solid ${selected === plan.id ? plan.colorBorder : DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", cursor: "pointer", transition: "all 0.2s ease" }}>
               {selected === plan.id && <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 2, background: plan.color, borderRadius: DS.radius.full }} />}
               {plan.badge && <div style={{ display: "inline-flex", padding: "3px 10px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: plan.color, fontSize: 11, ...s.heading, marginBottom: 10 }}>{plan.badge}</div>}
               <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
@@ -806,26 +781,14 @@ function PricingScreen({ onSelectPlan }) {
             </div>
           ))}
         </div>
-
-        <button onClick={() => onSelectPlan(selected)} style={{
-          width: "100%", height: 58,
-          background: currentPlan.highlight ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : currentPlan.urgency ? `linear-gradient(135deg, ${DS.colors.gold}, #F0B800)` : `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`,
-          border: "1px solid rgba(255,255,255,0.1)", borderRadius: DS.radius.md,
-          color: currentPlan.urgency ? DS.colors.bg : "white", fontSize: 16, cursor: "pointer",
-          boxShadow: DS.shadow.primary, ...s.heading, marginBottom: 12,
-        }}>
-          Commencer avec {currentPlan.label} →
+        <button onClick={() => onSelectPlan(selected)} style={{ width: "100%", height: 58, background: currentPlan.highlight ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : currentPlan.urgency ? `linear-gradient(135deg, ${DS.colors.gold}, #F0B800)` : `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, border: "1px solid rgba(255,255,255,0.1)", borderRadius: DS.radius.md, color: currentPlan.urgency ? DS.colors.bg : "white", fontSize: 16, cursor: "pointer", boxShadow: DS.shadow.primary, ...s.heading, marginBottom: 12 }}>
+          Commencer avec {currentPlan.label}
         </button>
-
-        <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", marginBottom: 24 }}>
-          🔒 Paiement sécurisé · Annulation en 1 clic · Remboursement 7 jours
-        </p>
-
+        <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", marginBottom: 24 }}>Paiement securise · Annulation en 1 clic · Remboursement 7 jours</p>
         <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 20px", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", ...s.heading, marginBottom: 8 }}>
           <span>Voir ce qui est inclus</span>
           <span style={{ transform: showFeatures ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>↓</span>
         </button>
-
         {showFeatures && (
           <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 16, marginBottom: 24 }}>
             {featuresPro.map((f, i) => (
@@ -836,10 +799,7 @@ function PricingScreen({ onSelectPlan }) {
             ))}
           </div>
         )}
-
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", textDecoration: "underline", ...s.body }}>
-          Continuer avec le plan gratuit
-        </button>
+        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", textDecoration: "underline", ...s.body }}>Continuer avec le plan gratuit</button>
       </div>
     </div>
   );
@@ -864,25 +824,23 @@ function DashboardScreen({ user, onStartSession }) {
           {userName[0].toUpperCase()}
         </div>
       </div>
-
       <div style={{ padding: "24px 20px 0" }}>
         <div style={{ marginBottom: 24 }}>
-          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, marginBottom: 6 }}>Semaine {prog.semaineCourante} · Séance 1</p>
+          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, marginBottom: 6 }}>Semaine {prog.semaineCourante} - Seance 1</p>
           <h1 style={{ ...s.display, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1.15, marginBottom: 16 }}>{seance.titre}</h1>
           <ProgressBar value={prog.progression} />
-          <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginTop: 8 }}>Programme {prog.titre} · {prog.progression}% complété</p>
+          <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginTop: 8 }}>Programme {prog.titre} - {prog.progression}% complete</p>
         </div>
-
         <Card style={{ marginBottom: 24, overflow: "hidden", position: "relative" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${DS.colors.primary}, ${DS.colors.success})` }} />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <Badge color="primary">⚡ Aujourd'hui</Badge>
+            <Badge color="primary">Aujourd'hui</Badge>
             <div style={{ display: "flex", alignItems: "center", gap: 6, color: DS.colors.textSec, fontSize: 13 }}>{Icons.clock()} {seance.dureeMin} min</div>
           </div>
           <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
             {[
               { val: seance.exercices.length, label: "exercices", color: DS.colors.textPrimary },
-              { val: "+2.5", label: `kg vs S${prog.semaineCourante - 1}`, color: DS.colors.success },
+              { val: "+2.5", label: "kg progression", color: DS.colors.success },
               { val: "Bas", label: "du corps", color: DS.colors.warning },
             ].map((stat, i) => (
               <div key={i} style={{ textAlign: "center", flex: 1 }}>
@@ -891,9 +849,8 @@ function DashboardScreen({ user, onStartSession }) {
               </div>
             ))}
           </div>
-          <PrimaryButton onClick={onStartSession}>◉ Démarrer la séance</PrimaryButton>
+          <PrimaryButton onClick={onStartSession}>Demarrer la seance</PrimaryButton>
         </Card>
-
         <div style={{ marginBottom: 28 }}>
           <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Au programme</p>
           <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
@@ -904,24 +861,23 @@ function DashboardScreen({ user, onStartSession }) {
                 <div key={ex.id} style={{ minWidth: 130, flexShrink: 0, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 14 }}>
                   <div style={{ width: 32, height: 32, borderRadius: DS.radius.sm, background: color + "20", border: `1px solid ${color}40`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10, color, fontSize: 14, ...s.heading }}>{i + 1}</div>
                   <p style={{ color: DS.colors.textPrimary, fontSize: 13, ...s.heading, marginBottom: 4 }}>{ex.nom}</p>
-                  <p style={{ color: DS.colors.textSec, fontSize: 11, ...s.body, marginBottom: 8 }}>{ex.muscles.split("·")[0].trim()}</p>
-                  <div style={{ ...s.mono, fontSize: 13, color }}>{ex.sets}×{ex.reps}</div>
+                  <p style={{ color: DS.colors.textSec, fontSize: 11, ...s.body, marginBottom: 8 }}>{ex.muscles.split(" ")[0]}</p>
+                  <div style={{ ...s.mono, fontSize: 13, color }}>{ex.sets}x{ex.reps}</div>
                   {ex.chargeKg > 0 && <div style={{ ...s.mono, fontSize: 11, color: DS.colors.textSec, marginTop: 2 }}>{ex.chargeKg} kg</div>}
                 </div>
               );
             })}
           </div>
         </div>
-
         <div style={{ marginBottom: 28 }}>
-          <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Dernière séance</p>
+          <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Derniere seance</p>
           <Card>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div>
-                <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginBottom: 4 }}>Il y a {prog.derniereSeance.joursPassés} jours</p>
+                <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginBottom: 4 }}>Il y a {prog.derniereSeance.joursPasses} jours</p>
                 <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading }}>{prog.derniereSeance.titre}</p>
               </div>
-              <Badge color="success">✓ Faite</Badge>
+              <Badge color="success">Faite</Badge>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               {[`${prog.derniereSeance.nbExercices} exercices`, `${prog.derniereSeance.dureeMin} min`, `+${prog.derniereSeance.gainKg} kg`].map((stat, i) => (
@@ -939,14 +895,10 @@ function DashboardScreen({ user, onStartSession }) {
 // HISTORIQUE
 // ─────────────────────────────────────────────
 function HistoriqueScreen() {
-  const stats = [
-    { value: "18", label: "séances", color: DS.colors.primary },
-    { value: "+12kg", label: "Squat", color: DS.colors.success },
-    { value: "94%", label: "assiduité", color: DS.colors.warning },
-  ];
+  const stats = [{ value: "18", label: "seances", color: DS.colors.primary }, { value: "+12kg", label: "Squat", color: DS.colors.success }, { value: "94%", label: "assiduite", color: DS.colors.warning }];
   const historique = [
-    { semaine: 3, seances: [{ titre: "Force & Explosivité", date: "Mar 25 mars", duree: 48, exercices: 5 }, { titre: "Haut du Corps", date: "Jeu 27 mars", duree: 42, exercices: 5 }] },
-    { semaine: 2, seances: [{ titre: "Force & Base Basse", date: "Lun 18 mars", duree: 51, exercices: 5 }, { titre: "Explosivité", date: "Mer 20 mars", duree: 45, exercices: 4 }] },
+    { semaine: 3, seances: [{ titre: "Force & Explosivite", date: "Mar 25 mars", duree: 48, exercices: 5 }, { titre: "Haut du Corps", date: "Jeu 27 mars", duree: 42, exercices: 5 }] },
+    { semaine: 2, seances: [{ titre: "Force & Base Basse", date: "Lun 18 mars", duree: 51, exercices: 5 }, { titre: "Explosivite", date: "Mer 20 mars", duree: 45, exercices: 4 }] },
   ];
   const points = [65, 67.5, 70, 72.5, 72.5, 75, 77.5, 80];
   const w = 300, h = 80, min = 60, max = 85;
@@ -962,12 +914,7 @@ function HistoriqueScreen() {
       </div>
       <div style={{ padding: "24px 20px 0" }}>
         <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
-          {stats.map((stat, i) => (
-            <Card key={i} style={{ flex: 1, padding: 16, textAlign: "center" }}>
-              <div style={{ ...s.mono, fontSize: 22, color: stat.color, fontWeight: 700, marginBottom: 4 }}>{stat.value}</div>
-              <div style={{ color: DS.colors.textSec, fontSize: 12 }}>{stat.label}</div>
-            </Card>
-          ))}
+          {stats.map((stat, i) => <Card key={i} style={{ flex: 1, padding: 16, textAlign: "center" }}><div style={{ ...s.mono, fontSize: 22, color: stat.color, fontWeight: 700, marginBottom: 4 }}>{stat.value}</div><div style={{ color: DS.colors.textSec, fontSize: 12 }}>{stat.label}</div></Card>)}
         </div>
         <Card style={{ marginBottom: 28 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -976,14 +923,13 @@ function HistoriqueScreen() {
           </div>
           <svg viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", height: 80 }}>
             <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={DS.colors.primary} stopOpacity="0.3" /><stop offset="100%" stopColor={DS.colors.primary} stopOpacity="0" /></linearGradient></defs>
-            <path d={areaD} fill="url(#g)" />
-            <path d={pathD} fill="none" stroke={DS.colors.primary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={areaD} fill="url(#g)" /><path d={pathD} fill="none" stroke={DS.colors.primary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             {points.map((p, i) => <circle key={i} cx={toX(i)} cy={toY(p)} r={i === points.length - 1 ? 5 : 3} fill={i === points.length - 1 ? DS.colors.primary : DS.colors.bg} stroke={DS.colors.primary} strokeWidth="2" />)}
           </svg>
         </Card>
         {historique.map(sem => (
           <div key={sem.semaine} style={{ marginBottom: 24 }}>
-            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>— Semaine {sem.semaine}</p>
+            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>Semaine {sem.semaine}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {sem.seances.map((sc, i) => (
                 <Card key={i} style={{ padding: "14px 16px" }}>
@@ -991,12 +937,9 @@ function HistoriqueScreen() {
                     <div>
                       <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginBottom: 4 }}>{sc.date}</p>
                       <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>{sc.titre}</p>
-                      <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginTop: 4 }}>{sc.exercices} exercices · {sc.duree} min</p>
+                      <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginTop: 4 }}>{sc.exercices} exercices - {sc.duree} min</p>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <Badge color="success">✓</Badge>
-                      {Icons.arrow()}
-                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Badge color="success">OK</Badge>{Icons.arrow()}</div>
                   </div>
                 </Card>
               ))}
@@ -1028,20 +971,18 @@ function ProfilScreen({ user, onLogout }) {
           <h2 style={{ ...s.display, fontSize: 22, color: DS.colors.textPrimary, marginBottom: 6 }}>{userName}</h2>
           <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>{user?.email}</p>
         </div>
-
         <Card style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, textTransform: "uppercase", letterSpacing: "0.06em" }}>Programme actif</p>
             {Icons.arrow()}
           </div>
-          <p style={{ color: DS.colors.textPrimary, fontSize: 17, ...s.heading, marginBottom: 4 }}>Explosivité Basketball</p>
-          <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 14 }}>Semaine 3 sur 8 · 3×/semaine</p>
+          <p style={{ color: DS.colors.textPrimary, fontSize: 17, ...s.heading, marginBottom: 4 }}>Explosivite Basketball</p>
+          <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 14 }}>Semaine 3 sur 8 - 3x/semaine</p>
           <ProgressBar value={62} />
           <p style={{ color: DS.colors.textSec, fontSize: 12, textAlign: "right", marginTop: 6, ...s.mono }}>62%</p>
         </Card>
-
         <Card style={{ marginBottom: 24, padding: 0 }}>
-          {[{ emoji: "🏀", label: "Mon sport", value: "Basketball" }, { emoji: "⚡", label: "Mon objectif", value: "Explosivité" }, { emoji: "📅", label: "Fréquence", value: "3 séances / semaine" }].map((item, i, arr) => (
+          {[{ emoji: "🏀", label: "Mon sport", value: "Basketball" }, { emoji: "⚡", label: "Mon objectif", value: "Explosivite" }, { emoji: "📅", label: "Frequence", value: "3 seances / semaine" }].map((item, i, arr) => (
             <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: i < arr.length - 1 ? `1px solid ${DS.colors.border}` : "none" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 20 }}>{item.emoji}</span>
@@ -1054,21 +995,19 @@ function ProfilScreen({ user, onLogout }) {
             </div>
           ))}
         </Card>
-
         <Card style={{ marginBottom: 24, padding: 0 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <span style={{ fontSize: 20 }}>🔔</span>
-              <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>Rappel séance</p>
+              <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>Rappel seance</p>
             </div>
             <div onClick={() => setNotifOn(v => !v)} style={{ width: 48, height: 28, background: notifOn ? DS.colors.success : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s ease" }}>
               <div style={{ position: "absolute", top: 3, left: notifOn ? 23 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
             </div>
           </div>
         </Card>
-
         <button onClick={onLogout} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 0", color: DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading }}>
-          Se déconnecter
+          Se deconnecter
         </button>
       </div>
     </div>
@@ -1104,7 +1043,6 @@ function BottomNav({ activeTab, setTab }) {
 // APP ROOT
 // ─────────────────────────────────────────────
 export default function VoltraApp() {
-  // "splash" | "auth" | "onboarding" | "pricing" | "app"
   const [screen, setScreen] = useState("splash");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
@@ -1118,32 +1056,21 @@ export default function VoltraApp() {
       body { background: ${DS.colors.bg}; color: ${DS.colors.textPrimary}; font-family: 'Inter', system-ui, sans-serif; }
       ::-webkit-scrollbar { display: none; }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+      @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
 
   useEffect(() => {
-    // ── Vérifier la session existante au démarrage ──
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        setScreen("app"); // Déjà connecté → aller direct au dashboard
-      } else {
-        setScreen("auth");
-      }
+      if (session?.user) { setUser(session.user); setScreen("app"); }
+      else { setScreen("auth"); }
     });
-
-    // ── Écouter les changements d'auth ──
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        setUser(null);
-        setScreen("auth");
-      }
+      if (session?.user) { setUser(session.user); }
+      else { setUser(null); setScreen("auth"); }
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -1161,15 +1088,15 @@ export default function VoltraApp() {
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
       {seanceActive ? (
-  <SeanceScreen seance={seanceActive} onFinish={() => setSeanceActive(null)} onBack={() => setSeanceActive(null)} />
-) : (
-  <>
-    {activeTab === "dashboard" && <DashboardScreen user={user} onStartSession={() => setSeanceActive(MOCK_PROGRAM.seancesDuJour[0])} />}
-    {activeTab === "historique" && <HistoriqueScreen />}
-    {activeTab === "profil" && <ProfilScreen user={user} onLogout={handleLogout} />}
-    <BottomNav activeTab={activeTab} setTab={setActiveTab} />
-  </>
-)}
+        <SeanceScreen seance={seanceActive} onFinish={() => setSeanceActive(null)} onBack={() => setSeanceActive(null)} />
+      ) : (
+        <>
+          {activeTab === "dashboard" && <DashboardScreen user={user} onStartSession={() => setSeanceActive(MOCK_PROGRAM.seancesDuJour[0])} />}
+          {activeTab === "historique" && <HistoriqueScreen />}
+          {activeTab === "profil" && <ProfilScreen user={user} onLogout={handleLogout} />}
+          <BottomNav activeTab={activeTab} setTab={setActiveTab} />
+        </>
+      )}
     </div>
   );
 }
