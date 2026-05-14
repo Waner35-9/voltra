@@ -321,7 +321,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [showSummary, setShowSummary] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [animKey, setAnimKey] = useState(0);
-  const [toast, setToast] = useState(null);
+  const [waitingRest, setWaitingRest] = useState(false);
 
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
@@ -339,7 +339,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
     setTimeout(() => setToast(null), 1400);
 
     if (setIdx < totalSets - 1) {
-      setResting(true);
+      // repos déclenché manuellement via bouton
     } else {
       if (exIdx < exercices.length - 1) {
         setTimeout(() => { setExIdx(i => i + 1); setSetIdx(0); setAnimKey(k => k + 1); }, 400);
