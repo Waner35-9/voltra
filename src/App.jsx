@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // ─────────────────────────────────────────────
@@ -200,7 +200,7 @@ const PLANS = [
 function RestTimer({ seconds, onComplete }) {
   const [left, setLeft] = useState(seconds);
   const [running, setRunning] = useState(true);
-  const ref = React.useRef(null);
+  const ref = useRef(null);
 
   useEffect(() => { setLeft(seconds); setRunning(true); }, [seconds]);
 
