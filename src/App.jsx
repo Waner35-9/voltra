@@ -464,13 +464,13 @@ function SeanceScreen({ seance, onFinish, onBack }) {
         </div>
 
         {/* Repos ou Sets */}
-        {waitingRest ? (
+{waitingRest ? (
   <button onClick={() => { setWaitingRest(false); setResting(true); }} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${DS.colors.warning}, #E05A20)`, border: "none", borderRadius: DS.radius.md, color: "white", fontSize: 16, cursor: "pointer", ...s.heading, marginBottom: 16 }}>
     Demarrer le temps de repos
   </button>
 ) : resting ? (
   <RestTimer seconds={currentEx.reposSec || 90} onComplete={() => { setResting(false); setWaitingRest(false); setSetIdx(i => i + 1); }} />
-        ) : (
+) : (
           <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16 }}>
             <div style={{ background: DS.colors.surfaceHigh, padding: "12px 20px", display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ color: DS.colors.textDim, fontSize: 10, ...s.heading, textTransform: "uppercase", letterSpacing: "0.06em" }}>Serie</span>
