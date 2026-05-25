@@ -432,7 +432,8 @@ function SeanceScreen({ seance, onFinish, onBack }) {
           <div style={{
             height: 200,
             background: `linear-gradient(135deg, ${accentColor}40, ${DS.colors.surfaceHigh})`,
-            backgroundImage: `url(https://source.unsplash.com/featured/800x400/?fitness,gym,${encodeURIComponent(currentEx.nom.split(" ")[0])},workout)`,
+            backgroundImage: `url(https://images.unsplash.com/photo-${getExercicePhotoId(currentEx.nom)}?w=800&q=80)`,
+
             backgroundSize: "cover",
             backgroundPosition: "center",
             position: "relative",
