@@ -310,6 +310,23 @@ function RestTimer({ seconds, onComplete }) {
   );
 }
 
+function getExercicePhotoId(nom) {
+  const n = (nom || "").toLowerCase();
+  if (n.includes("squat")) return "1566241440091-ec10de8db2e1";
+  if (n.includes("deadlift") || n.includes("rdl")) return "1534438327276-14e5300c3a48";
+  if (n.includes("bench") || n.includes("developpe")) return "1571019613454-1cb2f99b2d8b";
+  if (n.includes("traction") || n.includes("pull")) return "1598971457999-ca4ef48a9a71";
+  if (n.includes("jump") || n.includes("saut") || n.includes("box")) return "1601422407692-ec4eeec1d9b3";
+  if (n.includes("lunge") || n.includes("fente")) return "1434682881908-b43d0467b798";
+  if (n.includes("hip") || n.includes("thrust")) return "1571019614242-c5c5dee9f50b";
+  if (n.includes("row") || n.includes("rowing")) return "1581009137042-c552e485697a";
+  if (n.includes("kettlebell") || n.includes("swing")) return "1517963879433-6ad2a04b7b38";
+  if (n.includes("planche") || n.includes("plank")) return "1574680096145-d05b474e2155";
+  if (n.includes("press") || n.includes("overhead")) return "1541534741688-7078b66603b8";
+  if (n.includes("pompe") || n.includes("push")) return "1598632640487-6ea4a4e8b963";
+  return "1534258936331-e83c8d5b3fd1";
+}
+
 // ─────────────────────────────────────────────
 // ECRAN SEANCE LIVE
 // ─────────────────────────────────────────────
@@ -431,12 +448,11 @@ function SeanceScreen({ seance, onFinish, onBack }) {
           {/* Photo de fond Unsplash */}
           <div style={{
             height: 200,
-            background: `linear-gradient(135deg, ${accentColor}40, ${DS.colors.surfaceHigh})`,
             backgroundImage: `url(https://images.unsplash.com/photo-${getExercicePhotoId(currentEx.nom)}?w=800&q=80)`,
-
             backgroundSize: "cover",
             backgroundPosition: "center",
             position: "relative",
+            backgroundColor: DS.colors.surfaceHigh,
           }}>
             {/* Overlay gradient sombre */}
             <div style={{
