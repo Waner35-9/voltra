@@ -815,9 +815,17 @@ function PricingScreen({ onSelectPlan }) {
 // ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────
-function DashboardScreen({ user, onStartSession }) {
-  const prog = MOCK_PROGRAM;
-  const seance = prog.seancesDuJour[0];
+function DashboardScreen({ user, programme, onStartSession }) {
+  const progData = programme?.data_json;
+  const seance = progData?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
+  const prog = {
+    titre: programme?.titre || MOCK_PROGRAM.titre,
+    semaineCourante: programme?.semaine_courante || MOCK_PROGRAM.semaineCourante,
+    totalSemaines: programme?.total_semaines || MOCK_PROGRAM.totalSemaines,
+    progression: Math.round(((programme?.semaine_courante || 1) / (programme?.total_semaines || 8)) * 100),
+    derniereSeance: MOCK_PROGRAM.derniereSeance,
+  };
+
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
 
   return (
