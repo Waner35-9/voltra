@@ -167,42 +167,12 @@ const SPORTS = [
   { id: "natation", label: "Natation", emoji: "🏊" },
   { id: "sprint", label: "Sprint", emoji: "🏃" },
 ];
-const OBJECTIFS_PAR_SPORT = {
-  basketball: [
-    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-    { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
-    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-  ],
-  football: [
-    { id: "explosivite", label: "Explosivite", desc: "Accel & sprint", emoji: "⚡" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-    { id: "force", label: "Force", desc: "Puissance physique", emoji: "🏋️" },
-  ],
-  tennis: [
-    { id: "explosivite", label: "Explosivite", desc: "Reactivite & vitesse", emoji: "⚡" },
-    { id: "force", label: "Force", desc: "Puissance de frappe", emoji: "🏋️" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-  ],
-  rugby: [
-    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
-    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-  ],
-  natation: [
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-    { id: "force", label: "Force haut du corps", desc: "Epaules & dorsaux", emoji: "🏋️" },
-    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
-  ],
-  sprint: [
-    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-    { id: "detente", label: "Detente", desc: "Puissance impulsion", emoji: "🚀" },
-  ],
-};
-const OBJECTIFS = [];
-
+const OBJECTIFS = [
+  { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
+  { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
+  { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
+  { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
+];
 const NIVEAUX = ["Debutant", "Intermediaire", "Avance"];
 const PLANS = [
   { id: "monthly", label: "Mensuel", price: 12.99, unit: "/ mois", priceDetail: "Resiliable a tout moment", savings: null, color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: null, highlight: false },
@@ -353,8 +323,6 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [feedback, setFeedback] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [toast, setToast] = useState(null);
-  const [startTime] = useState(() => Date.now());
-
 
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
@@ -399,7 +367,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
             {[
               { val: exercices.length, label: "exercices", color: accentColor },
               { val: totalSetsCount, label: "series", color: DS.colors.success },
-              { val: `${Math.round((Date.now() - startTime) / 60000)}m`, label: "minutes", color: DS.colors.warning },
+              { val: `${seance.dureeMin}m`, label: "minutes", color: DS.colors.warning },
             ].map((stat, i) => (
               <div key={i} style={{ flex: 1, background: DS.colors.surface, border: `1px solid ${stat.color}30`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center" }}>
                 <div style={{ ...s.mono, fontSize: 26, color: stat.color, fontWeight: 700, marginBottom: 4 }}>{stat.val}</div>
@@ -457,43 +425,80 @@ function SeanceScreen({ seance, onFinish, onBack }) {
       </div>
 
       <div style={{ padding: "20px 20px 120px" }}>
-        {/* Card exercice */}
-        <div key={animKey} style={{ background: DS.colors.surface, border: `1.5px solid ${accentColor}40`, borderRadius: DS.radius.xl, padding: 24, marginBottom: 16, position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: DS.radius.full, background: `radial-gradient(circle, ${accentColor}12, transparent 70%)`, pointerEvents: "none" }} />
+        {/* Card exercice — Style Lyfta avec photo Unsplash */}
+        <div key={animKey} style={{ borderRadius: DS.radius.xl, marginBottom: 16, overflow: "hidden", position: "relative" }}>
 
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "inline-flex", padding: "3px 12px", background: accentColor + "20", border: `1px solid ${accentColor}40`, borderRadius: DS.radius.full, color: accentColor, fontSize: 11, ...s.heading, marginBottom: 10 }}>
-                Exercice {exIdx + 1}
-              </div>
-              <h2 style={{ ...s.display, fontSize: 22, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 4 }}>{currentEx.nom}</h2>
-              <p style={{ color: DS.colors.textSec, fontSize: 13 }}>{currentEx.muscles}</p>
+          {/* Photo de fond Unsplash */}
+          <div style={{
+            height: 200,
+            background: `linear-gradient(135deg, ${accentColor}40, ${DS.colors.surfaceHigh})`,
+            backgroundImage: `url(https://source.unsplash.com/featured/800x400/?fitness,gym,${encodeURIComponent(currentEx.nom.split(" ")[0])},workout)`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            position: "relative",
+          }}>
+            {/* Overlay gradient sombre */}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: `linear-gradient(to bottom, rgba(10,10,15,0.2) 0%, rgba(10,10,15,0.85) 100%)`,
+            }} />
+
+            {/* Badge exercice numéro */}
+            <div style={{
+              position: "absolute", top: 16, left: 16,
+              background: "rgba(10,10,15,0.7)", backdropFilter: "blur(10px)",
+              border: `1px solid ${accentColor}60`,
+              borderRadius: DS.radius.full, padding: "4px 14px",
+              color: accentColor, fontSize: 11, ...s.heading,
+            }}>
+              Exercice {exIdx + 1} / {exercices.length}
             </div>
-            <div style={{ width: 72, height: 72, flexShrink: 0, background: accentColor + "10", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.lg, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: 12 }}>
+
+            {/* Icone muscle en haut à droite */}
+            <div style={{
+              position: "absolute", top: 12, right: 12,
+              background: "rgba(10,10,15,0.6)", backdropFilter: "blur(10px)",
+              border: `1px solid ${accentColor}30`,
+              borderRadius: DS.radius.md, padding: 8,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
               {getMuscleIcon(currentEx.muscles, accentColor)}
             </div>
-          </div>
 
-          <div style={{ display: "flex", gap: 8, marginBottom: currentEx.conseil ? 16 : 0 }}>
-            {[
-              { val: currentEx.sets, label: "series", highlight: true },
-              { val: currentEx.reps, label: "reps", highlight: false },
-              ...(currentEx.chargeKg > 0 ? [{ val: `${currentEx.chargeKg}kg`, label: "charge", highlight: false }] : []),
-              { val: `${currentEx.reposSec || 90}s`, label: "repos", highlight: false },
-            ].map((stat, i) => (
-              <div key={i} style={{ flex: 1, background: stat.highlight ? accentColor + "15" : DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center", border: stat.highlight ? `1px solid ${accentColor}30` : "none" }}>
-                <div style={{ ...s.mono, fontSize: 18, color: stat.highlight ? accentColor : DS.colors.textPrimary, fontWeight: 700 }}>{stat.val}</div>
-                <div style={{ color: DS.colors.textDim, fontSize: 10, marginTop: 2 }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {currentEx.conseil && (
-            <div style={{ marginTop: 14, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
-              <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, lineHeight: 1.5 }}>{currentEx.conseil}</p>
+            {/* Nom exercice en bas de la photo */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "16px 20px 20px" }}>
+              <h2 style={{ ...s.display, fontSize: 26, color: "white", lineHeight: 1.2, marginBottom: 4, textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
+                {currentEx.nom}
+              </h2>
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
+                {currentEx.muscles}
+              </p>
             </div>
-          )}
+          </div>
+
+          {/* Stats + conseil en bas */}
+          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderTop: "none", padding: 16 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: currentEx.conseil ? 14 : 0 }}>
+              {[
+                { val: currentEx.sets, label: "series", highlight: true },
+                { val: currentEx.reps, label: "reps", highlight: false },
+                ...(currentEx.chargeKg > 0 ? [{ val: `${currentEx.chargeKg}kg`, label: "charge", highlight: false }] : []),
+                { val: `${currentEx.reposSec || 90}s`, label: "repos", highlight: false },
+              ].map((stat, i) => (
+                <div key={i} style={{ flex: 1, background: stat.highlight ? accentColor + "15" : DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center", border: stat.highlight ? `1px solid ${accentColor}30` : "none" }}>
+                  <div style={{ ...s.mono, fontSize: 18, color: stat.highlight ? accentColor : DS.colors.textPrimary, fontWeight: 700 }}>{stat.val}</div>
+                  <div style={{ color: DS.colors.textDim, fontSize: 10, marginTop: 2 }}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {currentEx.conseil && (
+              <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
+                <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, lineHeight: 1.5 }}>{currentEx.conseil}</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Repos ou Sets */}
@@ -692,8 +697,7 @@ function OnboardingScreen({ onComplete }) {
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>On adaptera les exercices et charges.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
-
+              {OBJECTIFS.map(obj => (
                 <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
                   <span style={{ fontSize: 26 }}>{obj.emoji}</span>
                   <div>
@@ -846,17 +850,9 @@ function PricingScreen({ onSelectPlan }) {
 // ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────
-function DashboardScreen({ user, programme, onStartSession }) {
-  const progData = programme?.data_json;
-  const seance = progData?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
-  const prog = {
-    titre: programme?.titre || MOCK_PROGRAM.titre,
-    semaineCourante: programme?.semaine_courante || MOCK_PROGRAM.semaineCourante,
-    totalSemaines: programme?.total_semaines || MOCK_PROGRAM.totalSemaines,
-    progression: Math.round(((programme?.semaine_courante || 1) / (programme?.total_semaines || 8)) * 100),
-    derniereSeance: MOCK_PROGRAM.derniereSeance,
-  };
-
+function DashboardScreen({ user, onStartSession }) {
+  const prog = MOCK_PROGRAM;
+  const seance = prog.seancesDuJour[0];
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
 
   return (
@@ -1093,8 +1089,6 @@ export default function VoltraApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
-  const [programmeActif, setProgrammeActif] = useState(null);
-
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -1127,21 +1121,6 @@ export default function VoltraApp() {
     setScreen("auth");
     setUser(null);
   };
-  useEffect(() => {
-  if (screen !== "app" || !user) return;
-  supabase
-    .from("programmes")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("statut", "actif")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single()
-    .then(({ data }) => {
-      if (data) setProgrammeActif(data);
-    });
-}, [screen, user]);
-
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
@@ -1154,12 +1133,7 @@ export default function VoltraApp() {
         <SeanceScreen seance={seanceActive} onFinish={() => setSeanceActive(null)} onBack={() => setSeanceActive(null)} />
       ) : (
         <>
-          {activeTab === "dashboard" && <DashboardScreen user={user} programme={programmeActif} onStartSession={() => {
-  const prog = programmeActif?.data_json;
-  const seance = prog?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
-  setSeanceActive(seance);
-}} />
-}
+          {activeTab === "dashboard" && <DashboardScreen user={user} onStartSession={() => setSeanceActive(MOCK_PROGRAM.seancesDuJour[0])} />}
           {activeTab === "historique" && <HistoriqueScreen />}
           {activeTab === "profil" && <ProfilScreen user={user} onLogout={handleLogout} />}
           <BottomNav activeTab={activeTab} setTab={setActiveTab} />
