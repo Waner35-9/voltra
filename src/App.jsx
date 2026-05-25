@@ -939,8 +939,9 @@ function DashboardScreen({ user, onStartSession }) {
           <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
             {[
               { val: seance.exercices.length, label: "exercices", color: DS.colors.textPrimary },
-              { val: "+2.5", label: "kg progression", color: DS.colors.success },
-              { val: "Bas", label: "du corps", color: DS.colors.warning },
+              { val: `${seance.exercices?.length || 0}`, label: "exercices", color: DS.colors.success },
+{ val: seance.type === "force_basse" ? "Bas" : seance.type === "force_haute" ? "Haut" : seance.type === "explosivite" ? "Explo" : "Core", label: "du corps", color: DS.colors.warning },
+
             ].map((stat, i) => (
               <div key={i} style={{ textAlign: "center", flex: 1 }}>
                 <div style={{ ...s.mono, fontSize: 24, color: stat.color, fontWeight: 700 }}>{stat.val}</div>
