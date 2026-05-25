@@ -310,22 +310,54 @@ function RestTimer({ seconds, onComplete }) {
   );
 }
 
-function getExercicePhotoId(nom) {
+async function getExercicePhoto(nom) {
+  const keywords = {
+    squat: "squat barbell",
+    deadlift: "deadlift weightlifting",
+    rdl: "romanian deadlift",
+    bench: "bench press weightlifting",
+    developpe: "bench press chest",
+    traction: "pull ups bar",
+    pull: "pull ups fitness",
+    jump: "box jump athlete",
+    box: "box jump training",
+    saut: "jump training athlete",
+    lunge: "lunges fitness",
+    fente: "lunges training",
+    hip: "hip thrust glutes",
+    thrust: "hip thrust training",
+    row: "barbell row back",
+    rowing: "rowing fitness",
+    kettlebell: "kettlebell swing",
+    swing: "kettlebell training",
+    planche: "plank core fitness",
+    plank: "plank exercise",
+    press: "overhead press barbell",
+    pompe: "push ups fitness",
+    push: "push ups training",
+    curl: "bicep curl dumbbell",
+    mollet: "calf raise fitness",
+    gainage: "core plank fitness",
+  };
+
   const n = (nom || "").toLowerCase();
-  if (n.includes("squat")) return "1566241440091-ec10de8db2e1";
-  if (n.includes("deadlift") || n.includes("rdl")) return "1534438327276-14e5300c3a48";
-  if (n.includes("bench") || n.includes("developpe")) return "1571019613454-1cb2f99b2d8b";
-  if (n.includes("traction") || n.includes("pull")) return "1598971457999-ca4ef48a9a71";
-  if (n.includes("jump") || n.includes("saut") || n.includes("box")) return "1601422407692-ec4eeec1d9b3";
-  if (n.includes("lunge") || n.includes("fente")) return "1434682881908-b43d0467b798";
-  if (n.includes("hip") || n.includes("thrust")) return "1571019614242-c5c5dee9f50b";
-  if (n.includes("row") || n.includes("rowing")) return "1581009137042-c552e485697a";
-  if (n.includes("kettlebell") || n.includes("swing")) return "1517963879433-6ad2a04b7b38";
-  if (n.includes("planche") || n.includes("plank")) return "1574680096145-d05b474e2155";
-  if (n.includes("press") || n.includes("overhead")) return "1541534741688-7078b66603b8";
-  if (n.includes("pompe") || n.includes("push")) return "1598632640487-6ea4a4e8b963";
-  return "1534258936331-e83c8d5b3fd1";
+  let query = "gym workout fitness";
+  for (const [key, val] of Object.entries(keywords)) {
+    if (n.includes(key)) { query = val; break; }
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
+      { headers: { Authorization: import.meta.env.VITE_PEXELS_API_KEY } }
+    );
+    const data = await res.json();
+    return data.photos?.[0]?.src?.large || null;
+  } catch {
+    return null;
+  }
 }
+
 
 // ─────────────────────────────────────────────
 // ECRAN SEANCE LIVE
@@ -340,6 +372,13 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [feedback, setFeedback] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [toast, setToast] = useState(null);
+  const [photoUrl, setPhotoUrl] = useState(null);
+
+useEffect(() => {
+  if (!currentEx) return;
+  getExercicePhoto(currentEx.nom).then(url => setPhotoUrl(url));
+}, [exIdx]);
+
 
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
@@ -448,7 +487,8 @@ function SeanceScreen({ seance, onFinish, onBack }) {
           {/* Photo de fond Unsplash */}
           <div style={{
             height: 200,
-            backgroundImage: `url(https://images.unsplash.com/photo-${getExercicePhotoId(currentEx.nom)}?w=800&q=80)`,
+            backgroundImage: photoUrl ? `url(${photoUrl})` : "none",
+
             backgroundSize: "cover",
             backgroundPosition: "center",
             position: "relative",
