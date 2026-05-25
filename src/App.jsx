@@ -1088,6 +1088,21 @@ export default function VoltraApp() {
     setScreen("auth");
     setUser(null);
   };
+  useEffect(() => {
+  if (screen !== "app" || !user) return;
+  supabase
+    .from("programmes")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("statut", "actif")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single()
+    .then(({ data }) => {
+      if (data) setProgrammeActif(data);
+    });
+}, [screen, user]);
+
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
