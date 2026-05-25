@@ -1115,7 +1115,12 @@ export default function VoltraApp() {
         <SeanceScreen seance={seanceActive} onFinish={() => setSeanceActive(null)} onBack={() => setSeanceActive(null)} />
       ) : (
         <>
-          {activeTab === "dashboard" && <DashboardScreen user={user} onStartSession={() => setSeanceActive(MOCK_PROGRAM.seancesDuJour[0])} />}
+          {activeTab === "dashboard" && <DashboardScreen user={user} programme={programmeActif} onStartSession={() => {
+  const prog = programmeActif?.data_json;
+  const seance = prog?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
+  setSeanceActive(seance);
+}} />
+}
           {activeTab === "historique" && <HistoriqueScreen />}
           {activeTab === "profil" && <ProfilScreen user={user} onLogout={handleLogout} />}
           <BottomNav activeTab={activeTab} setTab={setActiveTab} />
