@@ -167,12 +167,42 @@ const SPORTS = [
   { id: "natation", label: "Natation", emoji: "🏊" },
   { id: "sprint", label: "Sprint", emoji: "🏃" },
 ];
-const OBJECTIFS = [
-  { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-  { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-  { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
-  { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
-];
+const OBJECTIFS_PAR_SPORT = {
+  basketball: [
+    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
+    { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
+    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
+    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
+  ],
+  football: [
+    { id: "explosivite", label: "Explosivite", desc: "Accel & sprint", emoji: "⚡" },
+    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
+    { id: "force", label: "Force", desc: "Puissance physique", emoji: "🏋️" },
+  ],
+  tennis: [
+    { id: "explosivite", label: "Explosivite", desc: "Reactivite & vitesse", emoji: "⚡" },
+    { id: "force", label: "Force", desc: "Puissance de frappe", emoji: "🏋️" },
+    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
+  ],
+  rugby: [
+    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
+    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
+    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
+    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
+  ],
+  natation: [
+    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
+    { id: "force", label: "Force haut du corps", desc: "Epaules & dorsaux", emoji: "🏋️" },
+    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
+  ],
+  sprint: [
+    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
+    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
+    { id: "detente", label: "Detente", desc: "Puissance impulsion", emoji: "🚀" },
+  ],
+};
+const OBJECTIFS = [];
+
 const NIVEAUX = ["Debutant", "Intermediaire", "Avance"];
 const PLANS = [
   { id: "monthly", label: "Mensuel", price: 12.99, unit: "/ mois", priceDetail: "Resiliable a tout moment", savings: null, color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: null, highlight: false },
@@ -662,7 +692,8 @@ function OnboardingScreen({ onComplete }) {
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>On adaptera les exercices et charges.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {OBJECTIFS.map(obj => (
+              {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
+
                 <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
                   <span style={{ fontSize: 26 }}>{obj.emoji}</span>
                   <div>
