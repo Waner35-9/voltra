@@ -26,6 +26,55 @@ async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   if (!res.ok) throw new Error(data.error || "Erreur generation");
   return data.programme;
 }
+async function saveSessionAndProgress(programmeId, seanceIdx, semaineIdx, feedback, exercices) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+
+  // Charger le programme actuel
+  const { data: prog } = await supabase
+    .from("programmes")
+    .select("data_json, semaine_courante")
+    .eq("id", programmeId)
+    .single();
+
+  if (!prog) return;
+
+  const data = { ...prog.data_json };
+
+  // Trouver la prochaine séance et ajuster les charges
+  const multiplicateur = feedback === "easy" ? 1.05 : feedback === "hard" ? 0.95 : 1.025;
+
+  const semaines = data.semaines || [];
+  // Chercher la prochaine séance disponible
+  for (let s = semaineIdx; s < semaines.length; s++) {
+    const seances = semaines[s]?.seances || [];
+    const startJ = s === semaineIdx ? seanceIdx + 1 : 0;
+    for (let j = startJ; j < seances.length; j++) {
+      const prochaine = seances[j];
+      if (prochaine?.exercices) {
+        prochaine.exercices = prochaine.exercices.map(ex => ({
+          ...ex,
+          chargeKg: ex.chargeKg > 0
+            ? Math.round(ex.chargeKg * multiplicateur / 2.5) * 2.5
+            : 0,
+        }));
+      }
+      // Sauvegarder et retourner
+      await supabase
+        .from("programmes")
+        .update({ data_json: data })
+        .eq("id", programmeId);
+      return { message: getProgressionMessage(feedback, multiplicateur) };
+    }
+  }
+}
+
+function getProgressionMessage(feedback, mult) {
+  if (feedback === "easy") return "Charges augmentees de 5% pour la prochaine seance";
+  if (feedback === "hard") return "Charges reduites de 5% pour la prochaine seance";
+  return "Charges augmentees de 2.5% pour la prochaine seance";
+}
+
 
 const DS = {
   colors: {
@@ -446,7 +495,8 @@ useEffect(() => {
             ))}
           </div>
 
-          <button onClick={onFinish} disabled={!feedback} style={{ width: "100%", height: 58, background: feedback ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? DS.colors.bg : DS.colors.textDim, fontSize: 16, cursor: feedback ? "pointer" : "not-allowed", ...s.heading, boxShadow: feedback ? "0 8px 32px rgba(0,229,160,0.35)" : "none", transition: "all 0.3s ease" }}>
+          <button onClick={() => onFinish(feedback)} disabled={!feedback}
+ style={{ width: "100%", height: 58, background: feedback ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? DS.colors.bg : DS.colors.textDim, fontSize: 16, cursor: feedback ? "pointer" : "not-allowed", ...s.heading, boxShadow: feedback ? "0 8px 32px rgba(0,229,160,0.35)" : "none", transition: "all 0.3s ease" }}>
             {feedback ? "Enregistrer & continuer" : "Selectionne ton ressenti"}
           </button>
         </div>
@@ -1188,7 +1238,28 @@ export default function VoltraApp() {
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
       {seanceActive ? (
-        <SeanceScreen seance={seanceActive} onFinish={() => setSeanceActive(null)} onBack={() => setSeanceActive(null)} />
+        <SeanceScreen
+  seance={seanceActive}
+  onBack={() => setSeanceActive(null)}
+  onFinish={async (feedback) => {
+    if (programmeActif?.id && feedback) {
+      const progData = programmeActif.data_json;
+      const semaines = progData?.semaines || [];
+      let semaineIdx = 0, seanceIdx = 0;
+      for (let s = 0; s < semaines.length; s++) {
+        const idx = semaines[s].seances?.findIndex(sc => sc.id === seanceActive.id);
+        if (idx !== -1 && idx !== undefined) { semaineIdx = s; seanceIdx = idx; break; }
+      }
+      const result = await saveSessionAndProgress(programmeActif.id, seanceIdx, semaineIdx, feedback, seanceActive.exercices);
+      if (result?.message) alert(result.message);
+      // Recharger le programme mis à jour
+      const { data } = await supabase.from("programmes").select("*").eq("id", programmeActif.id).single();
+      if (data) setProgrammeActif(data);
+    }
+    setSeanceActive(null);
+  }}
+/>
+
       ) : (
         <>
           {activeTab === "dashboard" && <DashboardScreen user={user} onStartSession={() => setSeanceActive(MOCK_PROGRAM.seancesDuJour[0])} />}
