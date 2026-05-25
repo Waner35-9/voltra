@@ -369,7 +369,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
             {[
               { val: exercices.length, label: "exercices", color: accentColor },
               { val: totalSetsCount, label: "series", color: DS.colors.success },
-              { val: `${seance.dureeMin}m`, label: "minutes", color: DS.colors.warning },
+              { val: `${Math.round((Date.now() - startTime) / 60000)}m`, label: "minutes", color: DS.colors.warning },
             ].map((stat, i) => (
               <div key={i} style={{ flex: 1, background: DS.colors.surface, border: `1px solid ${stat.color}30`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center" }}>
                 <div style={{ ...s.mono, fontSize: 26, color: stat.color, fontWeight: 700, marginBottom: 4 }}>{stat.val}</div>
