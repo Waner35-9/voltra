@@ -1054,6 +1054,8 @@ export default function VoltraApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
+  const [programmeActif, setProgrammeActif] = useState(null);
+
 
   useEffect(() => {
     const style = document.createElement("style");
