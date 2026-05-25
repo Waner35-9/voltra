@@ -938,7 +938,7 @@ function DashboardScreen({ user, onStartSession }) {
           </div>
           <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
             {[
-              { val: seance.exercices.length, label: "exercices", color: DS.colors.textPrimary },
+              { val: `${seance.dureeMin || 45}`, label: "minutes", color: DS.colors.textPrimary },
               { val: `${seance.exercices?.length || 0}`, label: "exercices", color: DS.colors.success },
 { val: seance.type === "force_basse" ? "Bas" : seance.type === "force_haute" ? "Haut" : seance.type === "explosivite" ? "Explo" : "Core", label: "du corps", color: DS.colors.warning },
 
