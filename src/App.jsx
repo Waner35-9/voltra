@@ -323,6 +323,8 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [feedback, setFeedback] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [toast, setToast] = useState(null);
+  const [startTime] = useState(() => Date.now());
+
 
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
