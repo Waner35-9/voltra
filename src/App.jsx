@@ -1232,7 +1232,7 @@ export default function VoltraApp() {
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
-  if (screen === "onboarding") return <OnboardingScreen onComplete={() => setScreen("pricing")} />;
+  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => { setProgrammeActif(programme); setScreen("pricing"); }} />;
   if (screen === "pricing") return <PricingScreen onSelectPlan={() => setScreen("app")} />;
 
   return (
