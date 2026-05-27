@@ -73,6 +73,7 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
 }
 
 
+const DS = {
   colors: {
     bg: "#0A0A0F", surface: "#13131A", surfaceUp: "#1C1C26", surfaceHigh: "#242433",
     primary: "#6C63FF", primarySoft: "rgba(108,99,255,0.10)", primaryGlow: "rgba(108,99,255,0.25)",
