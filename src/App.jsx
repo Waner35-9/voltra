@@ -213,12 +213,41 @@ const SPORTS = [
   { id: "natation", label: "Natation", emoji: "🏊" },
   { id: "sprint", label: "Sprint", emoji: "🏃" },
 ];
-const OBJECTIFS = [
-  { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-  { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-  { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
-  { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
-];
+const OBJECTIFS_PAR_SPORT = {
+  basketball: [
+    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
+    { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
+    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
+    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
+  ],
+  football: [
+    { id: "explosivite", label: "Explosivite", desc: "Accel & sprint", emoji: "⚡" },
+    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
+    { id: "force", label: "Force", desc: "Puissance physique", emoji: "🏋️" },
+  ],
+  tennis: [
+    { id: "explosivite", label: "Explosivite", desc: "Reactivite & vitesse", emoji: "⚡" },
+    { id: "force", label: "Force", desc: "Puissance de frappe", emoji: "🏋️" },
+    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
+  ],
+  rugby: [
+    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
+    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
+    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
+    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
+  ],
+  natation: [
+    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
+    { id: "force", label: "Force haut du corps", desc: "Epaules & dorsaux", emoji: "🏋️" },
+    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
+  ],
+  sprint: [
+    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
+    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
+    { id: "detente", label: "Detente", desc: "Puissance impulsion", emoji: "🚀" },
+  ],
+};
+const OBJECTIFS = [];
 const NIVEAUX = ["Debutant", "Intermediaire", "Avance"];
 const PLANS = [
   { id: "monthly", label: "Mensuel", price: 12.99, unit: "/ mois", priceDetail: "Resiliable a tout moment", savings: null, color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: null, highlight: false },
@@ -356,21 +385,33 @@ function RestTimer({ seconds, onComplete }) {
   );
 }
 
-function getExercicePhotoId(nom) {
+async function getExercicePhoto(nom) {
+  const keywords = {
+    squat: "squat barbell", deadlift: "deadlift weightlifting", rdl: "romanian deadlift",
+    bench: "bench press weightlifting", developpe: "bench press chest",
+    traction: "pull ups bar", pull: "pull ups fitness",
+    jump: "box jump athlete", box: "box jump training", saut: "jump training athlete",
+    lunge: "lunges fitness", fente: "lunges training",
+    hip: "hip thrust glutes", thrust: "hip thrust training",
+    row: "barbell row back", rowing: "rowing fitness",
+    kettlebell: "kettlebell swing", swing: "kettlebell training",
+    planche: "plank core fitness", plank: "plank exercise",
+    press: "overhead press barbell", pompe: "push ups fitness", push: "push ups training",
+    curl: "bicep curl dumbbell", mollet: "calf raise fitness",
+  };
   const n = (nom || "").toLowerCase();
-  if (n.includes("squat")) return "1566241440091-ec10de8db2e1";
-  if (n.includes("deadlift") || n.includes("rdl")) return "1534438327276-14e5300c3a48";
-  if (n.includes("bench") || n.includes("developpe")) return "1571019613454-1cb2f99b2d8b";
-  if (n.includes("traction") || n.includes("pull")) return "1598971457999-ca4ef48a9a71";
-  if (n.includes("jump") || n.includes("saut") || n.includes("box")) return "1601422407692-ec4eeec1d9b3";
-  if (n.includes("lunge") || n.includes("fente")) return "1434682881908-b43d0467b798";
-  if (n.includes("hip") || n.includes("thrust")) return "1571019614242-c5c5dee9f50b";
-  if (n.includes("row") || n.includes("rowing")) return "1581009137042-c552e485697a";
-  if (n.includes("kettlebell") || n.includes("swing")) return "1517963879433-6ad2a04b7b38";
-  if (n.includes("planche") || n.includes("plank")) return "1574680096145-d05b474e2155";
-  if (n.includes("press") || n.includes("overhead")) return "1541534741688-7078b66603b8";
-  if (n.includes("pompe") || n.includes("push")) return "1598632640487-6ea4a4e8b963";
-  return "1534258936331-e83c8d5b3fd1";
+  let query = "gym workout fitness";
+  for (const [key, val] of Object.entries(keywords)) {
+    if (n.includes(key)) { query = val; break; }
+  }
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
+      { headers: { Authorization: import.meta.env.VITE_PEXELS_API_KEY } }
+    );
+    const data = await res.json();
+    return data.photos?.[0]?.src?.large || null;
+  } catch { return null; }
 }
 
 // ─────────────────────────────────────────────
@@ -386,9 +427,17 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [feedback, setFeedback] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [toast, setToast] = useState(null);
+  const [photoUrl, setPhotoUrl] = useState(null);
 
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
+
+  useEffect(() => {
+    if (!currentEx) return;
+    setPhotoUrl(null);
+    getExercicePhoto(currentEx.nom).then(url => setPhotoUrl(url));
+  }, [exIdx]);
+
   if (!currentEx && !showSummary) return null;
 
   const totalSets = currentEx ? (currentEx.sets || 4) : 4;
@@ -496,7 +545,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
           {/* Photo de fond Unsplash */}
           <div style={{
             height: 200,
-            backgroundImage: `url(https://images.unsplash.com/photo-${getExercicePhotoId(currentEx.nom)}?w=800&q=80)`,
+            backgroundImage: photoUrl ? `url(${photoUrl})` : "none",
             backgroundSize: "cover",
             backgroundPosition: "center",
             position: "relative",
@@ -762,7 +811,7 @@ function OnboardingScreen({ onComplete }) {
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>On adaptera les exercices et charges.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {OBJECTIFS.map(obj => (
+              {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
                 <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
                   <span style={{ fontSize: 26 }}>{obj.emoji}</span>
                   <div>
