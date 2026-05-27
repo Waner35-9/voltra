@@ -1,12 +1,12 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-
+ 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
-
+ 
 async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Pas de session");
@@ -26,7 +26,7 @@ async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   if (!res.ok) throw new Error(data.error || "Erreur generation");
   return data.programme;
 }
-
+ 
 async function saveCompleteSession(programmeId, seance, completedSetsData, feedback, durationMin) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null;
@@ -37,7 +37,7 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
       .insert({ programme_id: programmeId, user_id: userId, semaine: 1, jour: 1, titre: seance.titre, type: seance.type || "force_basse", duree_min: durationMin, statut: "faite", date_realisee: new Date().toISOString() })
       .select().single();
     if (seanceError) throw seanceError;
-
+ 
     for (let exI = 0; exI < seance.exercices.length; exI++) {
       const ex = seance.exercices[exI];
       const { data: exRecord, error: exErr } = await supabase
@@ -45,7 +45,7 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
         .insert({ seance_id: seanceRecord.id, nom: ex.nom, muscles: ex.muscles, sets: ex.sets, reps: String(ex.reps), charge_kg: ex.chargeKg || 0, repos_sec: ex.reposSec || 90, ordre: exI + 1, conseil: ex.conseil })
         .select().single();
       if (exErr) continue;
-
+ 
       const repsParSet = [];
       for (let setI = 0; setI < (ex.sets || 3); setI++) {
         const setData = completedSetsData[`${exI}-${setI}`];
@@ -53,26 +53,26 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
       }
       const repsCible = parseInt(ex.reps) || 8;
       const taux = repsParSet.filter(r => r >= repsCible).length / repsParSet.length;
-
+ 
       await supabase.from("logs_performance").insert({
         exercice_id: exRecord.id, seance_id: seanceRecord.id, user_id: userId,
         reps_par_set: repsParSet, charge_kg: ex.chargeKg || 0, feedback,
         statut: taux === 1 ? "reussite" : taux >= 0.5 ? "partiel" : "echec",
       });
     }
-
+ 
     await supabase.rpc("calculer_progression", { p_user_id: userId, p_seance_id: seanceRecord.id, p_feedback: feedback });
     const { data: deload } = await supabase.rpc("check_deload_needed", { p_user_id: userId });
     if (deload) await supabase.rpc("appliquer_deload", { p_user_id: userId, p_raison: deload });
-
+ 
     return { success: true, deload };
   } catch (err) {
     console.error("saveCompleteSession:", err);
     return null;
   }
 }
-
-
+ 
+ 
   colors: {
     bg: "#0A0A0F", surface: "#13131A", surfaceUp: "#1C1C26", surfaceHigh: "#242433",
     primary: "#6C63FF", primarySoft: "rgba(108,99,255,0.10)", primaryGlow: "rgba(108,99,255,0.25)",
@@ -91,7 +91,7 @@ const s = {
   heading: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 600 },
   body: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 },
 };
-
+ 
 function PrimaryButton({ children, onClick, disabled, style = {} }) {
   const [p, setP] = useState(false);
   return (
@@ -112,7 +112,7 @@ function PrimaryButton({ children, onClick, disabled, style = {} }) {
     </button>
   );
 }
-
+ 
 function Input({ label, type = "text", value, onChange, placeholder }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -136,7 +136,7 @@ function Input({ label, type = "text", value, onChange, placeholder }) {
     </div>
   );
 }
-
+ 
 function Card({ children, style = {} }) {
   return (
     <div style={{
@@ -147,7 +147,7 @@ function Card({ children, style = {} }) {
     </div>
   );
 }
-
+ 
 function Badge({ children, color = "primary" }) {
   const colors = {
     primary: { bg: DS.colors.primarySoft, text: DS.colors.primary, border: DS.colors.borderAccent },
@@ -165,7 +165,7 @@ function Badge({ children, color = "primary" }) {
     </span>
   );
 }
-
+ 
 function ProgressBar({ value }) {
   const [width, setWidth] = useState(0);
   useEffect(() => { const t = setTimeout(() => setWidth(value), 100); return () => clearTimeout(t); }, [value]);
@@ -180,7 +180,7 @@ function ProgressBar({ value }) {
     </div>
   );
 }
-
+ 
 const Icons = {
   home: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 12L12 3L21 12V21H15V15H9V21H3V12Z" stroke={a ? DS.colors.primary : DS.colors.textDim} strokeWidth="2" strokeLinejoin="round" fill={a ? DS.colors.primarySoft : "none"} /></svg>,
   chart: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 20H21M5 20V12M9 20V8M13 20V14M17 20V4" stroke={a ? DS.colors.primary : DS.colors.textDim} strokeWidth="2" strokeLinecap="round" /></svg>,
@@ -188,7 +188,7 @@ const Icons = {
   arrow: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18L15 12L9 6" stroke={DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
   clock: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={DS.colors.textSec} strokeWidth="2" /><path d="M12 7V12L15 15" stroke={DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
 };
-
+ 
 const MOCK_PROGRAM = {
   titre: "Explosivite Basketball", semaineCourante: 3, totalSemaines: 8, progression: 62,
   seancesDuJour: [{
@@ -203,7 +203,7 @@ const MOCK_PROGRAM = {
   }],
   derniereSeance: { titre: "Haut du Corps", joursPasses: 2, dureeMin: 42, nbExercices: 5, gainKg: 2.5 },
 };
-
+ 
 const SPORTS = [
   { id: "basketball", label: "Basketball", emoji: "🏀" },
   { id: "football", label: "Football", emoji: "⚽" },
@@ -224,7 +224,7 @@ const PLANS = [
   { id: "annual", label: "Annuel", price: 69.99, unit: "/ an", priceDetail: "soit 5,83 / mois", savings: "Economise 58%", color: DS.colors.success, colorSoft: DS.colors.successSoft, colorBorder: "rgba(0,229,160,0.35)", badge: "Le plus populaire", highlight: true },
   { id: "lifetime", label: "A vie", price: 149, unit: "une fois", priceDetail: "Acces permanent", savings: "Offre de lancement", color: DS.colors.gold, colorSoft: DS.colors.goldSoft, colorBorder: "rgba(255,209,102,0.35)", badge: "Limite", highlight: false, urgency: true },
 ];
-
+ 
 // ─────────────────────────────────────────────
 // MUSCLE ICONS SVG
 // ─────────────────────────────────────────────
@@ -283,7 +283,7 @@ function getMuscleIcon(muscles, color) {
     </svg>
   );
 }
-
+ 
 function getExerciceColor(type, index) {
   const palettes = {
     force_basse: ["#6C63FF", "#7B6EFF", "#8A7AFF", "#9B8BFF", "#AC9CFF"],
@@ -294,14 +294,14 @@ function getExerciceColor(type, index) {
   const colors = palettes[type] || palettes.force_basse;
   return colors[index % colors.length];
 }
-
+ 
 const MOTIVATION = {
   rest: ["Recupere bien.", "Souffle, t'as bien bosse.", "Presque fini.", "Tu geres.", "Keep going."],
   complete: ["Propre !", "Excellent !", "Belle serie !", "On continue.", "Top !"],
   finish: ["Seance terminee", "Travail accompli.", "Champion.", "Incroyable.", "Respect."],
 };
 const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
+ 
 // ─────────────────────────────────────────────
 // TIMER DE REPOS
 // ─────────────────────────────────────────────
@@ -310,7 +310,7 @@ function RestTimer({ seconds, onComplete }) {
   const [running, setRunning] = useState(true);
   const ref = useRef(null);
   const [motivText] = useState(() => getRandom(MOTIVATION.rest));
-
+ 
   useEffect(() => { setLeft(seconds); setRunning(true); }, [seconds]);
   useEffect(() => {
     if (!running) return;
@@ -318,12 +318,12 @@ function RestTimer({ seconds, onComplete }) {
     ref.current = setInterval(() => setLeft(l => l - 1), 1000);
     return () => clearInterval(ref.current);
   }, [left, running]);
-
+ 
   const pct = ((seconds - left) / seconds) * 100;
   const pad = n => String(n).padStart(2, "0");
   const color = left > seconds * 0.6 ? DS.colors.primary : left > seconds * 0.3 ? DS.colors.warning : DS.colors.success;
   const circumference = 2 * Math.PI * 54;
-
+ 
   return (
     <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "28px 24px", textAlign: "center", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 50% 40%, ${color}10, transparent 70%)`, transition: "background 0.5s ease", pointerEvents: "none" }} />
@@ -354,7 +354,7 @@ function RestTimer({ seconds, onComplete }) {
     </div>
   );
 }
-
+ 
 function getExercicePhotoId(nom) {
   const n = (nom || "").toLowerCase();
   if (n.includes("squat")) return "1566241440091-ec10de8db2e1";
@@ -371,7 +371,7 @@ function getExercicePhotoId(nom) {
   if (n.includes("pompe") || n.includes("push")) return "1598632640487-6ea4a4e8b963";
   return "1534258936331-e83c8d5b3fd1";
 }
-
+ 
 // ─────────────────────────────────────────────
 // ECRAN SEANCE LIVE
 // ─────────────────────────────────────────────
@@ -385,15 +385,15 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [feedback, setFeedback] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [toast, setToast] = useState(null);
-
+ 
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
   if (!currentEx && !showSummary) return null;
-
+ 
   const totalSets = currentEx ? (currentEx.sets || 4) : 4;
   const progressPct = currentEx ? Math.round(((exIdx + setIdx / totalSets) / exercices.length) * 100) : 100;
   const accentColor = getExerciceColor(seance.type, exIdx);
-
+ 
   const handleSetComplete = () => {
     const key = `${exIdx}-${setIdx}`;
     const reps = parseInt(currentEx.reps) || 8;
@@ -402,7 +402,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
     const msg = getRandom(MOTIVATION.complete);
     setToast(msg);
     setTimeout(() => setToast(null), 1400);
-
+ 
     if (setIdx < totalSets - 1) {
       setWaitingRest(true);
     } else {
@@ -413,7 +413,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
       }
     }
   };
-
+ 
   if (showSummary) {
     const totalSetsCount = exercices.reduce((acc, ex) => acc + (ex.sets || 3), 0);
     return (
@@ -426,7 +426,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
             {getRandom(MOTIVATION.finish)}
           </h1>
           <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32, textAlign: "center" }}>{seance.titre}</p>
-
+ 
           <div style={{ display: "flex", gap: 12, width: "100%", marginBottom: 32 }}>
             {[
               { val: exercices.length, label: "exercices", color: accentColor },
@@ -439,7 +439,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
               </div>
             ))}
           </div>
-
+ 
           <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 16, textAlign: "center" }}>Comment tu te sens ?</p>
           <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 28 }}>
             {[
@@ -453,7 +453,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
               </button>
             ))}
           </div>
-
+ 
           <button onClick={() => onFinish(feedback, completedSets, exercices, Math.round((Date.now() - startTime) / 60000))} disabled={!feedback} style={{ width: "100%", height: 58, background: feedback ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? DS.colors.bg : DS.colors.textDim, fontSize: 16, cursor: feedback ? "pointer" : "not-allowed", ...s.heading, boxShadow: feedback ? "0 8px 32px rgba(0,229,160,0.35)" : "none", transition: "all 0.3s ease" }}>
             {feedback ? "Enregistrer & continuer" : "Selectionne ton ressenti"}
           </button>
@@ -461,7 +461,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
       </div>
     );
   }
-
+ 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, maxWidth: 430, margin: "0 auto" }}>
       {/* Toast motivation */}
@@ -470,7 +470,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
           {toast}
         </div>
       )}
-
+ 
       {/* Header */}
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "14px 20px 0" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -487,11 +487,11 @@ function SeanceScreen({ seance, onFinish, onBack }) {
           <div style={{ height: "100%", width: `${progressPct}%`, background: `linear-gradient(90deg, ${accentColor}, ${DS.colors.success})`, transition: "width 0.6s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: `0 0 8px ${accentColor}` }} />
         </div>
       </div>
-
+ 
       <div style={{ padding: "20px 20px 120px" }}>
         {/* Card exercice — Style Lyfta avec photo Unsplash */}
         <div key={animKey} style={{ borderRadius: DS.radius.xl, marginBottom: 16, overflow: "hidden", position: "relative" }}>
-
+ 
           {/* Photo de fond Unsplash */}
           <div style={{
             height: 200,
@@ -506,7 +506,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
               position: "absolute", inset: 0,
               background: `linear-gradient(to bottom, rgba(10,10,15,0.2) 0%, rgba(10,10,15,0.85) 100%)`,
             }} />
-
+ 
             {/* Badge exercice numéro */}
             <div style={{
               position: "absolute", top: 16, left: 16,
@@ -517,7 +517,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
             }}>
               Exercice {exIdx + 1} / {exercices.length}
             </div>
-
+ 
             {/* Icone muscle en haut à droite */}
             <div style={{
               position: "absolute", top: 12, right: 12,
@@ -528,7 +528,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
             }}>
               {getMuscleIcon(currentEx.muscles, accentColor)}
             </div>
-
+ 
             {/* Nom exercice en bas de la photo */}
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "16px 20px 20px" }}>
               <h2 style={{ ...s.display, fontSize: 26, color: "white", lineHeight: 1.2, marginBottom: 4, textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
@@ -539,7 +539,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
               </p>
             </div>
           </div>
-
+ 
           {/* Stats + conseil en bas */}
           <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderTop: "none", padding: 16 }}>
             <div style={{ display: "flex", gap: 8, marginBottom: currentEx.conseil ? 14 : 0 }}>
@@ -555,7 +555,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
                 </div>
               ))}
             </div>
-
+ 
             {currentEx.conseil && (
               <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
                 <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
@@ -564,7 +564,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
             )}
           </div>
         </div>
-
+ 
         {/* Repos ou Sets */}
         {waitingRest ? (
           <button onClick={() => { setWaitingRest(false); setResting(true); }} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${DS.colors.warning}, #E05A20)`, border: "none", borderRadius: DS.radius.md, color: "white", fontSize: 16, cursor: "pointer", ...s.heading, marginBottom: 16, boxShadow: "0 8px 32px rgba(255,107,53,0.35)" }}>
@@ -601,7 +601,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
             })}
           </div>
         )}
-
+ 
         {/* Exercices suivants */}
         {exIdx < exercices.length - 1 && !resting && (
           <div>
@@ -627,7 +627,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
     </div>
   );
 }
-
+ 
 // ─────────────────────────────────────────────
 // ECRAN SPLASH
 // ─────────────────────────────────────────────
@@ -641,7 +641,7 @@ function SplashScreen() {
     </div>
   );
 }
-
+ 
 // ─────────────────────────────────────────────
 // ECRAN AUTH
 // ─────────────────────────────────────────────
@@ -653,14 +653,14 @@ function AuthScreen({ onAuth }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
+ 
   const handleSubmit = async () => {
     setError(""); setSuccess("");
     if (!email || !password) { setError("Remplis tous les champs."); return; }
     if (mode === "signup" && !name) { setError("Entre ton prenom."); return; }
     if (password.length < 6) { setError("Mot de passe : 6 caracteres minimum."); return; }
     setLoading(true);
-
+ 
     if (mode === "signup") {
       const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
       if (e) { setError(e.message === "User already registered" ? "Email deja utilise." : e.message); setLoading(false); return; }
@@ -673,14 +673,14 @@ function AuthScreen({ onAuth }) {
     }
     setLoading(false);
   };
-
+ 
   const handleForgotPassword = async () => {
     if (!email) { setError("Entre ton email d'abord."); return; }
     const { error: e } = await supabase.auth.resetPasswordForEmail(email);
     if (e) { setError(e.message); return; }
     setSuccess("Email de reinitialisation envoye !");
   };
-
+ 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
       <div style={{ paddingTop: 80, paddingBottom: 48, textAlign: "center" }}>
@@ -715,7 +715,7 @@ function AuthScreen({ onAuth }) {
     </div>
   );
 }
-
+ 
 // ─────────────────────────────────────────────
 // ECRAN ONBOARDING
 // ─────────────────────────────────────────────
@@ -724,7 +724,7 @@ function OnboardingScreen({ onComplete }) {
   const [data, setData] = useState({ sport: null, objectif: null, niveau: null, frequence: 3 });
   const [loading, setLoading] = useState(false);
   const [animIn, setAnimIn] = useState(true);
-
+ 
   const goNext = () => { setAnimIn(false); setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200); };
   const handleFinish = async () => {
     setLoading(true);
@@ -732,7 +732,7 @@ function OnboardingScreen({ onComplete }) {
     catch (err) { alert("Erreur : " + err.message); onComplete(data, null); }
   };
   const canNext = [data.sport !== null, data.objectif !== null, data.niveau !== null][step];
-
+ 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px" }}>
       <div style={{ paddingTop: 60, paddingBottom: 32 }}>
@@ -816,7 +816,7 @@ function OnboardingScreen({ onComplete }) {
     </div>
   );
 }
-
+ 
 // ─────────────────────────────────────────────
 // ECRAN PRICING
 // ─────────────────────────────────────────────
@@ -824,7 +824,7 @@ function PricingScreen({ onSelectPlan }) {
   const [selected, setSelected] = useState("annual");
   const [timeLeft, setTimeLeft] = useState({ h: 23, m: 47, s: 12 });
   const [showFeatures, setShowFeatures] = useState(false);
-
+ 
   useEffect(() => {
     const t = setInterval(() => {
       setTimeLeft(prev => {
@@ -836,11 +836,11 @@ function PricingScreen({ onSelectPlan }) {
     }, 1000);
     return () => clearInterval(t);
   }, []);
-
+ 
   const pad = n => String(n).padStart(2, "0");
   const currentPlan = PLANS.find(p => p.id === selected);
   const featuresPro = ["Progression automatique des charges", "Programmes illimites + regeneration IA", "Adaptation si seance skippee", "Deload automatique intelligent", "Historique complet + graphiques", "Jusqu'a 5 seances / semaine", "Coach IA integre", "Export PDF du programme"];
-
+ 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40 }}>
       <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto" }}>
@@ -910,7 +910,7 @@ function PricingScreen({ onSelectPlan }) {
     </div>
   );
 }
-
+ 
 // ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────
@@ -918,7 +918,7 @@ function DashboardScreen({ user, onStartSession }) {
   const prog = MOCK_PROGRAM;
   const seance = prog.seancesDuJour[0];
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
-
+ 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -996,7 +996,7 @@ function DashboardScreen({ user, onStartSession }) {
     </div>
   );
 }
-
+ 
 // ─────────────────────────────────────────────
 // HISTORIQUE
 // ─────────────────────────────────────────────
@@ -1004,7 +1004,7 @@ function HistoriqueScreen() {
   const [seancesReelles, setSeancesReelles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalSeances, setTotalSeances] = useState(0);
-
+ 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { setLoading(false); return; }
@@ -1022,7 +1022,7 @@ function HistoriqueScreen() {
       setLoading(false);
     });
   }, []);
-
+ 
   // Grouper par semaine (approximatif : 7 jours)
   const groupeParSemaine = {};
   seancesReelles.forEach(sc => {
@@ -1031,20 +1031,20 @@ function HistoriqueScreen() {
     if (!groupeParSemaine[weekKey]) groupeParSemaine[weekKey] = [];
     groupeParSemaine[weekKey].push(sc);
   });
-
+ 
   const stats = [
     { value: String(totalSeances || 0), label: "seances", color: DS.colors.primary },
     { value: totalSeances > 0 ? `${Math.round((totalSeances / Math.max(1, Math.ceil(totalSeances / 3))) * 100)}%` : "0%", label: "assiduite", color: DS.colors.success },
     { value: seancesReelles[0] ? `${seancesReelles[0].duree_min || 0}m` : "0m", label: "derniere", color: DS.colors.warning },
   ];
-
+ 
   const points = [65, 67.5, 70, 72.5, 72.5, 75, 77.5, 80];
   const w = 300, h = 80, min = 60, max = 85;
   const toX = i => (i / (points.length - 1)) * w;
   const toY = v => h - ((v - min) / (max - min)) * h;
   const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(p)}`).join(" ");
   const areaD = `${pathD} L ${w} ${h} L 0 ${h} Z`;
-
+ 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px" }}>
@@ -1110,14 +1110,14 @@ function HistoriqueScreen() {
     </div>
   );
 }
-
+ 
 // ─────────────────────────────────────────────
 // PROFIL
 // ─────────────────────────────────────────────
 function ProfilScreen({ user, onLogout }) {
   const [notifOn, setNotifOn] = useState(true);
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
-
+ 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px" }}>
@@ -1173,7 +1173,7 @@ function ProfilScreen({ user, onLogout }) {
     </div>
   );
 }
-
+ 
 // ─────────────────────────────────────────────
 // BOTTOM NAV
 // ─────────────────────────────────────────────
@@ -1198,7 +1198,7 @@ function BottomNav({ activeTab, setTab }) {
     </div>
   );
 }
-
+ 
 // ─────────────────────────────────────────────
 // APP ROOT
 // ─────────────────────────────────────────────
@@ -1207,7 +1207,7 @@ export default function VoltraApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
-
+ 
   useEffect(() => {
     const style = document.createElement("style");
     style.textContent = `
@@ -1221,7 +1221,7 @@ export default function VoltraApp() {
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
-
+ 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) { setUser(session.user); setScreen("app"); }
@@ -1233,18 +1233,18 @@ export default function VoltraApp() {
     });
     return () => subscription.unsubscribe();
   }, []);
-
+ 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setScreen("auth");
     setUser(null);
   };
-
+ 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
   if (screen === "onboarding") return <OnboardingScreen onComplete={() => setScreen("pricing")} />;
   if (screen === "pricing") return <PricingScreen onSelectPlan={() => setScreen("app")} />;
-
+ 
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
       {seanceActive ? (
