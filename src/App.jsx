@@ -26,57 +26,53 @@ async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   if (!res.ok) throw new Error(data.error || "Erreur generation");
   return data.programme;
 }
-async function saveSessionAndProgress(programmeId, seanceIdx, semaineIdx, feedback, exercices) {
+
+async function saveCompleteSession(programmeId, seance, completedSetsData, feedback, durationMin) {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return;
+  if (!session) return null;
+  const userId = session.user.id;
+  try {
+    const { data: seanceRecord, error: seanceError } = await supabase
+      .from("seances")
+      .insert({ programme_id: programmeId, user_id: userId, semaine: 1, jour: 1, titre: seance.titre, type: seance.type || "force_basse", duree_min: durationMin, statut: "faite", date_realisee: new Date().toISOString() })
+      .select().single();
+    if (seanceError) throw seanceError;
 
-  // Charger le programme actuel
-  const { data: prog } = await supabase
-    .from("programmes")
-    .select("data_json, semaine_courante")
-    .eq("id", programmeId)
-    .single();
+    for (let exI = 0; exI < seance.exercices.length; exI++) {
+      const ex = seance.exercices[exI];
+      const { data: exRecord, error: exErr } = await supabase
+        .from("exercices")
+        .insert({ seance_id: seanceRecord.id, nom: ex.nom, muscles: ex.muscles, sets: ex.sets, reps: String(ex.reps), charge_kg: ex.chargeKg || 0, repos_sec: ex.reposSec || 90, ordre: exI + 1, conseil: ex.conseil })
+        .select().single();
+      if (exErr) continue;
 
-  if (!prog) return;
-
-  const data = { ...prog.data_json };
-
-  // Trouver la prochaine séance et ajuster les charges
-  const multiplicateur = feedback === "easy" ? 1.05 : feedback === "hard" ? 0.95 : 1.025;
-
-  const semaines = data.semaines || [];
-  // Chercher la prochaine séance disponible
-  for (let s = semaineIdx; s < semaines.length; s++) {
-    const seances = semaines[s]?.seances || [];
-    const startJ = s === semaineIdx ? seanceIdx + 1 : 0;
-    for (let j = startJ; j < seances.length; j++) {
-      const prochaine = seances[j];
-      if (prochaine?.exercices) {
-        prochaine.exercices = prochaine.exercices.map(ex => ({
-          ...ex,
-          chargeKg: ex.chargeKg > 0
-            ? Math.round(ex.chargeKg * multiplicateur / 2.5) * 2.5
-            : 0,
-        }));
+      const repsParSet = [];
+      for (let setI = 0; setI < (ex.sets || 3); setI++) {
+        const setData = completedSetsData[`${exI}-${setI}`];
+        repsParSet.push(setData?.reps || parseInt(ex.reps) || 8);
       }
-      // Sauvegarder et retourner
-      await supabase
-        .from("programmes")
-        .update({ data_json: data })
-        .eq("id", programmeId);
-      return { message: getProgressionMessage(feedback, multiplicateur) };
+      const repsCible = parseInt(ex.reps) || 8;
+      const taux = repsParSet.filter(r => r >= repsCible).length / repsParSet.length;
+
+      await supabase.from("logs_performance").insert({
+        exercice_id: exRecord.id, seance_id: seanceRecord.id, user_id: userId,
+        reps_par_set: repsParSet, charge_kg: ex.chargeKg || 0, feedback,
+        statut: taux === 1 ? "reussite" : taux >= 0.5 ? "partiel" : "echec",
+      });
     }
+
+    await supabase.rpc("calculer_progression", { p_user_id: userId, p_seance_id: seanceRecord.id, p_feedback: feedback });
+    const { data: deload } = await supabase.rpc("check_deload_needed", { p_user_id: userId });
+    if (deload) await supabase.rpc("appliquer_deload", { p_user_id: userId, p_raison: deload });
+
+    return { success: true, deload };
+  } catch (err) {
+    console.error("saveCompleteSession:", err);
+    return null;
   }
 }
 
-function getProgressionMessage(feedback, mult) {
-  if (feedback === "easy") return "Charges augmentees de 5% pour la prochaine seance";
-  if (feedback === "hard") return "Charges reduites de 5% pour la prochaine seance";
-  return "Charges augmentees de 2.5% pour la prochaine seance";
-}
 
-
-const DS = {
   colors: {
     bg: "#0A0A0F", surface: "#13131A", surfaceUp: "#1C1C26", surfaceHigh: "#242433",
     primary: "#6C63FF", primarySoft: "rgba(108,99,255,0.10)", primaryGlow: "rgba(108,99,255,0.25)",
@@ -216,42 +212,12 @@ const SPORTS = [
   { id: "natation", label: "Natation", emoji: "🏊" },
   { id: "sprint", label: "Sprint", emoji: "🏃" },
 ];
-const OBJECTIFS_PAR_SPORT = {
-  basketball: [
-    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-    { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
-    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-  ],
-  football: [
-    { id: "explosivite", label: "Explosivite", desc: "Accel & sprint", emoji: "⚡" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-    { id: "force", label: "Force", desc: "Puissance physique", emoji: "🏋️" },
-  ],
-  tennis: [
-    { id: "explosivite", label: "Explosivite", desc: "Reactivite & vitesse", emoji: "⚡" },
-    { id: "force", label: "Force", desc: "Puissance de frappe", emoji: "🏋️" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-  ],
-  rugby: [
-    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
-    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-  ],
-  natation: [
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-    { id: "force", label: "Force haut du corps", desc: "Epaules & dorsaux", emoji: "🏋️" },
-    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
-  ],
-  sprint: [
-    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-    { id: "detente", label: "Detente", desc: "Puissance impulsion", emoji: "🚀" },
-  ],
-};
-const OBJECTIFS = [];
-
+const OBJECTIFS = [
+  { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
+  { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
+  { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
+  { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
+];
 const NIVEAUX = ["Debutant", "Intermediaire", "Avance"];
 const PLANS = [
   { id: "monthly", label: "Mensuel", price: 12.99, unit: "/ mois", priceDetail: "Resiliable a tout moment", savings: null, color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: null, highlight: false },
@@ -389,54 +355,22 @@ function RestTimer({ seconds, onComplete }) {
   );
 }
 
-async function getExercicePhoto(nom) {
-  const keywords = {
-    squat: "squat barbell",
-    deadlift: "deadlift weightlifting",
-    rdl: "romanian deadlift",
-    bench: "bench press weightlifting",
-    developpe: "bench press chest",
-    traction: "pull ups bar",
-    pull: "pull ups fitness",
-    jump: "box jump athlete",
-    box: "box jump training",
-    saut: "jump training athlete",
-    lunge: "lunges fitness",
-    fente: "lunges training",
-    hip: "hip thrust glutes",
-    thrust: "hip thrust training",
-    row: "barbell row back",
-    rowing: "rowing fitness",
-    kettlebell: "kettlebell swing",
-    swing: "kettlebell training",
-    planche: "plank core fitness",
-    plank: "plank exercise",
-    press: "overhead press barbell",
-    pompe: "push ups fitness",
-    push: "push ups training",
-    curl: "bicep curl dumbbell",
-    mollet: "calf raise fitness",
-    gainage: "core plank fitness",
-  };
-
+function getExercicePhotoId(nom) {
   const n = (nom || "").toLowerCase();
-  let query = "gym workout fitness";
-  for (const [key, val] of Object.entries(keywords)) {
-    if (n.includes(key)) { query = val; break; }
-  }
-
-  try {
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
-      { headers: { Authorization: import.meta.env.VITE_PEXELS_API_KEY } }
-    );
-    const data = await res.json();
-    return data.photos?.[0]?.src?.large || null;
-  } catch {
-    return null;
-  }
+  if (n.includes("squat")) return "1566241440091-ec10de8db2e1";
+  if (n.includes("deadlift") || n.includes("rdl")) return "1534438327276-14e5300c3a48";
+  if (n.includes("bench") || n.includes("developpe")) return "1571019613454-1cb2f99b2d8b";
+  if (n.includes("traction") || n.includes("pull")) return "1598971457999-ca4ef48a9a71";
+  if (n.includes("jump") || n.includes("saut") || n.includes("box")) return "1601422407692-ec4eeec1d9b3";
+  if (n.includes("lunge") || n.includes("fente")) return "1434682881908-b43d0467b798";
+  if (n.includes("hip") || n.includes("thrust")) return "1571019614242-c5c5dee9f50b";
+  if (n.includes("row") || n.includes("rowing")) return "1581009137042-c552e485697a";
+  if (n.includes("kettlebell") || n.includes("swing")) return "1517963879433-6ad2a04b7b38";
+  if (n.includes("planche") || n.includes("plank")) return "1574680096145-d05b474e2155";
+  if (n.includes("press") || n.includes("overhead")) return "1541534741688-7078b66603b8";
+  if (n.includes("pompe") || n.includes("push")) return "1598632640487-6ea4a4e8b963";
+  return "1534258936331-e83c8d5b3fd1";
 }
-
 
 // ─────────────────────────────────────────────
 // ECRAN SEANCE LIVE
@@ -446,18 +380,11 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [setIdx, setSetIdx] = useState(0);
   const [resting, setResting] = useState(false);
   const [waitingRest, setWaitingRest] = useState(false);
-  const [completedSets, setCompletedSets] = useState({});
+  const [completedSets, setCompletedSets] = useState({}); // { "exIdx-setIdx": { reps, kg } }
   const [showSummary, setShowSummary] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [toast, setToast] = useState(null);
-  const [photoUrl, setPhotoUrl] = useState(null);
-
-useEffect(() => {
-  if (!currentEx) return;
-  getExercicePhoto(currentEx.nom).then(url => setPhotoUrl(url));
-}, [exIdx]);
-
 
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
@@ -469,7 +396,9 @@ useEffect(() => {
 
   const handleSetComplete = () => {
     const key = `${exIdx}-${setIdx}`;
-    setCompletedSets(prev => ({ ...prev, [key]: true }));
+    const reps = parseInt(currentEx.reps) || 8;
+    const kg = currentEx.chargeKg || 0;
+    setCompletedSets(prev => ({ ...prev, [key]: { reps, kg } }));
     const msg = getRandom(MOTIVATION.complete);
     setToast(msg);
     setTimeout(() => setToast(null), 1400);
@@ -525,8 +454,7 @@ useEffect(() => {
             ))}
           </div>
 
-          <button onClick={() => onFinish(feedback)} disabled={!feedback}
- style={{ width: "100%", height: 58, background: feedback ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? DS.colors.bg : DS.colors.textDim, fontSize: 16, cursor: feedback ? "pointer" : "not-allowed", ...s.heading, boxShadow: feedback ? "0 8px 32px rgba(0,229,160,0.35)" : "none", transition: "all 0.3s ease" }}>
+          <button onClick={() => onFinish(feedback, completedSets, exercices, Math.round((Date.now() - startTime) / 60000))} disabled={!feedback} style={{ width: "100%", height: 58, background: feedback ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? DS.colors.bg : DS.colors.textDim, fontSize: 16, cursor: feedback ? "pointer" : "not-allowed", ...s.heading, boxShadow: feedback ? "0 8px 32px rgba(0,229,160,0.35)" : "none", transition: "all 0.3s ease" }}>
             {feedback ? "Enregistrer & continuer" : "Selectionne ton ressenti"}
           </button>
         </div>
@@ -567,8 +495,7 @@ useEffect(() => {
           {/* Photo de fond Unsplash */}
           <div style={{
             height: 200,
-            backgroundImage: photoUrl ? `url(${photoUrl})` : "none",
-
+            backgroundImage: `url(https://images.unsplash.com/photo-${getExercicePhotoId(currentEx.nom)}?w=800&q=80)`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             position: "relative",
@@ -834,7 +761,7 @@ function OnboardingScreen({ onComplete }) {
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>On adaptera les exercices et charges.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
+              {OBJECTIFS.map(obj => (
                 <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
                   <span style={{ fontSize: 26 }}>{obj.emoji}</span>
                   <div>
@@ -1018,10 +945,9 @@ function DashboardScreen({ user, onStartSession }) {
           </div>
           <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
             {[
-              { val: `${seance.dureeMin || 45}`, label: "minutes", color: DS.colors.textPrimary },
-              { val: `${seance.exercices?.length || 0}`, label: "exercices", color: DS.colors.success },
-{ val: seance.type === "force_basse" ? "Bas" : seance.type === "force_haute" ? "Haut" : seance.type === "explosivite" ? "Explo" : "Core", label: "du corps", color: DS.colors.warning },
-
+              { val: seance.exercices.length, label: "exercices", color: DS.colors.textPrimary },
+              { val: "+2.5", label: "kg progression", color: DS.colors.success },
+              { val: "Bas", label: "du corps", color: DS.colors.warning },
             ].map((stat, i) => (
               <div key={i} style={{ textAlign: "center", flex: 1 }}>
                 <div style={{ ...s.mono, fontSize: 24, color: stat.color, fontWeight: 700 }}>{stat.val}</div>
@@ -1075,11 +1001,43 @@ function DashboardScreen({ user, onStartSession }) {
 // HISTORIQUE
 // ─────────────────────────────────────────────
 function HistoriqueScreen() {
-  const stats = [{ value: "18", label: "seances", color: DS.colors.primary }, { value: "+12kg", label: "Squat", color: DS.colors.success }, { value: "94%", label: "assiduite", color: DS.colors.warning }];
-  const historique = [
-    { semaine: 3, seances: [{ titre: "Force & Explosivite", date: "Mar 25 mars", duree: 48, exercices: 5 }, { titre: "Haut du Corps", date: "Jeu 27 mars", duree: 42, exercices: 5 }] },
-    { semaine: 2, seances: [{ titre: "Force & Base Basse", date: "Lun 18 mars", duree: 51, exercices: 5 }, { titre: "Explosivite", date: "Mer 20 mars", duree: 45, exercices: 4 }] },
+  const [seancesReelles, setSeancesReelles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [totalSeances, setTotalSeances] = useState(0);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { setLoading(false); return; }
+      const { data } = await supabase
+        .from("seances")
+        .select("*, exercices(*)")
+        .eq("user_id", session.user.id)
+        .eq("statut", "faite")
+        .order("date_realisee", { ascending: false })
+        .limit(20);
+      if (data) {
+        setSeancesReelles(data);
+        setTotalSeances(data.length);
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  // Grouper par semaine (approximatif : 7 jours)
+  const groupeParSemaine = {};
+  seancesReelles.forEach(sc => {
+    const date = new Date(sc.date_realisee);
+    const weekKey = `${date.getFullYear()}-W${Math.ceil((date.getDate()) / 7)}`;
+    if (!groupeParSemaine[weekKey]) groupeParSemaine[weekKey] = [];
+    groupeParSemaine[weekKey].push(sc);
+  });
+
+  const stats = [
+    { value: String(totalSeances || 0), label: "seances", color: DS.colors.primary },
+    { value: totalSeances > 0 ? `${Math.round((totalSeances / Math.max(1, Math.ceil(totalSeances / 3))) * 100)}%` : "0%", label: "assiduite", color: DS.colors.success },
+    { value: seancesReelles[0] ? `${seancesReelles[0].duree_min || 0}m` : "0m", label: "derniere", color: DS.colors.warning },
   ];
+
   const points = [65, 67.5, 70, 72.5, 72.5, 75, 77.5, 80];
   const w = 300, h = 80, min = 60, max = 85;
   const toX = i => (i / (points.length - 1)) * w;
@@ -1107,25 +1065,47 @@ function HistoriqueScreen() {
             {points.map((p, i) => <circle key={i} cx={toX(i)} cy={toY(p)} r={i === points.length - 1 ? 5 : 3} fill={i === points.length - 1 ? DS.colors.primary : DS.colors.bg} stroke={DS.colors.primary} strokeWidth="2" />)}
           </svg>
         </Card>
-        {historique.map(sem => (
-          <div key={sem.semaine} style={{ marginBottom: 24 }}>
-            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>Semaine {sem.semaine}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {sem.seances.map((sc, i) => (
-                <Card key={i} style={{ padding: "14px 16px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div>
-                      <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginBottom: 4 }}>{sc.date}</p>
-                      <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>{sc.titre}</p>
-                      <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginTop: 4 }}>{sc.exercices} exercices - {sc.duree} min</p>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Badge color="success">OK</Badge>{Icons.arrow()}</div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <div style={{ width: 32, height: 32, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite", margin: "0 auto 12px" }} />
+            <p style={{ color: DS.colors.textSec, fontSize: 14 }}>Chargement...</p>
           </div>
-        ))}
+        ) : seancesReelles.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "40px 20px" }}>
+            <p style={{ fontSize: 40, marginBottom: 16 }}>🏋️</p>
+            <p style={{ color: DS.colors.textPrimary, fontSize: 18, ...s.heading, marginBottom: 8 }}>Aucune seance encore</p>
+            <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>Complete ta premiere seance pour voir ton historique ici.</p>
+          </div>
+        ) : (
+          Object.entries(groupeParSemaine).map(([weekKey, seances], wi) => (
+            <div key={weekKey} style={{ marginBottom: 24 }}>
+              <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                {wi === 0 ? "Cette semaine" : `Il y a ${wi} semaine${wi > 1 ? "s" : ""}`}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {seances.map((sc, i) => (
+                  <Card key={i} style={{ padding: "14px 16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginBottom: 4 }}>
+                          {new Date(sc.date_realisee).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}
+                        </p>
+                        <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>{sc.titre}</p>
+                        <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginTop: 4 }}>
+                          {sc.exercices?.length || 0} exercices - {sc.duree_min || 0} min
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <Badge color="success">✓</Badge>
+                        {Icons.arrow()}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -1262,34 +1242,26 @@ export default function VoltraApp() {
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
-  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => { setProgrammeActif(programme); setScreen("pricing"); }} />;
+  if (screen === "onboarding") return <OnboardingScreen onComplete={() => setScreen("pricing")} />;
   if (screen === "pricing") return <PricingScreen onSelectPlan={() => setScreen("app")} />;
 
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
       {seanceActive ? (
         <SeanceScreen
-  seance={seanceActive}
-  onBack={() => setSeanceActive(null)}
-  onFinish={async (feedback) => {
-    if (programmeActif?.id && feedback) {
-      const progData = programmeActif.data_json;
-      const semaines = progData?.semaines || [];
-      let semaineIdx = 0, seanceIdx = 0;
-      for (let s = 0; s < semaines.length; s++) {
-        const idx = semaines[s].seances?.findIndex(sc => sc.id === seanceActive.id);
-        if (idx !== -1 && idx !== undefined) { semaineIdx = s; seanceIdx = idx; break; }
-      }
-      const result = await saveSessionAndProgress(programmeActif.id, seanceIdx, semaineIdx, feedback, seanceActive.exercices);
-      if (result?.message) alert(result.message);
-      // Recharger le programme mis à jour
-      const { data } = await supabase.from("programmes").select("*").eq("id", programmeActif.id).single();
-      if (data) setProgrammeActif(data);
-    }
-    setSeanceActive(null);
-  }}
-/>
-
+          seance={seanceActive}
+          onBack={() => setSeanceActive(null)}
+          onFinish={async (feedback, completedSetsData, exercices, durationMin) => {
+            if (programmeActif?.id && feedback) {
+              const result = await saveCompleteSession(programmeActif.id, seanceActive, completedSetsData, feedback, durationMin);
+              if (result?.deload) alert("Semaine de recuperation programmee. Charges allegees.");
+              // Recharger le programme mis a jour
+              const { data } = await supabase.from("programmes").select("*").eq("id", programmeActif.id).single();
+              if (data) setProgrammeActif(data);
+            }
+            setSeanceActive(null);
+          }}
+        />
       ) : (
         <>
           {activeTab === "dashboard" && <DashboardScreen user={user} onStartSession={() => setSeanceActive(MOCK_PROGRAM.seancesDuJour[0])} />}
