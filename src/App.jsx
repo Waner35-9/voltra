@@ -1303,6 +1303,18 @@ export default function VoltraApp() {
           seance={seanceActive}
           onBack={() => setSeanceActive(null)}
           onFinish={async (feedback, completedSetsData, exercices, durationMin) => {
+  try {
+    if (programmeActif?.id && feedback) {
+      await saveCompleteSession(programmeActif.id, seanceActive, completedSetsData, feedback, durationMin);
+      const { data } = await supabase.from("programmes").select("*").eq("id", programmeActif.id).single();
+      if (data) setProgrammeActif(data);
+    }
+  } catch (err) {
+    console.error("onFinish error:", err);
+  } finally {
+    setSeanceActive(null);
+  }
+}}
             if (programmeActif?.id && feedback) {
               const result = await saveCompleteSession(programmeActif.id, seanceActive, completedSetsData, feedback, durationMin);
               if (result?.deload) alert("Semaine de recuperation programmee. Charges allegees.");
