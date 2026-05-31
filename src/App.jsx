@@ -777,11 +777,13 @@ function OnboardingScreen({ onComplete }) {
   const [animIn, setAnimIn] = useState(true);
 
   const goNext = () => { setAnimIn(false); setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200); };
-  const handleFinish = async () => {
-    setLoading(true);
-    try { const programme = await generateProgramIA(data); onComplete(data, programme); }
-    catch (err) { alert("Erreur : " + err.message); onComplete(data, null); }
-  };
+  const handleFinish = () => {
+  onComplete(data, null);
+  generateProgramIA(data).then(programme => {
+    onComplete(data, programme);
+  }).catch(err => console.error(err));
+};
+
   const canNext = [data.sport !== null, data.objectif !== null, data.niveau !== null][step];
 
   return (
@@ -849,15 +851,10 @@ function OnboardingScreen({ onComplete }) {
         )}
       </div>
       <div style={{ paddingBottom: 48, paddingTop: 24 }}>
-        {loading ? (
-          <div style={{ background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "20px 24px", display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ width: 36, height: 36, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse 1s infinite", flexShrink: 0 }}>✦</div>
-            <div>
-              <p style={{ color: DS.colors.primary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Generation du programme...</p>
-              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>L'IA calibre ton programme 8 semaines</p>
-            </div>
-          </div>
-        ) : (
+        <PrimaryButton onClick={step < 2 ? goNext : handleFinish} disabled={!canNext}>
+  {step < 2 ? "Continuer" : "Generer mon programme"}
+</PrimaryButton>
+{step > 0 && <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>}
           <>
             <PrimaryButton onClick={step < 2 ? goNext : handleFinish} disabled={!canNext}>{step < 2 ? "Continuer" : "Generer mon programme"}</PrimaryButton>
             {step > 0 && <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>}
@@ -1316,7 +1313,11 @@ export default function VoltraApp() {
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
-  if (screen === "onboarding") return <OnboardingScreen onComplete={() => setScreen("pricing")} />;
+  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => {
+  setProgrammeActif(programme);
+  setScreen("pricing");
+}} />;
+
   if (screen === "pricing") return <PricingScreen onSelectPlan={() => setScreen("app")} />;
 
   return (
