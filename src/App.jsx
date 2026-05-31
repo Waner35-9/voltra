@@ -964,9 +964,16 @@ function PricingScreen({ onSelectPlan }) {
 // ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────
-function DashboardScreen({ user, onStartSession }) {
-  const prog = MOCK_PROGRAM;
-  const seance = prog.seancesDuJour[0];
+function DashboardScreen({ user, programme, onStartSession }) {
+  const progData = programme?.data_json;
+  const seance = progData?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
+  const prog = {
+    titre: programme?.titre || MOCK_PROGRAM.titre,
+    semaineCourante: programme?.semaine_courante || MOCK_PROGRAM.semaineCourante,
+    totalSemaines: programme?.total_semaines || MOCK_PROGRAM.totalSemaines,
+    progression: Math.round(((programme?.semaine_courante || 1) / (programme?.total_semaines || 8)) * 100),
+    derniereSeance: MOCK_PROGRAM.derniereSeance,
+  };
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
 
   return (
@@ -995,9 +1002,9 @@ function DashboardScreen({ user, onStartSession }) {
           </div>
           <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
             {[
-              { val: seance.exercices.length, label: "exercices", color: DS.colors.textPrimary },
-              { val: "+2.5", label: "kg progression", color: DS.colors.success },
-              { val: "Bas", label: "du corps", color: DS.colors.warning },
+              { val: `${seance.dureeMin || 45}`, label: "minutes", color: DS.colors.textPrimary },
+              { val: `${seance.exercices?.length || 0}`, label: "exercices", color: DS.colors.success },
+              { val: seance.type === "force_basse" ? "Bas" : seance.type === "force_haute" ? "Haut" : seance.type === "explosivite" ? "Explo" : "Core", label: "du corps", color: DS.colors.warning },
             ].map((stat, i) => (
               <div key={i} style={{ textAlign: "center", flex: 1 }}>
                 <div style={{ ...s.mono, fontSize: 24, color: stat.color, fontWeight: 700 }}>{stat.val}</div>
@@ -1257,6 +1264,7 @@ export default function VoltraApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
+  const [programmeActif, setProgrammeActif] = useState(null);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -1289,6 +1297,21 @@ export default function VoltraApp() {
     setScreen("auth");
     setUser(null);
   };
+
+  useEffect(() => {
+    if (screen !== "app" || !user) return;
+    supabase
+      .from("programmes")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("statut", "actif")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data) setProgrammeActif(data);
+      });
+  }, [screen, user]);
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
