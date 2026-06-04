@@ -851,7 +851,6 @@ function OnboardingScreen({ onComplete }) {
               </div>
             </div>
           </div>
-        )}
       </div>
       {loading && (
   <div style={{ position: "fixed", inset: 0, background: DS.colors.bg, zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", textAlign: "center" }}>
