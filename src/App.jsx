@@ -546,7 +546,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
       </div>
 
       <div style={{ padding: "20px 20px 120px" }}>
-        {/* Card exercice — Style Lyfta avec photo Unsplash */}
+        {/* Card exercice - Style Lyfta avec photo Unsplash */}
         <div key={animKey} style={{ borderRadius: DS.radius.xl, marginBottom: 16, overflow: "hidden", position: "relative" }}>
 
           {/* Photo de fond Unsplash */}
@@ -774,7 +774,7 @@ function AuthScreen({ onAuth }) {
 }
 
 // ─────────────────────────────────────────────
-// ECRAN ONBOARDING — 6 etapes personnalisees
+// ECRAN ONBOARDING - 6 etapes personnalisees
 // ─────────────────────────────────────────────
 const POSTES_PAR_SPORT = {
   basketball: [
@@ -939,7 +939,7 @@ function OnboardingScreen({ onComplete }) {
 
       <div style={{ flex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(12px)", transition: "all 0.25s ease", overflowY: "auto" }}>
 
-        {/* ETAPE 1 — Sport */}
+        {/* ETAPE 1 - Sport */}
         {contentStep === 0 && (
           <div>
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton sport ?</h1>
@@ -955,7 +955,7 @@ function OnboardingScreen({ onComplete }) {
           </div>
         )}
 
-        {/* ETAPE 2 — Objectif */}
+        {/* ETAPE 2 - Objectif */}
         {contentStep === 1 && (
           <div>
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
@@ -975,7 +975,7 @@ function OnboardingScreen({ onComplete }) {
           </div>
         )}
 
-        {/* ETAPE 3 — Poste (sauf natation) */}
+        {/* ETAPE 3 - Poste (sauf natation) */}
         {contentStep === 2 && (
           <div>
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Ton poste ?</h1>
@@ -995,7 +995,7 @@ function OnboardingScreen({ onComplete }) {
           </div>
         )}
 
-        {/* ETAPE 4 — Douleurs */}
+        {/* ETAPE 4 - Douleurs */}
         {contentStep === 3 && (
           <div>
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Des douleurs ?</h1>
@@ -1019,7 +1019,7 @@ function OnboardingScreen({ onComplete }) {
           </div>
         )}
 
-        {/* ETAPE 5 — Equipement */}
+        {/* ETAPE 5 - Equipement */}
         {contentStep === 4 && (
           <div>
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Ton equipement ?</h1>
@@ -1039,7 +1039,7 @@ function OnboardingScreen({ onComplete }) {
           </div>
         )}
 
-        {/* ETAPE 6 — Niveau + Frequence */}
+        {/* ETAPE 6 - Niveau + Frequence */}
         {contentStep === 5 && (
           <div>
             <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Derniers reglages</h1>
@@ -1394,6 +1394,8 @@ function DashboardScreen({ user, programme, matchs, onStartSession, onOpenMatchs
           </div>
           {Icons.arrow()}
         </div>
+
+        <div style={{ marginBottom: 24 }}>
           <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, marginBottom: 6 }}>Semaine {prog.semaineCourante} - Seance 1</p>
           <h1 style={{ ...s.display, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1.15, marginBottom: 16 }}>{seance.titre}</h1>
           <ProgressBar value={prog.progression} />
