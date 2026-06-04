@@ -211,7 +211,7 @@ const SPORTS = [
   { id: "tennis", label: "Tennis", emoji: "🎾" },
   { id: "rugby", label: "Rugby", emoji: "🏉" },
   { id: "natation", label: "Natation", emoji: "🏊" },
-  { id: "sprint", label: "Sprint", emoji: "🏃" },
+  { id: "combat", label: "Combat", emoji: "🥊" },
 ];
 const OBJECTIFS_PAR_SPORT = {
   basketball: [
@@ -245,6 +245,12 @@ const OBJECTIFS_PAR_SPORT = {
     { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
     { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
     { id: "detente", label: "Detente", desc: "Puissance impulsion", emoji: "🚀" },
+  ],
+  combat: [
+    { id: "explosivite", label: "Explosivite", desc: "Puissance et vitesse de frappe", emoji: "⚡" },
+    { id: "endurance", label: "Endurance", desc: "Cardio et resistance", emoji: "🫁" },
+    { id: "force", label: "Force", desc: "Puissance maximale", emoji: "🏋️" },
+    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
   ],
 };
 const OBJECTIFS = [];
@@ -768,15 +774,92 @@ function AuthScreen({ onAuth }) {
 }
 
 // ─────────────────────────────────────────────
-// ECRAN ONBOARDING
+// ECRAN ONBOARDING — 6 etapes personnalisees
 // ─────────────────────────────────────────────
+const POSTES_PAR_SPORT = {
+  basketball: [
+    { id: "meneur", label: "Meneur", desc: "Vitesse, agilite, cardio", emoji: "⚡" },
+    { id: "ailier", label: "Ailier", desc: "Polyvalence, athletisme", emoji: "🏃" },
+    { id: "ailier_fort", label: "Ailier-fort", desc: "Force, rebonds", emoji: "💪" },
+    { id: "pivot", label: "Pivot", desc: "Puissance, domination", emoji: "🏋️" },
+  ],
+  football: [
+    { id: "gardien", label: "Gardien", desc: "Reflexes, detente", emoji: "🧤" },
+    { id: "defenseur", label: "Defenseur", desc: "Force, duels aeriens", emoji: "🛡️" },
+    { id: "milieu", label: "Milieu", desc: "Endurance, polyvalence", emoji: "⚙️" },
+    { id: "attaquant", label: "Attaquant", desc: "Explosivite, vitesse", emoji: "🎯" },
+  ],
+  tennis: [
+    { id: "fond_de_court", label: "Fond de court", desc: "Endurance, regularite", emoji: "🔄" },
+    { id: "serve_volley", label: "Serveur-volleyeur", desc: "Explosivite, reflexes", emoji: "⚡" },
+  ],
+  rugby: [
+    { id: "pilier", label: "Pilier / Talonneur", desc: "Force brute, puissance", emoji: "🏋️" },
+    { id: "troisieme_ligne", label: "3eme ligne", desc: "Force + endurance", emoji: "💪" },
+    { id: "demi", label: "Demi", desc: "Agilite, explosivite", emoji: "⚡" },
+    { id: "trois_quarts", label: "Trois-quarts", desc: "Vitesse, detente", emoji: "🏃" },
+    { id: "arriere", label: "Arriere", desc: "Vitesse, vision du jeu", emoji: "🎯" },
+  ],
+  sprint: [
+    { id: "60m", label: "60m / 100m", desc: "Acceleration pure", emoji: "💨" },
+    { id: "200m", label: "200m", desc: "Puissance + vitesse", emoji: "⚡" },
+    { id: "400m", label: "400m", desc: "Endurance lactique", emoji: "🔥" },
+  ],
+  combat: [
+    { id: "mma", label: "MMA", desc: "Combat complet, polyvalence", emoji: "🥊" },
+    { id: "boxe_anglaise", label: "Boxe anglaise", desc: "Vitesse, explosivite des poings", emoji: "👊" },
+    { id: "boxe_francaise", label: "Boxe francaise", desc: "Vitesse, coordination pieds-poings", emoji: "🦵" },
+    { id: "judo", label: "Judo", desc: "Force, equilibre, explosivite", emoji: "🥋" },
+    { id: "jiu_jitsu", label: "Jiu-jitsu bresilien", desc: "Force fonctionnelle, gainage", emoji: "💪" },
+    { id: "boxe_thai", label: "Boxe thai", desc: "Puissance, endurance, genoux/coudes", emoji: "🔥" },
+  ],
+};
+
+const DOULEURS = [
+  { id: "aucune", label: "Aucune douleur", emoji: "✅", exclusive: true },
+  { id: "epaule", label: "Epaule", emoji: "💪" },
+  { id: "genou", label: "Genou", emoji: "🦵" },
+  { id: "dos", label: "Dos / Lombaires", emoji: "🦴" },
+  { id: "cheville", label: "Cheville", emoji: "🦶" },
+  { id: "poignet", label: "Poignet / Coude", emoji: "✋" },
+];
+
+const EQUIPEMENTS = [
+  { id: "salle_complete", label: "Salle complete", desc: "Tout le materiel disponible", emoji: "🏋️" },
+  { id: "salle_basique", label: "Salle basique", desc: "Barres, halteres, machines", emoji: "⚙️" },
+  { id: "maison", label: "Maison", desc: "Poids du corps + elastiques", emoji: "🏠" },
+  { id: "terrain", label: "Terrain / Exterieur", desc: "Sans materiel specifique", emoji: "🌿" },
+];
+
+const TOTAL_STEPS = 6;
+
 function OnboardingScreen({ onComplete }) {
   const [step, setStep] = useState(0);
-  const [data, setData] = useState({ sport: null, objectif: null, niveau: null, frequence: 3 });
+  const [data, setData] = useState({
+    sport: null, objectif: null, poste: null,
+    douleurs: [], equipement: null,
+    niveau: null, frequence: 3
+  });
   const [loading, setLoading] = useState(false);
   const [animIn, setAnimIn] = useState(true);
 
-  const goNext = () => { setAnimIn(false); setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200); };
+  const hasPoste = data.sport && data.sport !== "natation";
+  const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau"];
+  const totalSteps = stepLabels.length;
+
+  // Step mapping selon si poste existe
+  const getStepContent = () => {
+    const steps = [0, 1]; // sport, objectif
+    if (hasPoste) steps.push(2); // poste
+    steps.push(3, 4, 5); // douleurs, equipement, niveau
+    return steps[step];
+  };
+  const contentStep = getStepContent();
+
+  const goNext = () => {
+    setAnimIn(false);
+    setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200);
+  };
 
   const handleFinish = () => {
     setLoading(true);
@@ -787,72 +870,37 @@ function OnboardingScreen({ onComplete }) {
       }).catch(err => console.error(err));
     }, 3200);
   };
-  const canNext = [data.sport !== null, data.objectif !== null, data.niveau !== null][step];
+
+  const toggleDouleur = (id) => {
+    if (id === "aucune") {
+      setData(d => ({ ...d, douleurs: d.douleurs.includes("aucune") ? [] : ["aucune"] }));
+    } else {
+      setData(d => ({
+        ...d,
+        douleurs: d.douleurs.includes("aucune")
+          ? [id]
+          : d.douleurs.includes(id)
+            ? d.douleurs.filter(x => x !== id)
+            : [...d.douleurs, id]
+      }));
+    }
+  };
+
+  const canNext = (() => {
+    if (contentStep === 0) return data.sport !== null;
+    if (contentStep === 1) return data.objectif !== null;
+    if (contentStep === 2) return data.poste !== null;
+    if (contentStep === 3) return data.douleurs.length > 0;
+    if (contentStep === 4) return data.equipement !== null;
+    if (contentStep === 5) return data.niveau !== null;
+    return false;
+  })();
+
+  const isLastStep = step === totalSteps - 1;
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px" }}>
-      <div style={{ paddingTop: 60, paddingBottom: 32 }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 32 }}>
-          {[0, 1, 2].map(i => <div key={i} style={{ flex: 1, height: 3, borderRadius: DS.radius.full, background: i <= step ? DS.colors.primary : DS.colors.surfaceHigh, transition: "background 0.4s ease" }} />)}
-        </div>
-        <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading }}>Etape {step + 1} sur 3</p>
-      </div>
-      <div style={{ flex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(12px)", transition: "all 0.25s ease" }}>
-        {step === 0 && (
-          <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton sport ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera adapte a tes besoins.</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-              {SPORTS.map(sport => (
-                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id }))} style={{ background: data.sport === sport.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.sport === sport.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease" }}>
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>{sport.emoji}</div>
-                  <div style={{ color: data.sport === sport.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 13, ...s.heading }}>{sport.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {step === 1 && (
-          <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>On adaptera les exercices et charges.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
-                <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
-                  <span style={{ fontSize: 26 }}>{obj.emoji}</span>
-                  <div>
-                    <div style={{ color: data.objectif === obj.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{obj.label}</div>
-                    <div style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>{obj.desc}</div>
-                  </div>
-                  {data.objectif === obj.id && <div style={{ marginLeft: "auto", width: 20, height: 20, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {step === 2 && (
-          <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Derniers reglages</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 36 }}>Le programme se calibre sur ton profil.</p>
-            <div style={{ marginBottom: 36 }}>
-              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Niveau actuel</p>
-              <div style={{ display: "flex", gap: 10 }}>
-                {NIVEAUX.map(n => <div key={n} onClick={() => setData(d => ({ ...d, niveau: n.toLowerCase() }))} style={{ flex: 1, padding: "12px 0", textAlign: "center", background: data.niveau === n.toLowerCase() ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, color: data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.textSec, fontSize: 14, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>)}
-              </div>
-            </div>
-            <div>
-              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Seances par semaine</p>
-              <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 20 }}>
-                <div style={{ ...s.display, fontSize: 48, color: DS.colors.primary, textAlign: "center", marginBottom: 16 }}>{data.frequence}</div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  {[2, 3, 4, 5].map(n => <div key={n} onClick={() => setData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "10px 0", textAlign: "center", background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: data.frequence === n ? "white" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>)}
-                </div>
-                <p style={{ color: DS.colors.textSec, fontSize: 13, textAlign: "center", marginTop: 12, ...s.body }}>jours / semaine</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+
       {loading && (
         <div style={{ position: "fixed", inset: 0, background: DS.colors.bg, zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", textAlign: "center" }}>
           <div style={{ position: "relative", width: 100, height: 100, margin: "0 auto 32px" }}>
@@ -863,7 +911,7 @@ function OnboardingScreen({ onComplete }) {
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>⚡</div>
           </div>
           <h2 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary, marginBottom: 12 }}>Construction de ton programme...</h2>
-          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32, lineHeight: 1.6 }}>L'IA analyse ton profil pour creer 8 semaines de progression sur mesure.</p>
+          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32, lineHeight: 1.6 }}>L'IA analyse ton profil complet pour creer un programme sur mesure.</p>
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
             {[
               { emoji: "🏋️", text: "Selection des exercices", delay: "0s" },
@@ -880,9 +928,149 @@ function OnboardingScreen({ onComplete }) {
         </div>
       )}
 
+      <div style={{ paddingTop: 60, paddingBottom: 24 }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 3, borderRadius: DS.radius.full, background: i <= step ? DS.colors.primary : DS.colors.surfaceHigh, transition: "background 0.4s ease", boxShadow: i === step ? `0 0 8px ${DS.colors.primary}` : "none" }} />
+          ))}
+        </div>
+        <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading }}>Etape {step + 1} sur {totalSteps}</p>
+      </div>
+
+      <div style={{ flex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(12px)", transition: "all 0.25s ease", overflowY: "auto" }}>
+
+        {/* ETAPE 1 — Sport */}
+        {contentStep === 0 && (
+          <div>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton sport ?</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera entierement adapte.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              {SPORTS.map(sport => (
+                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.sport === sport.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.03)" : "scale(1)" }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>{sport.emoji}</div>
+                  <div style={{ color: data.sport === sport.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 13, ...s.heading }}>{sport.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ETAPE 2 — Objectif */}
+        {contentStep === 1 && (
+          <div>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Les exercices et charges s'adapteront.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
+                <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
+                  <span style={{ fontSize: 26 }}>{obj.emoji}</span>
+                  <div>
+                    <div style={{ color: data.objectif === obj.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{obj.label}</div>
+                    <div style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>{obj.desc}</div>
+                  </div>
+                  {data.objectif === obj.id && <div style={{ marginLeft: "auto", width: 20, height: 20, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ETAPE 3 — Poste (sauf natation) */}
+        {contentStep === 2 && (
+          <div>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Ton poste ?</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme cible les qualites de ton poste.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {(POSTES_PAR_SPORT[data.sport] || []).map(poste => (
+                <div key={poste.id} onClick={() => setData(d => ({ ...d, poste: poste.id }))} style={{ background: data.poste === poste.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.poste === poste.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
+                  <span style={{ fontSize: 26 }}>{poste.emoji}</span>
+                  <div>
+                    <div style={{ color: data.poste === poste.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{poste.label}</div>
+                    <div style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>{poste.desc}</div>
+                  </div>
+                  {data.poste === poste.id && <div style={{ marginLeft: "auto", width: 20, height: 20, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ETAPE 4 — Douleurs */}
+        {contentStep === 3 && (
+          <div>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Des douleurs ?</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 12 }}>Les exercices s'adapteront automatiquement.</p>
+            <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,107,53,0.2)", borderRadius: DS.radius.md, padding: "10px 14px", marginBottom: 24, display: "flex", gap: 10, alignItems: "center" }}>
+              <span style={{ fontSize: 16 }}>⚠️</span>
+              <p style={{ color: DS.colors.warning, fontSize: 12, ...s.body }}>Tu peux selectionner plusieurs zones. Les exercices a risque seront remplaces.</p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {DOULEURS.map(d => {
+                const selected = data.douleurs.includes(d.id);
+                return (
+                  <div key={d.id} onClick={() => toggleDouleur(d.id)} style={{ background: selected ? (d.id === "aucune" ? DS.colors.successSoft : DS.colors.warningSoft) : DS.colors.surface, border: `1px solid ${selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "all 0.2s ease" }}>
+                    <span style={{ fontSize: 22 }}>{d.emoji}</span>
+                    <p style={{ color: selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.textPrimary, fontSize: 15, ...s.heading, flex: 1 }}>{d.label}</p>
+                    {selected && <div style={{ width: 20, height: 20, background: d.id === "aucune" ? DS.colors.success : DS.colors.warning, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ETAPE 5 — Equipement */}
+        {contentStep === 4 && (
+          <div>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Ton equipement ?</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Les exercices seront adaptes a ce que tu as.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {EQUIPEMENTS.map(eq => (
+                <div key={eq.id} onClick={() => setData(d => ({ ...d, equipement: eq.id }))} style={{ background: data.equipement === eq.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.equipement === eq.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
+                  <span style={{ fontSize: 26 }}>{eq.emoji}</span>
+                  <div>
+                    <div style={{ color: data.equipement === eq.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{eq.label}</div>
+                    <div style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>{eq.desc}</div>
+                  </div>
+                  {data.equipement === eq.id && <div style={{ marginLeft: "auto", width: 20, height: 20, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ETAPE 6 — Niveau + Frequence */}
+        {contentStep === 5 && (
+          <div>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Derniers reglages</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 36 }}>Le programme se calibre sur ton profil.</p>
+            <div style={{ marginBottom: 36 }}>
+              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Niveau actuel</p>
+              <div style={{ display: "flex", gap: 10 }}>
+                {NIVEAUX.map(n => (
+                  <div key={n} onClick={() => setData(d => ({ ...d, niveau: n.toLowerCase() }))} style={{ flex: 1, padding: "12px 0", textAlign: "center", background: data.niveau === n.toLowerCase() ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, color: data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.textSec, fontSize: 14, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Seances par semaine</p>
+              <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 20 }}>
+                <div style={{ ...s.display, fontSize: 48, color: DS.colors.primary, textAlign: "center", marginBottom: 16 }}>{data.frequence}</div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {[2, 3, 4, 5].map(n => (
+                    <div key={n} onClick={() => setData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "10px 0", textAlign: "center", background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: data.frequence === n ? "white" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>
+                  ))}
+                </div>
+                <p style={{ color: DS.colors.textSec, fontSize: 13, textAlign: "center", marginTop: 12, ...s.body }}>jours / semaine</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div style={{ paddingBottom: 48, paddingTop: 24 }}>
-        <PrimaryButton onClick={step < 2 ? goNext : handleFinish} disabled={!canNext}>
-          {step < 2 ? "Continuer" : "Generer mon programme"}
+        <PrimaryButton onClick={isLastStep ? handleFinish : goNext} disabled={!canNext}>
+          {isLastStep ? "Generer mon programme" : "Continuer"}
         </PrimaryButton>
         {step > 0 && (
           <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>
@@ -890,6 +1078,8 @@ function OnboardingScreen({ onComplete }) {
       </div>
     </div>
   );
+}
+
 }
 
 // ─────────────────────────────────────────────
