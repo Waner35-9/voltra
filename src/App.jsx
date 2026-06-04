@@ -1189,9 +1189,154 @@ function PricingScreen({ onSelectPlan, programme }) {
 }
 
 // ─────────────────────────────────────────────
+// ECRAN MATCHS
+// ─────────────────────────────────────────────
+function MatchsScreen({ user, onBack }) {
+  const [matchs, setMatchs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ titre: "", date_match: "", adversaire: "", lieu: "" });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { loadMatchs(); }, []);
+
+  const loadMatchs = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("matchs")
+      .select("*")
+      .eq("user_id", user.id)
+      .gte("date_match", new Date().toISOString().split("T")[0])
+      .order("date_match", { ascending: true });
+    if (data) setMatchs(data);
+    setLoading(false);
+  };
+
+  const saveMatch = async () => {
+    if (!form.titre || !form.date_match) return;
+    setSaving(true);
+    await supabase.from("matchs").insert({ ...form, user_id: user.id });
+    setForm({ titre: "", date_match: "", adversaire: "", lieu: "" });
+    setShowForm(false);
+    await loadMatchs();
+    setSaving(false);
+  };
+
+  const deleteMatch = async (id) => {
+    await supabase.from("matchs").delete().eq("id", id);
+    setMatchs(m => m.filter(x => x.id !== id));
+  };
+
+  const getDaysUntil = (dateStr) => {
+    const diff = new Date(dateStr) - new Date();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
+  const getMatchColor = (days) => {
+    if (days <= 1) return DS.colors.warning;
+    if (days <= 3) return DS.colors.gold;
+    return DS.colors.success;
+  };
+
+  const getMatchLabel = (days) => {
+    if (days === 0) return "Aujourd'hui";
+    if (days === 1) return "Demain";
+    return `Dans ${days} jours`;
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "14px 20px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
+          <h1 style={{ ...s.display, fontSize: 22, color: DS.colors.textPrimary }}>Mes matchs</h1>
+          <button onClick={() => setShowForm(v => !v)} style={{ background: DS.colors.primary, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: "white", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: DS.shadow.primary }}>+</button>
+        </div>
+      </div>
+
+      <div style={{ padding: "24px 20px 0" }}>
+
+        {showForm && (
+          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.xl, padding: 20, marginBottom: 24 }}>
+            <p style={{ color: DS.colors.primary, fontSize: 14, ...s.heading, marginBottom: 16 }}>Nouveau match</p>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Titre *</label>
+              <input value={form.titre} onChange={e => setForm(f => ({ ...f, titre: e.target.value }))} placeholder="Match de championnat" style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", ...s.body }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Date *</label>
+              <input type="date" value={form.date_match} onChange={e => setForm(f => ({ ...f, date_match: e.target.value }))} style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", colorScheme: "dark" }} />
+            </div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Adversaire</label>
+                <input value={form.adversaire} onChange={e => setForm(f => ({ ...f, adversaire: e.target.value }))} placeholder="Optionnel" style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", ...s.body }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Lieu</label>
+                <input value={form.lieu} onChange={e => setForm(f => ({ ...f, lieu: e.target.value }))} placeholder="Optionnel" style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", ...s.body }} />
+              </div>
+            </div>
+            <button onClick={saveMatch} disabled={saving || !form.titre || !form.date_match} style={{ width: "100%", height: 48, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, border: "none", borderRadius: DS.radius.md, color: "white", fontSize: 15, cursor: "pointer", ...s.heading, boxShadow: DS.shadow.primary }}>
+              {saving ? "Enregistrement..." : "Ajouter le match"}
+            </button>
+          </div>
+        )}
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <div style={{ width: 32, height: 32, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite", margin: "0 auto 12px" }} />
+          </div>
+        ) : matchs.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 20px" }}>
+            <p style={{ fontSize: 48, marginBottom: 16 }}>📅</p>
+            <p style={{ color: DS.colors.textPrimary, fontSize: 18, ...s.heading, marginBottom: 8 }}>Aucun match programme</p>
+            <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, lineHeight: 1.6 }}>Ajoute tes matchs pour que Voltra adapte automatiquement tes seances.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {matchs.map(match => {
+              const days = getDaysUntil(match.date_match);
+              const color = getMatchColor(days);
+              return (
+                <div key={match.id} style={{ background: DS.colors.surface, border: `1px solid ${color}30`, borderRadius: DS.radius.xl, padding: 20, position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: color }} />
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "inline-flex", padding: "3px 10px", background: color + "20", border: `1px solid ${color}40`, borderRadius: DS.radius.full, color, fontSize: 11, ...s.heading, marginBottom: 8 }}>
+                        {getMatchLabel(days)}
+                      </div>
+                      <p style={{ color: DS.colors.textPrimary, fontSize: 17, ...s.heading, marginBottom: 4 }}>{match.titre}</p>
+                      {match.adversaire && <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>vs {match.adversaire}</p>}
+                      {match.lieu && <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>📍 {match.lieu}</p>}
+                    </div>
+                    <button onClick={() => deleteMatch(match.id)} style={{ background: "none", border: "none", color: DS.colors.textDim, fontSize: 18, cursor: "pointer", padding: 4 }}>✕</button>
+                  </div>
+                  <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px" }}>
+                    <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>
+                      {days <= 1 ? "⚡ Seance tres legere aujourd'hui - preserve ton energie" :
+                       days <= 3 ? "⚠️ Charges reduites - approche du match" :
+                       days <= 5 ? "💪 Programme normal - fin de cycle avant match" :
+                       "✅ Programme complet - match encore loin"}
+                    </p>
+                  </div>
+                  <p style={{ color: DS.colors.textDim, fontSize: 11, ...s.mono, marginTop: 8 }}>
+                    {new Date(match.date_match).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────
-function DashboardScreen({ user, programme, onStartSession }) {
+function DashboardScreen({ user, programme, matchs, onStartSession, onOpenMatchs }) {
   const progData = programme?.data_json;
   const seance = progData?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
   const prog = {
@@ -1202,6 +1347,16 @@ function DashboardScreen({ user, programme, onStartSession }) {
     derniereSeance: MOCK_PROGRAM.derniereSeance,
   };
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
+
+  // Logique match le plus proche
+  const prochainMatch = matchs?.length > 0 ? matchs[0] : null;
+  const daysUntilMatch = prochainMatch ? Math.ceil((new Date(prochainMatch.date_match) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+  const matchAlert = daysUntilMatch !== null ? (
+    daysUntilMatch <= 0 ? { color: DS.colors.warning, text: "Match aujourd'hui - repos ou activation legere", emoji: "⚡" } :
+    daysUntilMatch === 1 ? { color: DS.colors.warning, text: `Match demain - seance tres legere`, emoji: "⚠️" } :
+    daysUntilMatch <= 3 ? { color: DS.colors.gold, text: `Match dans ${daysUntilMatch} jours - charges reduites`, emoji: "📅" } :
+    null
+  ) : null;
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
@@ -1215,7 +1370,30 @@ function DashboardScreen({ user, programme, onStartSession }) {
         </div>
       </div>
       <div style={{ padding: "24px 20px 0" }}>
-        <div style={{ marginBottom: 24 }}>
+
+        {/* Alerte match */}
+        {matchAlert && (
+          <div onClick={onOpenMatchs} style={{ background: matchAlert.color + "15", border: `1px solid ${matchAlert.color}40`, borderRadius: DS.radius.lg, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+            <span style={{ fontSize: 22 }}>{matchAlert.emoji}</span>
+            <div style={{ flex: 1 }}>
+              <p style={{ color: matchAlert.color, fontSize: 13, ...s.heading }}>{prochainMatch.titre}</p>
+              <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>{matchAlert.text}</p>
+            </div>
+            <span style={{ color: DS.colors.textSec, fontSize: 18 }}>→</span>
+          </div>
+        )}
+
+        {/* Bouton mes matchs */}
+        <div onClick={onOpenMatchs} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+          <span style={{ fontSize: 20 }}>📅</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>Mes matchs</p>
+            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>
+              {matchs?.length > 0 ? `${matchs.length} match${matchs.length > 1 ? "s" : ""} a venir` : "Synchronise ton calendrier"}
+            </p>
+          </div>
+          {Icons.arrow()}
+        </div>
           <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, marginBottom: 6 }}>Semaine {prog.semaineCourante} - Seance 1</p>
           <h1 style={{ ...s.display, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1.15, marginBottom: 16 }}>{seance.titre}</h1>
           <ProgressBar value={prog.progression} />
@@ -1492,6 +1670,8 @@ export default function VoltraApp() {
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
   const [programmeActif, setProgrammeActif] = useState(null);
+  const [matchs, setMatchs] = useState([]);
+  const [showMatchs, setShowMatchs] = useState(false);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -1540,6 +1720,14 @@ export default function VoltraApp() {
       .then(({ data }) => {
         if (data) setProgrammeActif(data);
       });
+    supabase
+      .from("matchs")
+      .select("*")
+      .eq("user_id", user.id)
+      .gte("date_match", new Date().toISOString().split("T")[0])
+      .order("date_match", { ascending: true })
+      .limit(5)
+      .then(({ data }) => { if (data) setMatchs(data); });
   }, [screen, user]);
 
   if (screen === "splash") return <SplashScreen />;
@@ -1549,7 +1737,15 @@ export default function VoltraApp() {
 
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
-      {seanceActive ? (
+      {showMatchs ? (
+        <MatchsScreen user={user} onBack={() => {
+          setShowMatchs(false);
+          supabase.from("matchs").select("*").eq("user_id", user.id)
+            .gte("date_match", new Date().toISOString().split("T")[0])
+            .order("date_match", { ascending: true }).limit(5)
+            .then(({ data }) => { if (data) setMatchs(data); });
+        }} />
+      ) : seanceActive ? (
         <SeanceScreen
           seance={seanceActive}
           onBack={() => setSeanceActive(null)}
@@ -1569,11 +1765,19 @@ export default function VoltraApp() {
         />
       ) : (
         <>
-          {activeTab === "dashboard" && <DashboardScreen user={user} programme={programmeActif} onStartSession={() => {
-            const prog = programmeActif?.data_json;
-            const seance = prog?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
-            setSeanceActive(seance);
-          }} />}
+          {activeTab === "dashboard" && (
+            <DashboardScreen
+              user={user}
+              programme={programmeActif}
+              matchs={matchs}
+              onOpenMatchs={() => setShowMatchs(true)}
+              onStartSession={() => {
+                const prog = programmeActif?.data_json;
+                const seance = prog?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
+                setSeanceActive(seance);
+              }}
+            />
+          )}
           {activeTab === "historique" && <HistoriqueScreen />}
           {activeTab === "profil" && <ProfilScreen user={user} onLogout={handleLogout} />}
           <BottomNav activeTab={activeTab} setTab={setActiveTab} />
