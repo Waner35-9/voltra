@@ -777,16 +777,16 @@ function OnboardingScreen({ onComplete }) {
   const [animIn, setAnimIn] = useState(true);
 
   const goNext = () => { setAnimIn(false); setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200); };
-  const handleFinish = () => {
-  setLoading(true);
-  setTimeout(() => {
-    onComplete(data, null);
-    generateProgramIA(data).then(programme => {
-      onComplete(data, programme);
-    }).catch(err => console.error(err));
-  }, 3200);
-};
 
+  const handleFinish = () => {
+    setLoading(true);
+    setTimeout(() => {
+      onComplete(data, null);
+      generateProgramIA(data).then(programme => {
+        onComplete(data, programme);
+      }).catch(err => console.error(err));
+    }, 3200);
+  };
   const canNext = [data.sport !== null, data.objectif !== null, data.niveau !== null][step];
 
   return (
@@ -851,40 +851,41 @@ function OnboardingScreen({ onComplete }) {
               </div>
             </div>
           </div>
-          
+        )}
       </div>
       {loading && (
-  <div style={{ position: "fixed", inset: 0, background: DS.colors.bg, zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", textAlign: "center" }}>
-    <div style={{ position: "relative", width: 100, height: 100, margin: "0 auto 32px" }}>
-      <svg width="100" height="100" viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="50" cy="50" r="44" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="6" />
-        <circle cx="50" cy="50" r="44" fill="none" stroke={DS.colors.primary} strokeWidth="6" strokeLinecap="round" strokeDasharray="276" strokeDashoffset="276" style={{ animation: "fillCircle 3s ease forwards" }} />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>⚡</div>
-    </div>
-    <h2 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary, marginBottom: 12 }}>Construction de ton programme...</h2>
-    <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32, lineHeight: 1.6 }}>L'IA analyse ton profil pour créer 8 semaines de progression sur mesure.</p>
-    <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
-      {[
-        { emoji: "🏋️", text: "Sélection des exercices", delay: "0s" },
-        { emoji: "📈", text: "Calcul de la progression", delay: "0.7s" },
-        { emoji: "⚡", text: "Optimisation pour " + (data.sport || "ton sport"), delay: "1.4s" },
-        { emoji: "✓", text: "Finalisation du programme", delay: "2.1s" },
-      ].map((item, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", opacity: 0, animation: `fadeIn 0.4s ease ${item.delay} forwards` }}>
-          <span style={{ fontSize: 20 }}>{item.emoji}</span>
-          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>{item.text}</p>
+        <div style={{ position: "fixed", inset: 0, background: DS.colors.bg, zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", textAlign: "center" }}>
+          <div style={{ position: "relative", width: 100, height: 100, margin: "0 auto 32px" }}>
+            <svg width="100" height="100" viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx="50" cy="50" r="44" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="6" />
+              <circle cx="50" cy="50" r="44" fill="none" stroke={DS.colors.primary} strokeWidth="6" strokeLinecap="round" strokeDasharray="276" strokeDashoffset="276" style={{ animation: "fillCircle 3s ease forwards" }} />
+            </svg>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>⚡</div>
+          </div>
+          <h2 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary, marginBottom: 12 }}>Construction de ton programme...</h2>
+          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32, lineHeight: 1.6 }}>L'IA analyse ton profil pour creer 8 semaines de progression sur mesure.</p>
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              { emoji: "🏋️", text: "Selection des exercices", delay: "0s" },
+              { emoji: "📈", text: "Calcul de la progression", delay: "0.7s" },
+              { emoji: "⚡", text: "Optimisation pour " + (data.sport || "ton sport"), delay: "1.4s" },
+              { emoji: "✓", text: "Finalisation du programme", delay: "2.1s" },
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", opacity: 0, animation: `fadeIn 0.4s ease ${item.delay} forwards` }}>
+                <span style={{ fontSize: 20 }}>{item.emoji}</span>
+                <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>{item.text}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-    </div>
-  </div>
-)}
+      )}
 
       <div style={{ paddingBottom: 48, paddingTop: 24 }}>
         <PrimaryButton onClick={step < 2 ? goNext : handleFinish} disabled={!canNext}>
-  {step < 2 ? "Continuer" : "Generer mon programme"}
-</PrimaryButton>
-{step > 0 && <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>}
+          {step < 2 ? "Continuer" : "Generer mon programme"}
+        </PrimaryButton>
+        {step > 0 && (
+          <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>
         )}
       </div>
     </div>
@@ -919,23 +920,23 @@ function PricingScreen({ onSelectPlan, programme }) {
     <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40 }}>
       <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>✦ Programme pret</p>
-<h1 style={{ ...s.display, fontSize: 28, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 16 }}>
-  {programme?.titre || "Ton programme est pret"}
-</h1>
-<div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
-  {[
-    { val: programme?.data_json?.semaines?.length || 8, label: "semaines" },
-    { val: programme?.data_json?.semaines?.[0]?.seances?.[0]?.exercices?.length || 5, label: "exercices/seance" },
-    { val: programme?.data_json?.semaines?.[0]?.seances?.length || 3, label: "seances/sem" },
-  ].map((stat, i) => (
-    <div key={i} style={{ flex: 1, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center" }}>
-      <div style={{ ...s.mono, fontSize: 20, color: DS.colors.primary, fontWeight: 700 }}>{stat.val}</div>
-      <div style={{ color: DS.colors.textSec, fontSize: 10 }}>{stat.label}</div>
-    </div>
-  ))}
-</div>
-<p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>Debloque l'acces complet pour commencer.</p>
+          <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>Programme pret</p>
+          <h1 style={{ ...s.display, fontSize: 28, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 16 }}>
+            {programme?.titre || "Ton programme est pret"}
+          </h1>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
+            {[
+              { val: programme?.data_json?.semaines?.length || 8, label: "semaines" },
+              { val: programme?.data_json?.semaines?.[0]?.seances?.[0]?.exercices?.length || 5, label: "exercices/seance" },
+              { val: programme?.data_json?.semaines?.[0]?.seances?.length || 3, label: "seances/sem" },
+            ].map((stat, i) => (
+              <div key={i} style={{ flex: 1, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center" }}>
+                <div style={{ ...s.mono, fontSize: 20, color: DS.colors.primary, fontWeight: 700 }}>{stat.val}</div>
+                <div style={{ color: DS.colors.textSec, fontSize: 10 }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>Debloque l'acces complet pour commencer.</p>
         </div>
         <div style={{ background: DS.colors.goldSoft, border: `1px solid rgba(255,209,102,0.25)`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
@@ -1314,7 +1315,7 @@ export default function VoltraApp() {
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       @keyframes fillCircle { from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } }
-@keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+      @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
@@ -1355,11 +1356,7 @@ export default function VoltraApp() {
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
-  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => {
-  setProgrammeActif(programme);
-  setScreen("pricing");
-}} />;
-
+  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => { setProgrammeActif(programme); setScreen("pricing"); }} />;
   if (screen === "pricing") return <PricingScreen programme={programmeActif} onSelectPlan={() => setScreen("app")} />;
 
   return (
