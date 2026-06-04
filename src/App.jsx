@@ -778,10 +778,13 @@ function OnboardingScreen({ onComplete }) {
 
   const goNext = () => { setAnimIn(false); setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200); };
   const handleFinish = () => {
-  onComplete(data, null);
-  generateProgramIA(data).then(programme => {
-    onComplete(data, programme);
-  }).catch(err => console.error(err));
+  setLoading(true);
+  setTimeout(() => {
+    onComplete(data, null);
+    generateProgramIA(data).then(programme => {
+      onComplete(data, programme);
+    }).catch(err => console.error(err));
+  }, 3200);
 };
 
   const canNext = [data.sport !== null, data.objectif !== null, data.niveau !== null][step];
@@ -850,6 +853,33 @@ function OnboardingScreen({ onComplete }) {
           </div>
         )}
       </div>
+      {loading && (
+  <div style={{ position: "fixed", inset: 0, background: DS.colors.bg, zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", textAlign: "center" }}>
+    <div style={{ position: "relative", width: 100, height: 100, margin: "0 auto 32px" }}>
+      <svg width="100" height="100" viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
+        <circle cx="50" cy="50" r="44" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="6" />
+        <circle cx="50" cy="50" r="44" fill="none" stroke={DS.colors.primary} strokeWidth="6" strokeLinecap="round" strokeDasharray="276" strokeDashoffset="276" style={{ animation: "fillCircle 3s ease forwards" }} />
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>⚡</div>
+    </div>
+    <h2 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary, marginBottom: 12 }}>Construction de ton programme...</h2>
+    <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32, lineHeight: 1.6 }}>L'IA analyse ton profil pour créer 8 semaines de progression sur mesure.</p>
+    <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+      {[
+        { emoji: "🏋️", text: "Sélection des exercices", delay: "0s" },
+        { emoji: "📈", text: "Calcul de la progression", delay: "0.7s" },
+        { emoji: "⚡", text: "Optimisation pour " + (data.sport || "ton sport"), delay: "1.4s" },
+        { emoji: "✓", text: "Finalisation du programme", delay: "2.1s" },
+      ].map((item, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", opacity: 0, animation: `fadeIn 0.4s ease ${item.delay} forwards` }}>
+          <span style={{ fontSize: 20 }}>{item.emoji}</span>
+          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>{item.text}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
       <div style={{ paddingBottom: 48, paddingTop: 24 }}>
         <PrimaryButton onClick={step < 2 ? goNext : handleFinish} disabled={!canNext}>
   {step < 2 ? "Continuer" : "Generer mon programme"}
