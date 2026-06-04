@@ -855,10 +855,6 @@ function OnboardingScreen({ onComplete }) {
   {step < 2 ? "Continuer" : "Generer mon programme"}
 </PrimaryButton>
 {step > 0 && <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>}
-          <>
-            <PrimaryButton onClick={step < 2 ? goNext : handleFinish} disabled={!canNext}>{step < 2 ? "Continuer" : "Generer mon programme"}</PrimaryButton>
-            {step > 0 && <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>}
-          </>
         )}
       </div>
     </div>
