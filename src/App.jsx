@@ -1346,7 +1346,7 @@ export default function VoltraApp() {
   setScreen("pricing");
 }} />;
 
-  if (screen === "pricing") return <PricingScreen onSelectPlan={() => setScreen("app")} />;
+  if (screen === "pricing") return <PricingScreen programme={programmeActif} onSelectPlan={() => setScreen("app")} />;
 
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
