@@ -919,9 +919,23 @@ function PricingScreen({ onSelectPlan, programme }) {
     <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40 }}>
       <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>Ton programme est pret</p>
-          <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 10 }}>Choisis ton plan pour commencer</h1>
-          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>Acces complet a la progression automatique et a l'IA.</p>
+          <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>✦ Programme pret</p>
+<h1 style={{ ...s.display, fontSize: 28, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 16 }}>
+  {programme?.titre || "Ton programme est pret"}
+</h1>
+<div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
+  {[
+    { val: programme?.data_json?.semaines?.length || 8, label: "semaines" },
+    { val: programme?.data_json?.semaines?.[0]?.seances?.[0]?.exercices?.length || 5, label: "exercices/seance" },
+    { val: programme?.data_json?.semaines?.[0]?.seances?.length || 3, label: "seances/sem" },
+  ].map((stat, i) => (
+    <div key={i} style={{ flex: 1, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center" }}>
+      <div style={{ ...s.mono, fontSize: 20, color: DS.colors.primary, fontWeight: 700 }}>{stat.val}</div>
+      <div style={{ color: DS.colors.textSec, fontSize: 10 }}>{stat.label}</div>
+    </div>
+  ))}
+</div>
+<p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>Debloque l'acces complet pour commencer.</p>
         </div>
         <div style={{ background: DS.colors.goldSoft, border: `1px solid rgba(255,209,102,0.25)`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
