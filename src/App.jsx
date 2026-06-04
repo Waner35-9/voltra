@@ -894,7 +894,7 @@ function OnboardingScreen({ onComplete }) {
 // ─────────────────────────────────────────────
 // ECRAN PRICING
 // ─────────────────────────────────────────────
-function PricingScreen({ onSelectPlan }) {
+function PricingScreen({ onSelectPlan, programme }) {
   const [selected, setSelected] = useState("annual");
   const [timeLeft, setTimeLeft] = useState({ h: 23, m: 47, s: 12 });
   const [showFeatures, setShowFeatures] = useState(false);
