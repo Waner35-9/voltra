@@ -1299,6 +1299,8 @@ export default function VoltraApp() {
       ::-webkit-scrollbar { display: none; }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      @keyframes fillCircle { from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
