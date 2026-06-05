@@ -73,24 +73,50 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
 }
 
 
+// ─────────────────────────────────────────────
+// SPORT THEMES
+// ─────────────────────────────────────────────
+const SPORT_THEMES = {
+  basketball: { accent: "#FF8C00", accentRgb: "255,140,0", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(255,140,0,0.06), transparent)" },
+  football:   { accent: "#00D94F", accentRgb: "0,217,79",  bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(0,217,79,0.06), transparent)" },
+  tennis:     { accent: "#FFE500", accentRgb: "255,229,0", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(255,229,0,0.06), transparent)" },
+  rugby:      { accent: "#FF4500", accentRgb: "255,69,0",  bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(255,69,0,0.07), transparent)" },
+  natation:   { accent: "#00C8FF", accentRgb: "0,200,255", bg: "radial-gradient(ellipse 400px 200px at 50% 0%, rgba(0,200,255,0.07), transparent)" },
+  sprint:     { accent: "#FF2D55", accentRgb: "255,45,85", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(255,45,85,0.06), transparent)" },
+  combat:     { accent: "#CC00FF", accentRgb: "204,0,255", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(204,0,255,0.07), transparent)" },
+  default:    { accent: "#00FF87", accentRgb: "0,255,135", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(0,255,135,0.06), transparent)" },
+};
+
+function getSportTheme(sport) {
+  return SPORT_THEMES[sport] || SPORT_THEMES.default;
+}
+
+// Alias for backwards compatibility
+const s = {
+  mono: { fontFamily: "'Space Mono', 'Courier New', monospace" },
+  display: { fontFamily: "'Rajdhani', system-ui, sans-serif", fontWeight: 700, letterSpacing: "0.02em", textTransform: "uppercase" },
+  heading: { fontFamily: "'Rajdhani', system-ui, sans-serif", fontWeight: 600 },
+  body: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 },
+};
+
 const DS = {
   colors: {
-    bg: "#0A0A0F", surface: "#13131A", surfaceUp: "#1C1C26", surfaceHigh: "#242433",
-    primary: "#6C63FF", primarySoft: "rgba(108,99,255,0.10)", primaryGlow: "rgba(108,99,255,0.25)",
-    success: "#00E5A0", successSoft: "rgba(0,229,160,0.12)",
-    warning: "#FF6B35", warningSoft: "rgba(255,107,53,0.12)",
-    gold: "#FFD166", goldSoft: "rgba(255,209,102,0.12)",
-    textPrimary: "#F0F0F8", textSec: "#7A7A9A", textDim: "#3A3A50",
-    border: "rgba(255,255,255,0.06)", borderAccent: "rgba(108,99,255,0.35)",
+    bg: "#06060E", surface: "#0D0D18", surfaceUp: "#141420", surfaceHigh: "#1A1A28",
+    primary: "#00FF87", primarySoft: "rgba(0,255,135,0.10)", primaryGlow: "rgba(0,255,135,0.25)",
+    success: "#00FF87", successSoft: "rgba(0,255,135,0.12)",
+    warning: "#FF8C00", warningSoft: "rgba(255,140,0,0.12)",
+    gold: "#FFE500", goldSoft: "rgba(255,229,0,0.12)",
+    textPrimary: "#FFFFFF", textSec: "#6B6B8A", textDim: "#2A2A3A",
+    border: "rgba(255,255,255,0.05)", borderAccent: "rgba(0,255,135,0.25)",
   },
-  radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 999 },
-  shadow: { primary: "0 8px 32px rgba(108,99,255,0.3)", card: "0 4px 24px rgba(0,0,0,0.4)", glow: "0 0 40px rgba(108,99,255,0.15)" },
-};
-const s = {
-  mono: { fontFamily: "'JetBrains Mono', 'Courier New', monospace" },
-  display: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 800, letterSpacing: "-0.03em" },
-  heading: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 600 },
-  body: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 },
+  radius: { sm: 8, md: 14, lg: 18, xl: 24, full: 999 },
+  shadow: { primary: "0 8px 32px rgba(0,255,135,0.2)", card: "0 4px 24px rgba(0,0,0,0.6)", glow: "0 0 40px rgba(0,255,135,0.15)" },
+  fonts: {
+    display: { fontFamily: "'Rajdhani', 'Barlow Condensed', system-ui, sans-serif", fontWeight: 700, letterSpacing: "0.02em" },
+    mono: { fontFamily: "'Space Mono', 'Courier New', monospace" },
+    heading: { fontFamily: "'Rajdhani', system-ui, sans-serif", fontWeight: 600 },
+    body: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 },
+  }
 };
 
 function PrimaryButton({ children, onClick, disabled, style = {} }) {
@@ -482,6 +508,15 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [coachLoading, setCoachLoading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(null);
   const [startTime] = useState(() => Date.now());
+  const [elapsed, setElapsed] = useState(0);
+  const [celebrate, setCelebrate] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [startTime]);
+
+  const formatElapsed = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
@@ -546,7 +581,9 @@ function SeanceScreen({ seance, onFinish, onBack }) {
       setWaitingRest(true);
     } else {
       if (exIdx < exercices.length - 1) {
-        setTimeout(() => { setExIdx(i => i + 1); setSetIdx(0); setAnimKey(k => k + 1); }, 400);
+        setCelebrate(true);
+        setTimeout(() => setCelebrate(false), 1200);
+        setTimeout(() => { setExIdx(i => i + 1); setSetIdx(0); setAnimKey(k => k + 1); }, 500);
       } else {
         setTimeout(() => setShowSummary(true), 600);
       }
@@ -603,6 +640,15 @@ function SeanceScreen({ seance, onFinish, onBack }) {
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, maxWidth: 430, margin: "0 auto" }}>
+      {/* Celebration exercice fini */}
+      {celebrate && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+          <div style={{ fontSize: 80, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards" }}>💥</div>
+          <div style={{ position: "absolute", fontSize: 40, top: "35%", left: "20%", animation: "floatUp 1s ease forwards", animationDelay: "0.1s", opacity: 0 }}>⚡</div>
+          <div style={{ position: "absolute", fontSize: 30, top: "30%", right: "20%", animation: "floatUp 1s ease forwards", animationDelay: "0.2s", opacity: 0 }}>✨</div>
+        </div>
+      )}
+
       {/* Toast motivation */}
       {toast && (
         <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: DS.colors.success, color: DS.colors.bg, padding: "8px 20px", borderRadius: DS.radius.full, fontSize: 14, ...s.heading, zIndex: 200, boxShadow: `0 4px 20px ${DS.colors.success}60`, whiteSpace: "nowrap" }}>
@@ -618,8 +664,8 @@ function SeanceScreen({ seance, onFinish, onBack }) {
             <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{exIdx + 1} / {exercices.length} exercices</p>
             <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{seance.titre}</p>
           </div>
-          <div style={{ background: accentColor + "20", border: `1px solid ${accentColor}40`, borderRadius: DS.radius.full, padding: "4px 12px", fontSize: 12, color: accentColor, ...s.mono, fontWeight: 700 }}>
-            {seance.dureeMin}m
+          <div style={{ background: accentColor + "20", border: `1px solid ${accentColor}40`, borderRadius: DS.radius.full, padding: "4px 12px", fontSize: 12, color: accentColor, fontFamily: "'Space Mono',monospace", fontWeight: 700 }}>
+            {formatElapsed(elapsed)}
           </div>
         </div>
         <div style={{ height: 3, background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, overflow: "hidden" }}>
@@ -826,11 +872,13 @@ function SeanceScreen({ seance, onFinish, onBack }) {
 // ─────────────────────────────────────────────
 function SplashScreen() {
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, boxShadow: DS.shadow.primary, animation: "pulse 1.5s ease-in-out infinite" }}>
-        ⚡
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(0,255,135,0.06), transparent)", pointerEvents: "none" }} />
+      <div style={{ animation: "splashPulse 1.5s ease-in-out infinite" }}>
+        <div style={{ width: 80, height: 80, borderRadius: 22, background: "linear-gradient(135deg, #00FF87, #00C896)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, boxShadow: "0 0 60px rgba(0,255,135,0.4)", marginBottom: 24, margin: "0 auto 24px" }}>⚡</div>
       </div>
-      <p style={{ color: DS.colors.textSec, fontSize: 14, marginTop: 20, ...s.body }}>Chargement...</p>
+      <div style={{ ...s.display, fontSize: 42, color: "white", letterSpacing: "0.15em", marginBottom: 8, textAlign: "center" }}>VOLTRA</div>
+      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase" }}>Performance · IA · Sport</div>
     </div>
   );
 }
@@ -1474,6 +1522,8 @@ function MatchsScreen({ user, onBack }) {
 function DashboardScreen({ user, programme, matchs, derniereSeance, onStartSession, onOpenMatchs }) {
   const progData = programme?.data_json;
   const seance = progData?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
+  const sport = progData?.sport || user?.user_metadata?.sport || "default";
+  const theme = getSportTheme(sport);
   const prog = {
     titre: programme?.titre || MOCK_PROGRAM.titre,
     semaineCourante: programme?.semaine_courante || MOCK_PROGRAM.semaineCourante,
@@ -1482,24 +1532,34 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, onStartSessi
   };
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
 
-  // Logique match le plus proche
+  // Salutation selon heure
+  const hour = new Date().getHours();
+  const greeting = hour < 6 ? "Bonne nuit" : hour < 12 ? "Bonne matinee" : hour < 18 ? "Bon apres-midi" : "Bonne soiree";
+
+  // Match le plus proche
   const prochainMatch = matchs?.length > 0 ? matchs[0] : null;
   const daysUntilMatch = prochainMatch ? Math.ceil((new Date(prochainMatch.date_match) - new Date()) / (1000 * 60 * 60 * 24)) : null;
   const matchAlert = daysUntilMatch !== null ? (
-    daysUntilMatch <= 0 ? { color: DS.colors.warning, text: "Match aujourd'hui - repos ou activation legere", emoji: "⚡" } :
-    daysUntilMatch === 1 ? { color: DS.colors.warning, text: `Match demain - seance tres legere`, emoji: "⚠️" } :
-    daysUntilMatch <= 3 ? { color: DS.colors.gold, text: `Match dans ${daysUntilMatch} jours - charges reduites`, emoji: "📅" } :
+    daysUntilMatch <= 0 ? { color: theme.accent, text: "Match aujourd'hui - repos ou activation legere", emoji: "⚡" } :
+    daysUntilMatch === 1 ? { color: theme.accent, text: "Match demain - seance tres legere", emoji: "⚠️" } :
+    daysUntilMatch <= 3 ? { color: theme.accent, text: `Match dans ${daysUntilMatch} jours - charges reduites`, emoji: "📅" } :
     null
   ) : null;
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100, position: "relative" }}>
+      {/* Sport background glow */}
+      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
+
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,6,14,0.92)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>Bonjour,</p>
-          <p style={{ color: DS.colors.textPrimary, fontSize: 18, ...s.heading }}>{userName} 👋</p>
+          <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 2 }}>{greeting},</p>
+          <p style={{ color: DS.colors.textPrimary, fontSize: 20, ...s.display, letterSpacing: "0.08em" }}>{userName.toUpperCase()}</p>
         </div>
-        <div style={{ width: 42, height: 42, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16, ...s.display, boxShadow: DS.shadow.primary }}>
+        <div style={{ width: 42, height: 42, background: theme.accent + "20", borderRadius: DS.radius.md, border: `1px solid ${theme.accent}40`, display: "flex", alignItems: "center", justifyContent: "center", color: theme.accent, fontSize: 18, fontWeight: 800, fontFamily: "'Rajdhani', sans-serif" }}>
+          {userName[0].toUpperCase()}
+        </div>
+      </div>
           {userName[0].toUpperCase()}
         </div>
       </div>
@@ -1530,16 +1590,19 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, onStartSessi
         </div>
 
         <div style={{ marginBottom: 24 }}>
-          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, marginBottom: 6 }}>Semaine {prog.semaineCourante} - Seance 1</p>
-          <h1 style={{ ...s.display, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1.15, marginBottom: 16 }}>{seance.titre}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.2em", textTransform: "uppercase" }}>SEMAINE {prog.semaineCourante} / {prog.totalSemaines}</div>
+            <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${theme.accent}40, transparent)` }} />
+          </div>
+          <h1 style={{ ...s.display, fontSize: 38, color: DS.colors.textPrimary, lineHeight: 0.95, marginBottom: 16, letterSpacing: "0.02em" }}>{(seance.titre || "").toUpperCase()}</h1>
           <ProgressBar value={prog.progression} />
-          <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginTop: 8 }}>Programme {prog.titre} - {prog.progression}% complete</p>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, marginTop: 6, letterSpacing: "0.15em" }}>{prog.progression}% COMPLETE</p>
         </div>
-        <Card style={{ marginBottom: 24, overflow: "hidden", position: "relative" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${DS.colors.primary}, ${DS.colors.success})` }} />
+        <Card style={{ marginBottom: 24, overflow: "hidden", position: "relative", background: DS.colors.surface, border: `1px solid ${theme.accent}20` }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <Badge color="primary">Aujourd'hui</Badge>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, color: DS.colors.textSec, fontSize: 13 }}>{Icons.clock()} {seance.dureeMin} min</div>
+            <div style={{ display: "inline-flex", padding: "3px 10px", background: theme.accent + "15", border: `1px solid ${theme.accent}35`, borderRadius: DS.radius.full, color: theme.accent, fontSize: 11, fontWeight: 700, fontFamily: "'Space Mono',monospace", letterSpacing: "0.1em" }}>AUJOURD'HUI</div>
+            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: DS.colors.textSec }}>{seance.dureeMin} MIN</div>
           </div>
           <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
             {[
@@ -1553,7 +1616,7 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, onStartSessi
               </div>
             ))}
           </div>
-          <PrimaryButton onClick={onStartSession}>Demarrer la seance</PrimaryButton>
+          <PrimaryButton onClick={onStartSession} style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, boxShadow: `0 8px 24px rgba(${theme.accentRgb},0.3)`, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.1em" }}>▶ DEMARRER LA SEANCE</PrimaryButton>
         </Card>
         <div style={{ marginBottom: 28 }}>
           <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Au programme</p>
@@ -2021,14 +2084,17 @@ export default function VoltraApp() {
   useEffect(() => {
     const style = document.createElement("style");
     style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Bebas+Neue&display=swap');
       * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-      body { background: ${DS.colors.bg}; color: ${DS.colors.textPrimary}; font-family: 'Inter', system-ui, sans-serif; }
+      body { background: #06060E; color: #FFFFFF; font-family: 'Inter', system-ui, sans-serif; }
       ::-webkit-scrollbar { display: none; }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       @keyframes fillCircle { from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } }
       @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+      @keyframes splashPulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(0,255,135,0.5)); } 50% { transform: scale(1.08); filter: drop-shadow(0 0 40px rgba(0,255,135,0.8)); } }
+      @keyframes celebrate { 0% { transform: scale(0) rotate(-10deg); opacity: 0; } 50% { transform: scale(1.2) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+      @keyframes floatUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-60px); opacity: 0; } }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
