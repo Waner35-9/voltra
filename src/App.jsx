@@ -1833,8 +1833,12 @@ export default function VoltraApp() {
       else { setScreen("auth"); }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) { setUser(session.user); }
-      else { setUser(null); setScreen("auth"); }
+      if (session?.user) {
+        setUser(session.user);
+      } else if (_event === "SIGNED_OUT") {
+        setUser(null);
+        setScreen("auth");
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
