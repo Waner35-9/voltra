@@ -1054,7 +1054,12 @@ function OnboardingScreen({ onComplete }) {
     setLoading(true);
     setTimeout(() => {
       onComplete(data, null);
-      generateProgramIA(data).then(programme => {
+      generateProgramIA(data).then(async programme => {
+        // Sauvegarder le sport dans le profil
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.from("profiles").upsert({ id: session.user.id, sport: data.sport }, { onConflict: "id" });
+        }
         onComplete(data, programme);
       }).catch(err => console.error(err));
     }, 3200);
@@ -1524,10 +1529,10 @@ function MatchsScreen({ user, onBack }) {
 
 // ─────────────────────────────────────────────
 // DASHBOARD
-function DashboardScreen({ user, programme, matchs, derniereSeance, onStartSession, onOpenMatchs }) {
+function DashboardScreen({ user, programme, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs }) {
   const progData = programme?.data_json;
   const seance = progData?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
-  const sport = progData?.sport || user?.user_metadata?.sport || "default";
+  const sport = sportProp || progData?.sport || user?.user_metadata?.sport || "default";
   const theme = getSportTheme(sport);
   const prog = {
     titre: programme?.titre || MOCK_PROGRAM.titre,
@@ -1557,8 +1562,8 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, onStartSessi
       <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
 
       {/* Sport illustration en fond */}
-      <div style={{ position: "absolute", top: 40, right: -20, fontSize: 160, opacity: 0.04, pointerEvents: "none", filter: "blur(3px)", lineHeight: 1, userSelect: "none", zIndex: 0 }}>
-        {SPORT_EMOJIS[sport] || "⚡"}
+      <div style={{ position: "absolute", top: 20, right: -10, fontSize: 180, opacity: 0.06, pointerEvents: "none", lineHeight: 1, userSelect: "none", zIndex: 0, transform: "rotate(-15deg)" }}>
+        {SPORT_EMOJIS[sport] || SPORT_EMOJIS[progData?.programme?.sport] || SPORT_EMOJIS[user?.user_metadata?.sport] || "⚡"}
       </div>
 
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,6,14,0.92)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -2088,6 +2093,7 @@ export default function VoltraApp() {
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
   const [programmeActif, setProgrammeActif] = useState(null);
+  const [sportActif, setSportActif] = useState(null);
   const [matchs, setMatchs] = useState([]);
   const [showMatchs, setShowMatchs] = useState(false);
   const [derniereSeance, setDerniereSeance] = useState(null);
@@ -2154,6 +2160,13 @@ export default function VoltraApp() {
       .order("date_match", { ascending: true })
       .limit(5)
       .then(({ data }) => { if (data) setMatchs(data); });
+    // Charger le sport depuis le profil
+    supabase
+      .from("profiles")
+      .select("sport")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => { if (data?.sport) setSportActif(data.sport); });
     supabase
       .from("seances")
       .select("*, exercices(*)")
@@ -2167,7 +2180,7 @@ export default function VoltraApp() {
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
-  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => { setProgrammeActif(programme); setScreen("pricing"); }} />;
+  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => { setProgrammeActif(programme); setSportActif(data.sport); setScreen("pricing"); }} />;
   if (screen === "pricing") return <PricingScreen programme={programmeActif} onSelectPlan={() => setScreen("app")} />;
 
   return (
@@ -2207,6 +2220,7 @@ export default function VoltraApp() {
               programme={programmeActif}
               matchs={matchs}
               derniereSeance={derniereSeance}
+              sport={sportActif}
               onOpenMatchs={() => setShowMatchs(true)}
               onStartSession={() => {
                 const prog = programmeActif?.data_json;
