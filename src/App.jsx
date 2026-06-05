@@ -465,6 +465,7 @@ function SeanceScreen({ seance, onFinish, onBack }) {
     setCoachLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Pas de session");
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`,
         {
@@ -481,10 +482,12 @@ function SeanceScreen({ seance, onFinish, onBack }) {
           }),
         }
       );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setCoachMessages(prev => [...prev, { role: "assistant", text: data.reply || "Desolé, erreur de reponse." }]);
-    } catch {
-      setCoachMessages(prev => [...prev, { role: "assistant", text: "Erreur de connexion. Reessaie." }]);
+      setCoachMessages(prev => [...prev, { role: "assistant", text: data.reply || "Desolé, erreur." }]);
+    } catch (err) {
+      console.error("Coach error:", err);
+      setCoachMessages(prev => [...prev, { role: "assistant", text: "Erreur. Reessaie dans quelques secondes." }]);
     }
     setCoachLoading(false);
   };
