@@ -433,6 +433,12 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [feedback, setFeedback] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [toast, setToast] = useState(null);
+  const [showCoach, setShowCoach] = useState(false);
+  const [coachMessages, setCoachMessages] = useState([
+    { role: "assistant", text: "Coach IA pret ! Dis-moi si tu as du mal avec un exercice, si tu ressens une douleur ou si tu veux adapter la seance." }
+  ]);
+  const [coachInput, setCoachInput] = useState("");
+  const [coachLoading, setCoachLoading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(null);
   const [startTime] = useState(() => Date.now());
 
@@ -450,6 +456,38 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const totalSets = currentEx ? (currentEx.sets || 4) : 4;
   const progressPct = currentEx ? Math.round(((exIdx + setIdx / totalSets) / exercices.length) * 100) : 100;
   const accentColor = getExerciceColor(seance.type, exIdx);
+
+  const sendCoachMessage = async () => {
+    if (!coachInput.trim() || coachLoading) return;
+    const userMsg = coachInput.trim();
+    setCoachInput("");
+    setCoachMessages(prev => [...prev, { role: "user", text: userMsg }]);
+    setCoachLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+            "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            message: userMsg,
+            exercice: currentEx,
+            seance: { titre: seance?.titre },
+          }),
+        }
+      );
+      const data = await res.json();
+      setCoachMessages(prev => [...prev, { role: "assistant", text: data.reply || "Desolé, erreur de reponse." }]);
+    } catch {
+      setCoachMessages(prev => [...prev, { role: "assistant", text: "Erreur de connexion. Reessaie." }]);
+    }
+    setCoachLoading(false);
+  };
 
   const handleSetComplete = () => {
     const key = `${exIdx}-${setIdx}`;
@@ -681,6 +719,60 @@ function SeanceScreen({ seance, onFinish, onBack }) {
           </div>
         )}
       </div>
+
+      {/* Bouton Coach flottant */}
+      <button onClick={() => setShowCoach(true)} style={{ position: "fixed", bottom: 32, right: 20, width: 56, height: 56, borderRadius: DS.radius.full, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, border: "none", color: "white", fontSize: 22, cursor: "pointer", boxShadow: DS.shadow.primary, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150 }}>
+        🤖
+      </button>
+
+      {/* Drawer Coach IA */}
+      {showCoach && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div onClick={() => setShowCoach(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "0 0 40px", maxHeight: "75vh", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "20px 20px 16px", borderBottom: `1px solid ${DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: DS.radius.full, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🤖</div>
+                <div>
+                  <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>Coach IA</p>
+                  <p style={{ color: DS.colors.success, fontSize: 11, ...s.body }}>En ligne</p>
+                </div>
+              </div>
+              <button onClick={() => setShowCoach(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer", fontSize: 16 }}>✕</button>
+            </div>
+            {currentEx && (
+              <div style={{ margin: "12px 20px 0", background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "8px 12px" }}>
+                <p style={{ color: DS.colors.primary, fontSize: 12, ...s.heading }}>{currentEx.nom} - {currentEx.sets}x{currentEx.reps}{currentEx.chargeKg > 0 ? ` @ ${currentEx.chargeKg}kg` : ""}</p>
+              </div>
+            )}
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+              {coachMessages.map((msg, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                  <div style={{ maxWidth: "80%", padding: "10px 14px", borderRadius: DS.radius.lg, background: msg.role === "user" ? DS.colors.primary : DS.colors.surfaceHigh, color: "white", fontSize: 14, lineHeight: 1.5 }}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {coachLoading && (
+                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                  <div style={{ padding: "10px 16px", borderRadius: DS.radius.lg, background: DS.colors.surfaceHigh, display: "flex", gap: 4, alignItems: "center" }}>
+                    {[0, 1, 2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: DS.radius.full, background: DS.colors.textSec, animation: `pulse 1s ease ${i * 0.2}s infinite` }} />)}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div style={{ padding: "12px 20px 0", display: "flex", gap: 10 }}>
+              <input value={coachInput} onChange={e => setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder="J'arrive pas a faire les reps..." style={{ flex: 1, height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 14, outline: "none" }} />
+              <button onClick={sendCoachMessage} disabled={!coachInput.trim() || coachLoading} style={{ width: 44, height: 44, borderRadius: DS.radius.full, background: coachInput.trim() ? DS.colors.primary : DS.colors.surfaceHigh, border: "none", color: "white", cursor: "pointer", fontSize: 18, flexShrink: 0 }}>→</button>
+            </div>
+            <div style={{ padding: "10px 20px 0", display: "flex", gap: 8, overflowX: "auto" }}>
+              {["J'arrive pas a finir les reps", "J'ai mal au genou", "C'est trop lourd", "Variante plus facile ?"].map((suggestion, i) => (
+                <button key={i} onClick={() => setCoachInput(suggestion)} style={{ flexShrink: 0, padding: "6px 12px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textSec, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>{suggestion}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
