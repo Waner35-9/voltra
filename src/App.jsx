@@ -239,7 +239,10 @@ const SPORTS = [
   { id: "natation", label: "Natation", emoji: "🏊" },
   { id: "combat", label: "Combat", emoji: "🥊" },
 ];
-const OBJECTIFS_PAR_SPORT = {
+const SPORT_EMOJIS = {
+  basketball: "🏀", football: "⚽", tennis: "🎾",
+  rugby: "🏉", natation: "🏊", sprint: "🏃", combat: "🥊", default: "⚡"
+};
   basketball: [
     { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
     { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
@@ -1551,8 +1554,17 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, onStartSessi
       {/* Sport background glow */}
       <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
 
+      {/* Sport illustration en fond */}
+      <div style={{ position: "absolute", top: 40, right: -20, fontSize: 160, opacity: 0.04, pointerEvents: "none", filter: "blur(3px)", lineHeight: 1, userSelect: "none", zIndex: 0 }}>
+        {SPORT_EMOJIS[sport] || "⚡"}
+      </div>
+
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,6,14,0.92)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "2px 8px", marginBottom: 4 }}>
+            <span style={{ fontSize: 11 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
+            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>{sport || "SPORT"}</span>
+          </div>
           <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 2 }}>{greeting},</p>
           <p style={{ color: DS.colors.textPrimary, fontSize: 20, ...s.display, letterSpacing: "0.08em" }}>{userName.toUpperCase()}</p>
         </div>
