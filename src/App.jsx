@@ -392,31 +392,72 @@ function RestTimer({ seconds, onComplete }) {
 }
 
 async function getExercicePhoto(nom) {
-  const keywords = {
-    squat: "squat barbell", deadlift: "deadlift weightlifting", rdl: "romanian deadlift",
-    bench: "bench press weightlifting", developpe: "bench press chest",
-    traction: "pull ups bar", pull: "pull ups fitness",
-    jump: "box jump athlete", box: "box jump training", saut: "jump training athlete",
-    lunge: "lunges fitness", fente: "lunges training",
-    hip: "hip thrust glutes", thrust: "hip thrust training",
-    row: "barbell row back", rowing: "rowing fitness",
-    kettlebell: "kettlebell swing", swing: "kettlebell training",
-    planche: "plank core fitness", plank: "plank exercise",
-    press: "overhead press barbell", pompe: "push ups fitness", push: "push ups training",
-    curl: "bicep curl dumbbell", mollet: "calf raise fitness",
-  };
   const n = (nom || "").toLowerCase();
-  let query = "gym workout fitness";
-  for (const [key, val] of Object.entries(keywords)) {
-    if (n.includes(key)) { query = val; break; }
+
+  // Mapping precis par exercice
+  const exactMatch = [
+    { keys: ["squat barre", "back squat", "squat"], q: "barbell back squat gym" },
+    { keys: ["front squat"], q: "front squat barbell" },
+    { keys: ["goblet squat"], q: "goblet squat dumbbell" },
+    { keys: ["romanian deadlift", "rdl", "soulevé de terre roumain"], q: "romanian deadlift barbell gym" },
+    { keys: ["soulevé de terre", "deadlift"], q: "deadlift barbell powerlifting" },
+    { keys: ["sumo deadlift"], q: "sumo deadlift barbell" },
+    { keys: ["développé couché", "bench press", "developpe couche"], q: "bench press barbell chest gym" },
+    { keys: ["développé incliné", "incline bench", "developpe incline"], q: "incline bench press dumbbell" },
+    { keys: ["développé épaules", "overhead press", "military press", "developpe epaules"], q: "overhead press barbell shoulders" },
+    { keys: ["traction", "pull up", "tractions"], q: "pull up bar athlete calisthenics" },
+    { keys: ["lat pulldown", "tirage nuque", "tirage poitrine"], q: "lat pulldown cable machine" },
+    { keys: ["rowing barre", "bent over row"], q: "barbell row bent over back" },
+    { keys: ["rowing haltere", "dumbbell row"], q: "dumbbell row single arm back" },
+    { keys: ["box jump", "saut boite"], q: "box jump athlete explosive training" },
+    { keys: ["saut en longueur", "broad jump"], q: "broad jump athlete training" },
+    { keys: ["burpee", "burpees"], q: "burpees athlete hiit training" },
+    { keys: ["hip thrust", "pont fessier"], q: "hip thrust barbell glutes gym" },
+    { keys: ["fente", "lunge"], q: "lunges barbell dumbbell legs gym" },
+    { keys: ["leg press", "presse a cuisses"], q: "leg press machine gym" },
+    { keys: ["leg extension", "extension jambes"], q: "leg extension machine quadriceps" },
+    { keys: ["leg curl", "curl jambes"], q: "leg curl machine hamstrings" },
+    { keys: ["mollet", "calf raise", "mollets"], q: "calf raise standing machine" },
+    { keys: ["kettlebell swing", "swing kettlebell"], q: "kettlebell swing athlete training" },
+    { keys: ["kettlebell", "girevoy"], q: "kettlebell workout training" },
+    { keys: ["planche", "plank", "gainage"], q: "plank core strength athlete" },
+    { keys: ["abdos", "crunch", "sit up"], q: "abs workout crunch core athlete" },
+    { keys: ["curl biceps", "bicep curl", "curl haltere"], q: "bicep curl dumbbell gym" },
+    { keys: ["triceps", "dips triceps", "extension triceps"], q: "triceps extension pushdown gym" },
+    { keys: ["pompes", "push up", "pushup"], q: "push ups athlete workout" },
+    { keys: ["dips", "dip"], q: "dips parallel bars triceps gym" },
+    { keys: ["sprint", "vitesse"], q: "sprint athlete track speed training" },
+    { keys: ["corde a sauter", "jump rope", "corde"], q: "jump rope athlete training cardio" },
+    { keys: ["sled", "traineau"], q: "sled push athlete power training" },
+    { keys: ["battle rope", "corde ondulatoire"], q: "battle ropes athlete training" },
+    { keys: ["oiseau", "rear delt", "oiseau haltere"], q: "rear delt fly dumbbell" },
+    { keys: ["elevation laterale", "lateral raise"], q: "lateral raise dumbbell shoulders" },
+    { keys: ["face pull", "tirage visage"], q: "face pull cable rear deltoid" },
+    { keys: ["rowing poulie", "cable row"], q: "seated cable row back machine" },
+    { keys: ["step up", "montee marche"], q: "step up box dumbbell legs" },
+  ];
+
+  let query = null;
+  for (const entry of exactMatch) {
+    if (entry.keys.some(k => n.includes(k))) {
+      query = entry.q;
+      break;
+    }
   }
+
+  // Fallback: utilise le nom directement
+  if (!query) query = `${nom} exercise gym workout`;
+
   try {
     const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5&orientation=landscape`,
       { headers: { Authorization: import.meta.env.VITE_PEXELS_API_KEY } }
     );
     const data = await res.json();
-    return data.photos?.[0]?.src?.large || null;
+    if (!data.photos || data.photos.length === 0) return null;
+    // Prend une photo aleatoire parmi les 3 premieres
+    const idx = Math.floor(Math.random() * Math.min(3, data.photos.length));
+    return data.photos[idx]?.src?.large || null;
   } catch { return null; }
 }
 
@@ -476,11 +517,10 @@ function SeanceScreen({ seance, onFinish, onBack }) {
             "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
-  message: userMsg,
-  exercice: currentEx,
-  seance: { titre: seance?.titre },
-  history: coachMessages.slice(-6),
-}),
+            message: userMsg,
+            exercice: currentEx,
+            seance: { titre: seance?.titre },
+          }),
         }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
