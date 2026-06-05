@@ -243,6 +243,8 @@ const SPORT_EMOJIS = {
   basketball: "🏀", football: "⚽", tennis: "🎾",
   rugby: "🏉", natation: "🏊", sprint: "🏃", combat: "🥊", default: "⚡"
 };
+
+const OBJECTIFS_PAR_SPORT = {
   basketball: [
     { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
     { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
