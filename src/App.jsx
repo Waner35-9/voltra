@@ -1560,9 +1560,6 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, onStartSessi
           {userName[0].toUpperCase()}
         </div>
       </div>
-          {userName[0].toUpperCase()}
-        </div>
-      </div>
       <div style={{ padding: "24px 20px 0" }}>
 
         {/* Alerte match */}
