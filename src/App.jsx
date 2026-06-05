@@ -476,10 +476,11 @@ function SeanceScreen({ seance, onFinish, onBack }) {
             "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
-            message: userMsg,
-            exercice: currentEx,
-            seance: { titre: seance?.titre },
-          }),
+  message: userMsg,
+  exercice: currentEx,
+  seance: { titre: seance?.titre },
+  history: coachMessages.slice(-6),
+}),
         }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
