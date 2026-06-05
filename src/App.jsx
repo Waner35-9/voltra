@@ -2195,6 +2195,7 @@ export default function VoltraApp() {
               console.error("onFinish error:", err);
             } finally {
               setSeanceActive(null);
+              setScreen("app");
             }
           }}
         />
