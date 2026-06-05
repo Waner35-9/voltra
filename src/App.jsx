@@ -1471,8 +1471,7 @@ function MatchsScreen({ user, onBack }) {
 
 // ─────────────────────────────────────────────
 // DASHBOARD
-// ─────────────────────────────────────────────
-function DashboardScreen({ user, programme, matchs, onStartSession, onOpenMatchs }) {
+function DashboardScreen({ user, programme, matchs, derniereSeance, onStartSession, onOpenMatchs }) {
   const progData = programme?.data_json;
   const seance = progData?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
   const prog = {
@@ -1480,7 +1479,6 @@ function DashboardScreen({ user, programme, matchs, onStartSession, onOpenMatchs
     semaineCourante: programme?.semaine_courante || MOCK_PROGRAM.semaineCourante,
     totalSemaines: programme?.total_semaines || MOCK_PROGRAM.totalSemaines,
     progression: Math.round(((programme?.semaine_courante || 1) / (programme?.total_semaines || 8)) * 100),
-    derniereSeance: MOCK_PROGRAM.derniereSeance,
   };
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
 
@@ -1577,20 +1575,28 @@ function DashboardScreen({ user, programme, matchs, onStartSession, onOpenMatchs
         </div>
         <div style={{ marginBottom: 28 }}>
           <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Derniere seance</p>
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div>
-                <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginBottom: 4 }}>Il y a {prog.derniereSeance.joursPasses} jours</p>
-                <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading }}>{prog.derniereSeance.titre}</p>
+          {derniereSeance ? (
+            <Card>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div>
+                  <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginBottom: 4 }}>
+                    {new Date(derniereSeance.date_realisee).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}
+                  </p>
+                  <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading }}>{derniereSeance.titre}</p>
+                </div>
+                <Badge color="success">Faite</Badge>
               </div>
-              <Badge color="success">Faite</Badge>
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              {[`${prog.derniereSeance.nbExercices} exercices`, `${prog.derniereSeance.dureeMin} min`, `+${prog.derniereSeance.gainKg} kg`].map((stat, i) => (
-                <div key={i} style={{ flex: 1, padding: "8px 4px", textAlign: "center", background: DS.colors.surfaceHigh, borderRadius: DS.radius.sm, color: DS.colors.textSec, fontSize: 12 }}>{stat}</div>
-              ))}
-            </div>
-          </Card>
+              <div style={{ display: "flex", gap: 10 }}>
+                {[`${derniereSeance.exercices?.length || 0} exercices`, `${derniereSeance.duree_min || 0} min`].map((stat, i) => (
+                  <div key={i} style={{ flex: 1, padding: "8px 4px", textAlign: "center", background: DS.colors.surfaceHigh, borderRadius: DS.radius.sm, color: DS.colors.textSec, fontSize: 12 }}>{stat}</div>
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, textAlign: "center" }}>Aucune seance encore — demarre ta premiere !</p>
+            </Card>
+          )}
         </div>
       </div>
     </div>
@@ -1656,14 +1662,23 @@ function HistoriqueScreen() {
         </div>
         <Card style={{ marginBottom: 28 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading }}>Squat barre</p>
-            <Badge color="success">+15 kg</Badge>
+            <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading }}>Historique des seances</p>
+            <Badge color="primary">{totalSeances} faites</Badge>
           </div>
-          <svg viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", height: 80 }}>
-            <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={DS.colors.primary} stopOpacity="0.3" /><stop offset="100%" stopColor={DS.colors.primary} stopOpacity="0" /></linearGradient></defs>
-            <path d={areaD} fill="url(#g)" /><path d={pathD} fill="none" stroke={DS.colors.primary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            {points.map((p, i) => <circle key={i} cx={toX(i)} cy={toY(p)} r={i === points.length - 1 ? 5 : 3} fill={i === points.length - 1 ? DS.colors.primary : DS.colors.bg} stroke={DS.colors.primary} strokeWidth="2" />)}
-          </svg>
+          <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 64 }}>
+            {seancesReelles.slice(0, 8).reverse().map((sc, i) => {
+              const barH = Math.min(64, Math.max(8, (sc.duree_min || 20)));
+              return (
+                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: "100%", height: barH, background: `linear-gradient(180deg, ${DS.colors.primary}, ${DS.colors.success})`, borderRadius: 4 }} />
+                  <p style={{ color: DS.colors.textDim, fontSize: 8 }}>{new Date(sc.date_realisee).toLocaleDateString("fr-FR", { day: "numeric", month: "numeric" })}</p>
+                </div>
+              );
+            })}
+            {seancesReelles.length === 0 && (
+              <p style={{ color: DS.colors.textDim, fontSize: 13, width: "100%", textAlign: "center" }}>Lance ta premiere seance !</p>
+            )}
+          </div>
         </Card>
         {loading ? (
           <div style={{ textAlign: "center", padding: 40 }}>
@@ -1714,9 +1729,16 @@ function HistoriqueScreen() {
 // ─────────────────────────────────────────────
 // PROFIL
 // ─────────────────────────────────────────────
-function ProfilScreen({ user, onLogout }) {
+function ProfilScreen({ user, programme, onLogout }) {
   const [notifOn, setNotifOn] = useState(true);
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
+  const progData = programme?.data_json;
+  const semaineCourante = programme?.semaine_courante || 1;
+  const totalSemaines = programme?.total_semaines || 8;
+  const progression = Math.round((semaineCourante / totalSemaines) * 100);
+  const sport = progData?.sport || user?.user_metadata?.sport || "Sport";
+  const objectif = progData?.objectif || user?.user_metadata?.objectif || "Objectif";
+  const frequence = progData?.frequence || user?.user_metadata?.frequence || 3;
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
@@ -1736,13 +1758,17 @@ function ProfilScreen({ user, onLogout }) {
             <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, textTransform: "uppercase", letterSpacing: "0.06em" }}>Programme actif</p>
             {Icons.arrow()}
           </div>
-          <p style={{ color: DS.colors.textPrimary, fontSize: 17, ...s.heading, marginBottom: 4 }}>Explosivite Basketball</p>
-          <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 14 }}>Semaine 3 sur 8 - 3x/semaine</p>
-          <ProgressBar value={62} />
-          <p style={{ color: DS.colors.textSec, fontSize: 12, textAlign: "right", marginTop: 6, ...s.mono }}>62%</p>
+          <p style={{ color: DS.colors.textPrimary, fontSize: 17, ...s.heading, marginBottom: 4 }}>{programme?.titre || "Aucun programme"}</p>
+          <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 14 }}>Semaine {semaineCourante} sur {totalSemaines} - {frequence}x/semaine</p>
+          <ProgressBar value={progression} />
+          <p style={{ color: DS.colors.textSec, fontSize: 12, textAlign: "right", marginTop: 6, ...s.mono }}>{progression}%</p>
         </Card>
         <Card style={{ marginBottom: 24, padding: 0 }}>
-          {[{ emoji: "🏀", label: "Mon sport", value: "Basketball" }, { emoji: "⚡", label: "Mon objectif", value: "Explosivite" }, { emoji: "📅", label: "Frequence", value: "3 seances / semaine" }].map((item, i, arr) => (
+          {[
+            { emoji: "🏅", label: "Mon sport", value: sport },
+            { emoji: "⚡", label: "Mon objectif", value: objectif },
+            { emoji: "📅", label: "Frequence", value: `${frequence} seances / semaine` }
+          ].map((item, i, arr) => (
             <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: i < arr.length - 1 ? `1px solid ${DS.colors.border}` : "none" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 20 }}>{item.emoji}</span>
@@ -1810,6 +1836,7 @@ export default function VoltraApp() {
   const [programmeActif, setProgrammeActif] = useState(null);
   const [matchs, setMatchs] = useState([]);
   const [showMatchs, setShowMatchs] = useState(false);
+  const [derniereSeance, setDerniereSeance] = useState(null);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -1870,6 +1897,15 @@ export default function VoltraApp() {
       .order("date_match", { ascending: true })
       .limit(5)
       .then(({ data }) => { if (data) setMatchs(data); });
+    supabase
+      .from("seances")
+      .select("*, exercices(*)")
+      .eq("user_id", user.id)
+      .eq("statut", "faite")
+      .order("date_realisee", { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => { if (data) setDerniereSeance(data); });
   }, [screen, user]);
 
   if (screen === "splash") return <SplashScreen />;
