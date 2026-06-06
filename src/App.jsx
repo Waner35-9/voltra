@@ -1988,69 +1988,195 @@ function HistoriqueScreen() {
 // ─────────────────────────────────────────────
 // PROFIL
 // ─────────────────────────────────────────────
-function ProfilScreen({ user, programme, onLogout }) {
+function ProfilScreen({ user, programme, onLogout, onRegenerateProgram }) {
   const [notifOn, setNotifOn] = useState(true);
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
+  const [showProgramDetail, setShowProgramDetail] = useState(false);
+  const [editData, setEditData] = useState({ sport: null, objectif: null, frequence: 3 });
+  const [saving, setSaving] = useState(false);
+
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
   const progData = programme?.data_json;
   const semaineCourante = programme?.semaine_courante || 1;
   const totalSemaines = programme?.total_semaines || 8;
   const progression = Math.round((semaineCourante / totalSemaines) * 100);
-  const sport = progData?.sport || user?.user_metadata?.sport || "Sport";
-  const objectif = progData?.objectif || user?.user_metadata?.objectif || "Objectif";
+  const sport = progData?.sport || user?.user_metadata?.sport || "default";
+  const objectif = progData?.objectif || user?.user_metadata?.objectif || "Non defini";
   const frequence = progData?.frequence || user?.user_metadata?.frequence || 3;
+  const theme = getSportTheme(sport);
+
+  const openEdit = () => {
+    setEditData({ sport, objectif, frequence });
+    setShowEditDrawer(true);
+  };
+
+  const saveEdit = async () => {
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.from("profiles").upsert({ id: session.user.id, sport: editData.sport }, { onConflict: "id" });
+      }
+      if (onRegenerateProgram) await onRegenerateProgram(editData);
+    } catch (err) { console.error(err); }
+    setSaving(false);
+    setShowEditDrawer(false);
+  };
+
+  const semaines = progData?.semaines || [];
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px" }}>
+
+      {/* Drawer edition profil */}
+      {showEditDrawer && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div onClick={() => setShowEditDrawer(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "24px 20px 48px", maxHeight: "85vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+              <p style={{ ...s.display, fontSize: 20, color: DS.colors.textPrimary }}>Modifier mon profil</p>
+              <button onClick={() => setShowEditDrawer(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
+            </div>
+
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Sport</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 24 }}>
+              {SPORTS.map(sp => (
+                <div key={sp.id} onClick={() => setEditData(d => ({ ...d, sport: sp.id, objectif: null }))} style={{ background: editData.sport === sp.id ? theme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${editData.sport === sp.id ? theme.accent : DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 6px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>{sp.emoji}</div>
+                  <div style={{ color: editData.sport === sp.id ? theme.accent : DS.colors.textSec, fontSize: 11, ...s.heading }}>{sp.label}</div>
+                </div>
+              ))}
+            </div>
+
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Objectif</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+              {(OBJECTIFS_PAR_SPORT[editData.sport] || []).map(obj => (
+                <div key={obj.id} onClick={() => setEditData(d => ({ ...d, objectif: obj.id }))} style={{ background: editData.objectif === obj.id ? theme.accent + "15" : DS.colors.surfaceHigh, border: `1px solid ${editData.objectif === obj.id ? theme.accent : DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                  <span style={{ fontSize: 20 }}>{obj.emoji}</span>
+                  <div>
+                    <p style={{ color: editData.objectif === obj.id ? theme.accent : DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{obj.label}</p>
+                    <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{obj.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Seances / semaine</p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 32 }}>
+              {[2, 3, 4, 5].map(n => (
+                <div key={n} onClick={() => setEditData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "12px 0", textAlign: "center", background: editData.frequence === n ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: editData.frequence === n ? "#000" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "all 0.2s", ...s.heading }}>{n}</div>
+              ))}
+            </div>
+
+            <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,140,0,0.2)", borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}>
+              <p style={{ color: DS.colors.warning, fontSize: 12, ...s.body }}>⚠️ Modifier ton profil regenerera un nouveau programme IA.</p>
+            </div>
+
+            <button onClick={saveEdit} disabled={saving || !editData.sport || !editData.objectif} style={{ width: "100%", height: 52, background: editData.sport && editData.objectif ? `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: editData.sport && editData.objectif ? "#000" : DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading, fontWeight: 700 }}>
+              {saving ? "Generation en cours..." : "Sauvegarder et regenerer"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Drawer detail programme */}
+      {showProgramDetail && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div onClick={() => setShowProgramDetail(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "24px 20px 48px", maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <p style={{ ...s.display, fontSize: 20, color: DS.colors.textPrimary }}>Mon programme</p>
+              <button onClick={() => setShowProgramDetail(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
+            </div>
+            <p style={{ ...s.heading, fontSize: 18, color: theme.accent, marginBottom: 4 }}>{programme?.titre || "Programme"}</p>
+            <p style={{ color: DS.colors.textSec, fontSize: 13, marginBottom: 20 }}>{totalSemaines} semaines · {frequence} seances/semaine</p>
+            <ProgressBar value={progression} />
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, marginTop: 6, marginBottom: 20 }}>{progression}% COMPLETE</p>
+            {semaines.slice(0, 8).map((sem, wi) => (
+              <div key={wi} style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: DS.radius.full, background: wi < semaineCourante ? theme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${wi < semaineCourante ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: wi < semaineCourante ? theme.accent : DS.colors.textSec }}>{wi + 1}</p>
+                  </div>
+                  <p style={{ color: wi < semaineCourante ? DS.colors.textSec : DS.colors.textPrimary, fontSize: 13, ...s.heading }}>
+                    Semaine {wi + 1} {wi + 1 === semaineCourante ? "← En cours" : wi < semaineCourante ? "✓ Terminee" : ""}
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: 6, paddingLeft: 32 }}>
+                  {(sem.seances || []).map((sc, si) => (
+                    <div key={si} style={{ flex: 1, background: DS.colors.surfaceHigh, borderRadius: DS.radius.sm, padding: "8px 6px", textAlign: "center" }}>
+                      <p style={{ color: DS.colors.textPrimary, fontSize: 11, ...s.heading, marginBottom: 2 }}>{sc.titre}</p>
+                      <p style={{ color: DS.colors.textSec, fontSize: 9 }}>{sc.exercices?.length || 0} exo</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,6,14,0.92)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px" }}>
         <h1 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary }}>Profil</h1>
       </div>
+
       <div style={{ padding: "32px 20px 0" }}>
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <div style={{ width: 80, height: 80, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, ...s.display, color: "white", margin: "0 auto 16px", boxShadow: DS.shadow.primary }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ width: 80, height: 80, background: theme.accent + "20", border: `2px solid ${theme.accent}40`, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, ...s.display, color: theme.accent, margin: "0 auto 14px", boxShadow: `0 0 30px ${theme.accent}20` }}>
             {userName[0].toUpperCase()}
           </div>
-          <h2 style={{ ...s.display, fontSize: 22, color: DS.colors.textPrimary, marginBottom: 6 }}>{userName}</h2>
-          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>{user?.email}</p>
+          <h2 style={{ ...s.display, fontSize: 22, color: DS.colors.textPrimary, marginBottom: 4 }}>{userName.toUpperCase()}</h2>
+          <p style={{ color: DS.colors.textSec, fontSize: 13, fontFamily: "'Space Mono',monospace" }}>{user?.email}</p>
         </div>
-        <Card style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, textTransform: "uppercase", letterSpacing: "0.06em" }}>Programme actif</p>
-            {Icons.arrow()}
+
+        {/* Programme actif - cliquable */}
+        <Card style={{ marginBottom: 16, cursor: "pointer", border: `1px solid ${theme.accent}20` }} onClick={() => setShowProgramDetail(true)}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>Programme actif</p>
+            <span style={{ color: DS.colors.textSec, fontSize: 12 }}>Voir details →</span>
           </div>
           <p style={{ color: DS.colors.textPrimary, fontSize: 17, ...s.heading, marginBottom: 4 }}>{programme?.titre || "Aucun programme"}</p>
-          <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 14 }}>Semaine {semaineCourante} sur {totalSemaines} - {frequence}x/semaine</p>
+          <p style={{ color: DS.colors.textSec, fontSize: 12, marginBottom: 12 }}>Semaine {semaineCourante} / {totalSemaines} · {frequence}x par semaine</p>
           <ProgressBar value={progression} />
-          <p style={{ color: DS.colors.textSec, fontSize: 12, textAlign: "right", marginTop: 6, ...s.mono }}>{progression}%</p>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, textAlign: "right", marginTop: 6 }}>{progression}%</p>
         </Card>
-        <Card style={{ marginBottom: 24, padding: 0 }}>
+
+        {/* Infos sport - cliquable pour modifier */}
+        <Card style={{ marginBottom: 16, padding: 0, cursor: "pointer" }} onClick={openEdit}>
           {[
-            { emoji: "🏅", label: "Mon sport", value: sport },
-            { emoji: "⚡", label: "Mon objectif", value: objectif },
+            { emoji: SPORT_EMOJIS[sport] || "🏅", label: "Mon sport", value: sport.charAt(0).toUpperCase() + sport.slice(1) },
+            { emoji: "⚡", label: "Mon objectif", value: objectif.charAt(0).toUpperCase() + objectif.slice(1) },
             { emoji: "📅", label: "Frequence", value: `${frequence} seances / semaine` }
           ].map((item, i, arr) => (
             <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: i < arr.length - 1 ? `1px solid ${DS.colors.border}` : "none" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 20 }}>{item.emoji}</span>
                 <div>
-                  <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>{item.label}</p>
+                  <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace", letterSpacing: "0.08em" }}>{item.label}</p>
                   <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>{item.value}</p>
                 </div>
               </div>
-              {Icons.arrow()}
+              <span style={{ color: theme.accent, fontSize: 12, ...s.heading }}>Modifier</span>
             </div>
           ))}
         </Card>
-        <Card style={{ marginBottom: 24, padding: 0 }}>
+
+        {/* Rappel seance */}
+        <Card style={{ marginBottom: 16, padding: 0 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <span style={{ fontSize: 20 }}>🔔</span>
-              <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>Rappel seance</p>
+              <div>
+                <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace", letterSpacing: "0.08em" }}>Rappel seance</p>
+                <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>Notifications</p>
+              </div>
             </div>
-            <div onClick={() => setNotifOn(v => !v)} style={{ width: 48, height: 28, background: notifOn ? DS.colors.success : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s ease" }}>
+            <div onClick={() => setNotifOn(v => !v)} style={{ width: 48, height: 28, background: notifOn ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s ease" }}>
               <div style={{ position: "absolute", top: 3, left: notifOn ? 23 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
             </div>
           </div>
         </Card>
+
         <button onClick={onLogout} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 0", color: DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading }}>
           Se deconnecter
         </button>
@@ -2230,7 +2356,12 @@ export default function VoltraApp() {
             />
           )}
           {activeTab === "historique" && <HistoriqueScreen />}
-          {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} onLogout={handleLogout} />}
+          {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} onLogout={handleLogout} onRegenerateProgram={async (data) => {
+            try {
+              const programme = await generateProgramIA(data);
+              if (programme) { setProgrammeActif(programme); setSportActif(data.sport); }
+            } catch (err) { console.error(err); }
+          }} />}
           <BottomNav activeTab={activeTab} setTab={setActiveTab} />
         </>
       )}
