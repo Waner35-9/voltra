@@ -923,7 +923,7 @@ function AuthScreen({ onAuth }) {
             {mode === "login" ? "Connexion..." : "Creation du compte..."}
           </div>
         ) : (
-          <PrimaryButton onClick={handleSubmit}>{mode === "login" ? "Se connecter" : "Creer mon compte"}</PrimaryButton>
+          <PrimaryButton onClick={handleSubmit} style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 17, letterSpacing: "0.1em", fontWeight: 700 }}>{mode === "login" ? "SE CONNECTER →" : "CREER MON COMPTE ⚡"}</PrimaryButton>
         )}
         {mode === "login" && <button onClick={handleForgotPassword} style={{ width: "100%", marginTop: 16, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Mot de passe oublie ?</button>}
       </div>
