@@ -1107,7 +1107,7 @@ function OnboardingScreen({ onComplete }) {
         {contentStep === 0 && (
           <div>
             <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Quel est ton sport ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera entierement adapte.</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 32 }}>Le programme sera adapte a tes besoins.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
                 <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.sport === sport.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.03)" : "scale(1)" }}>
@@ -1123,7 +1123,7 @@ function OnboardingScreen({ onComplete }) {
         {contentStep === 1 && (
           <div>
             <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Quel est ton objectif ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Les exercices et charges s'adapteront.</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 32 }}>Les exercices et charges s'adapteront.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
                 <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
@@ -1143,7 +1143,7 @@ function OnboardingScreen({ onComplete }) {
         {contentStep === 2 && (
           <div>
               <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Ton poste ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme cible les qualites de ton poste.</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 32 }}>Le programme cible les qualites de ton poste.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(POSTES_PAR_SPORT[data.sport] || []).map(poste => (
                 <div key={poste.id} onClick={() => setData(d => ({ ...d, poste: poste.id }))} style={{ background: data.poste === poste.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.poste === poste.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
