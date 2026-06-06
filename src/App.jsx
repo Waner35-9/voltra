@@ -1272,8 +1272,8 @@ function PricingScreen({ onSelectPlan, programme }) {
     <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40 }}>
       <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>Programme pret</p>
-          <h1 style={{ ...s.display, fontSize: 28, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 16 }}>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.primary, letterSpacing: "0.3em", marginBottom: 10 }}>✦ PROGRAMME PRET</p>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 34, color: "white", lineHeight: 1, marginBottom: 16, letterSpacing: "0.02em", textTransform: "uppercase" }}>
             {programme?.titre || "Ton programme est pret"}
           </h1>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
@@ -1288,7 +1288,7 @@ function PricingScreen({ onSelectPlan, programme }) {
               </div>
             ))}
           </div>
-          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>Debloque l'acces complet pour commencer.</p>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em" }}>Debloque l'acces complet pour commencer.</p>
         </div>
         <div style={{ background: DS.colors.goldSoft, border: `1px solid rgba(255,209,102,0.25)`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
