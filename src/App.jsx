@@ -901,8 +901,8 @@ function AuthScreen({ onAuth }) {
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
       <div style={{ paddingTop: 80, paddingBottom: 48, textAlign: "center" }}>
         <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>⚡</div>
-        <h1 style={{ ...s.display, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>Voltra</h1>
-        <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>{mode === "login" ? "Content de te revoir" : "Commence ton parcours"}</p>
+        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 48, color: "white", marginBottom: 4, letterSpacing: "0.15em" }}>VOLTRA</h1>
+        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.2em" }}>{mode === "login" ? "CONTENT DE TE REVOIR" : "COMMENCE TON PARCOURS"}</p>
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ display: "flex", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: 4, marginBottom: 32 }}>
