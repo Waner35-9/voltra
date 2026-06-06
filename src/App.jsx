@@ -7,6 +7,7 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
+
 async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Pas de session");
