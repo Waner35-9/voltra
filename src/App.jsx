@@ -1988,7 +1988,7 @@ function HistoriqueScreen() {
 // ─────────────────────────────────────────────
 // PROFIL
 // ─────────────────────────────────────────────
-function ProfilScreen({ user, programme, onLogout, onRegenerateProgram }) {
+function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, onRegenerateProgram }) {
   const [notifOn, setNotifOn] = useState(true);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showProgramDetail, setShowProgramDetail] = useState(false);
@@ -2000,7 +2000,7 @@ function ProfilScreen({ user, programme, onLogout, onRegenerateProgram }) {
   const semaineCourante = programme?.semaine_courante || 1;
   const totalSemaines = programme?.total_semaines || 8;
   const progression = Math.round((semaineCourante / totalSemaines) * 100);
-  const sport = progData?.sport || user?.user_metadata?.sport || "default";
+  const sport = sportActifProp || progData?.sport || user?.user_metadata?.sport || "default";
   const objectif = progData?.objectif || user?.user_metadata?.objectif || "Non defini";
   const frequence = progData?.frequence || user?.user_metadata?.frequence || 3;
   const theme = getSportTheme(sport);
@@ -2130,7 +2130,7 @@ function ProfilScreen({ user, programme, onLogout, onRegenerateProgram }) {
         </div>
 
         {/* Programme actif - cliquable */}
-        <Card style={{ marginBottom: 16, cursor: "pointer", border: `1px solid ${theme.accent}20` }} onClick={() => setShowProgramDetail(true)}>
+        <div onClick={() => setShowProgramDetail(true)} style={{ background: DS.colors.surface, border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.lg, padding: 20, marginBottom: 16, cursor: "pointer" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>Programme actif</p>
             <span style={{ color: DS.colors.textSec, fontSize: 12 }}>Voir details →</span>
@@ -2139,16 +2139,16 @@ function ProfilScreen({ user, programme, onLogout, onRegenerateProgram }) {
           <p style={{ color: DS.colors.textSec, fontSize: 12, marginBottom: 12 }}>Semaine {semaineCourante} / {totalSemaines} · {frequence}x par semaine</p>
           <ProgressBar value={progression} />
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, textAlign: "right", marginTop: 6 }}>{progression}%</p>
-        </Card>
+        </div>
 
         {/* Infos sport - cliquable pour modifier */}
-        <Card style={{ marginBottom: 16, padding: 0, cursor: "pointer" }} onClick={openEdit}>
+        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, marginBottom: 16, overflow: "hidden" }}>
           {[
-            { emoji: SPORT_EMOJIS[sport] || "🏅", label: "Mon sport", value: sport.charAt(0).toUpperCase() + sport.slice(1) },
-            { emoji: "⚡", label: "Mon objectif", value: objectif.charAt(0).toUpperCase() + objectif.slice(1) },
+            { emoji: SPORT_EMOJIS[sportActif] || SPORT_EMOJIS[sport] || "🏅", label: "Mon sport", value: (sportActif || sport || "Non defini").charAt(0).toUpperCase() + (sportActif || sport || "Non defini").slice(1) },
+            { emoji: "⚡", label: "Mon objectif", value: objectif !== "default" && objectif !== "Non defini" ? objectif.charAt(0).toUpperCase() + objectif.slice(1) : "Non defini" },
             { emoji: "📅", label: "Frequence", value: `${frequence} seances / semaine` }
           ].map((item, i, arr) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: i < arr.length - 1 ? `1px solid ${DS.colors.border}` : "none" }}>
+            <div key={i} onClick={openEdit} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: i < arr.length - 1 ? `1px solid ${DS.colors.border}` : "none", cursor: "pointer" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 20 }}>{item.emoji}</span>
                 <div>
@@ -2156,10 +2156,10 @@ function ProfilScreen({ user, programme, onLogout, onRegenerateProgram }) {
                   <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>{item.value}</p>
                 </div>
               </div>
-              <span style={{ color: theme.accent, fontSize: 12, ...s.heading }}>Modifier</span>
+              <span style={{ color: theme.accent, fontSize: 13, ...s.heading }}>Modifier →</span>
             </div>
           ))}
-        </Card>
+        </div>
 
         {/* Rappel seance */}
         <Card style={{ marginBottom: 16, padding: 0 }}>
@@ -2356,7 +2356,7 @@ export default function VoltraApp() {
             />
           )}
           {activeTab === "historique" && <HistoriqueScreen />}
-          {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} onLogout={handleLogout} onRegenerateProgram={async (data) => {
+          {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} sportActif={sportActif} onLogout={handleLogout} onRegenerateProgram={async (data) => {
             try {
               const programme = await generateProgramIA(data);
               if (programme) { setProgrammeActif(programme); setSportActif(data.sport); }
