@@ -1234,10 +1234,10 @@ function OnboardingScreen({ onComplete }) {
 
       <div style={{ paddingBottom: 48, paddingTop: 24 }}>
         <PrimaryButton onClick={isLastStep ? handleFinish : goNext} disabled={!canNext}>
-          {isLastStep ? "Generer mon programme" : "Continuer"}
+          {isLastStep ? "GENERER MON PROGRAMME ⚡" : "CONTINUER →"}
         </PrimaryButton>
         {step > 0 && (
-          <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>
+          <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 12, cursor: "pointer", fontFamily: "'Space Mono',monospace", letterSpacing: "0.1em" }}>← RETOUR</button>
         )}
       </div>
     </div>
