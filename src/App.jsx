@@ -1992,9 +1992,203 @@ function HistoriqueScreen() {
 function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, onRegenerateProgram }) {
   const [notifOn, setNotifOn] = useState(true);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const [showProgramDetail, setShowProgramDetail] = useState(false);
   const [editData, setEditData] = useState({ sport: null, objectif: null, frequence: 3 });
   const [saving, setSaving] = useState(false);
+  const [seancesCount, setSeancesCount] = useState(0);
+  const [streak, setStreak] = useState(0);
+
+  const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
+  const progData = programme?.data_json;
+  const semaineCourante = programme?.semaine_courante || 1;
+  const totalSemaines = programme?.total_semaines || 8;
+  const progression = Math.round((semaineCourante / totalSemaines) * 100);
+  const sport = sportActifProp || progData?.sport || user?.user_metadata?.sport || "default";
+  const objectif = progData?.objectif || "Non defini";
+  const frequence = progData?.frequence || 3;
+  const theme = getSportTheme(sport);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return;
+      const { data } = await supabase.from("seances").select("date_realisee").eq("user_id", session.user.id).eq("statut", "faite").order("date_realisee", { ascending: false }).limit(30);
+      if (data) {
+        setSeancesCount(data.length);
+        let s = 0, today = new Date();
+        for (const sc of data) {
+          const diff = Math.floor((today - new Date(sc.date_realisee)) / (1000 * 60 * 60 * 24));
+          if (diff <= s + 2) s++;
+          else break;
+        }
+        setStreak(s);
+      }
+    });
+  }, []);
+
+  const openEdit = () => {
+    setEditData({ sport, objectif: objectif !== "Non defini" ? objectif : null, frequence });
+    setShowEditDrawer(true);
+  };
+
+  const saveEdit = async () => {
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) await supabase.from("profiles").upsert({ id: session.user.id, sport: editData.sport }, { onConflict: "id" });
+      if (onRegenerateProgram) await onRegenerateProgram(editData);
+    } catch (err) { console.error(err); }
+    setSaving(false);
+    setShowEditDrawer(false);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100, position: "relative", overflow: "hidden" }}>
+
+      {/* Sport bg */}
+      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
+        {SPORT_EMOJIS[sport] || "⚡"}
+      </div>
+
+      {/* Drawer edition */}
+      {showEditDrawer && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div onClick={() => setShowEditDrawer(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "24px 20px 48px", maxHeight: "88vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+              <p style={{ ...s.display, fontSize: 20, color: DS.colors.textPrimary }}>Modifier mon profil</p>
+              <button onClick={() => setShowEditDrawer(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
+            </div>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Sport</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 24 }}>
+              {SPORTS.map(sp => (
+                <div key={sp.id} onClick={() => setEditData(d => ({ ...d, sport: sp.id, objectif: null }))} style={{ background: editData.sport === sp.id ? theme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${editData.sport === sp.id ? theme.accent : DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 6px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
+                  <div style={{ fontSize: 24, marginBottom: 4 }}>{sp.emoji}</div>
+                  <div style={{ color: editData.sport === sp.id ? theme.accent : DS.colors.textSec, fontSize: 10, ...s.heading }}>{sp.label}</div>
+                </div>
+              ))}
+            </div>
+            {editData.sport && (
+              <>
+                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Objectif</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+                  {(OBJECTIFS_PAR_SPORT[editData.sport] || []).map(obj => (
+                    <div key={obj.id} onClick={() => setEditData(d => ({ ...d, objectif: obj.id }))} style={{ background: editData.objectif === obj.id ? theme.accent + "15" : DS.colors.surfaceHigh, border: `1px solid ${editData.objectif === obj.id ? theme.accent : DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                      <span style={{ fontSize: 20 }}>{obj.emoji}</span>
+                      <div>
+                        <p style={{ color: editData.objectif === obj.id ? theme.accent : DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{obj.label}</p>
+                        <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{obj.desc}</p>
+                      </div>
+                      {editData.objectif === obj.id && <div style={{ marginLeft: "auto", width: 18, height: 18, background: theme.accent, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#000" strokeWidth="3" strokeLinecap="round" /></svg></div>}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Seances / semaine</p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
+              {[2, 3, 4, 5].map(n => (
+                <div key={n} onClick={() => setEditData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "14px 0", textAlign: "center", background: editData.frequence === n ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: editData.frequence === n ? "#000" : DS.colors.textSec, fontSize: 18, cursor: "pointer", ...s.display }}>{n}</div>
+              ))}
+            </div>
+            <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,140,0,0.2)", borderRadius: DS.radius.md, padding: "10px 14px", marginBottom: 16 }}>
+              <p style={{ color: DS.colors.warning, fontSize: 12 }}>⚠️ Un nouveau programme IA sera genere.</p>
+            </div>
+            <button onClick={saveEdit} disabled={saving || !editData.sport || !editData.objectif} style={{ width: "100%", height: 52, background: editData.sport && editData.objectif ? `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: editData.sport && editData.objectif ? "#000" : DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading, fontWeight: 700, letterSpacing: "0.05em" }}>
+              {saving ? "Generation en cours..." : "Sauvegarder et regenerer"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header hero */}
+      <div style={{ padding: "60px 24px 32px", position: "relative", zIndex: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <div style={{ width: 72, height: 72, background: theme.accent + "20", border: `2px solid ${theme.accent}50`, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, ...s.display, color: theme.accent, flexShrink: 0, boxShadow: `0 0 30px ${theme.accent}20` }}>
+            {userName[0].toUpperCase()}
+          </div>
+          <div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "2px 8px", marginBottom: 6 }}>
+              <span style={{ fontSize: 12 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
+              <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>{sport !== "default" ? sport : "Sport"}</span>
+            </div>
+            <p style={{ ...s.display, fontSize: 24, color: "white", letterSpacing: "0.05em", lineHeight: 1, marginBottom: 4 }}>{userName.toUpperCase()}</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec }}>{user?.email}</p>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "0 20px", position: "relative", zIndex: 1 }}>
+
+        {/* Stats rapides */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
+          {[
+            { val: seancesCount, label: "Seances", color: theme.accent },
+            { val: streak, label: "Streak", color: DS.colors.success },
+            { val: `${progression}%`, label: "Progres", color: DS.colors.warning },
+          ].map((stat, i) => (
+            <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 22, fontWeight: 700, color: stat.color, lineHeight: 1, marginBottom: 4 }}>{stat.val}</p>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em", textTransform: "uppercase" }}>{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Programme actif */}
+        <div style={{ background: DS.colors.surface, border: `1px solid ${theme.accent}25`, borderRadius: DS.radius.xl, padding: 20, marginBottom: 14, position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <div>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 6 }}>Programme actif</p>
+              <p style={{ color: "white", fontSize: 16, ...s.heading }}>{programme?.titre || "Aucun programme"}</p>
+            </div>
+            <div style={{ background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "4px 10px" }}>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent }}>S{semaineCourante}/{totalSemaines}</p>
+            </div>
+          </div>
+          <ProgressBar value={progression} />
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>{frequence}x / semaine</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>{progression}%</p>
+          </div>
+        </div>
+
+        {/* Modifier profil — 1 seul bouton clair */}
+        <div onClick={openEdit} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 40, height: 40, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>✏️</div>
+            <div>
+              <p style={{ color: "white", fontSize: 15, ...s.heading, marginBottom: 2 }}>Modifier mon profil</p>
+              <p style={{ color: DS.colors.textSec, fontSize: 12, fontFamily: "'Space Mono',monospace" }}>{sport !== "default" ? sport : "?"} · {objectif !== "Non defini" ? objectif : "?"} · {frequence}x/sem</p>
+            </div>
+          </div>
+          <span style={{ color: theme.accent, fontSize: 18 }}>→</span>
+        </div>
+
+        {/* Notifications */}
+        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 40, height: 40, background: "rgba(255,229,0,0.1)", border: "1px solid rgba(255,229,0,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔔</div>
+            <div>
+              <p style={{ color: "white", fontSize: 15, ...s.heading, marginBottom: 2 }}>Rappels seance</p>
+              <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{notifOn ? "ACTIVE" : "DESACTIVE"}</p>
+            </div>
+          </div>
+          <div onClick={() => setNotifOn(v => !v)} style={{ width: 50, height: 28, background: notifOn ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s" }}>
+            <div style={{ position: "absolute", top: 3, left: notifOn ? 25 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
+          </div>
+        </div>
+
+        {/* Deconnexion */}
+        <div onClick={onLogout} style={{ background: "rgba(255,45,85,0.06)", border: "1px solid rgba(255,45,85,0.15)", borderRadius: DS.radius.xl, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
+          <div style={{ width: 40, height: 40, background: "rgba(255,45,85,0.1)", border: "1px solid rgba(255,45,85,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚪</div>
+          <p style={{ color: "#FF2D55", fontSize: 15, ...s.heading }}>Se deconnecter</p>
+        </div>
+
+      </div>
+    </div>
+  );
+}
 
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
   const progData = programme?.data_json;
