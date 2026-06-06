@@ -1329,7 +1329,7 @@ function PricingScreen({ onSelectPlan, programme }) {
           ))}
         </div>
         <button onClick={() => onSelectPlan(selected)} style={{ width: "100%", height: 58, background: currentPlan.highlight ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : currentPlan.urgency ? `linear-gradient(135deg, ${DS.colors.gold}, #F0B800)` : `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, border: "1px solid rgba(255,255,255,0.1)", borderRadius: DS.radius.md, color: currentPlan.urgency ? DS.colors.bg : "white", fontSize: 16, cursor: "pointer", boxShadow: DS.shadow.primary, ...s.heading, marginBottom: 12 }}>
-          Commencer avec {currentPlan.label}
+          COMMENCER AVEC {currentPlan.label.toUpperCase()} →
         </button>
         <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", marginBottom: 24 }}>Paiement securise · Annulation en 1 clic · Remboursement 7 jours</p>
         <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 20px", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", ...s.heading, marginBottom: 8 }}>
@@ -1346,7 +1346,7 @@ function PricingScreen({ onSelectPlan, programme }) {
             ))}
           </div>
         )}
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", textDecoration: "underline", ...s.body }}>Continuer avec le plan gratuit</button>
+        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 11, cursor: "pointer", textDecoration: "underline", fontFamily: "'Space Mono',monospace", letterSpacing: "0.1em" }}>CONTINUER GRATUITEMENT</button>
       </div>
     </div>
   );
