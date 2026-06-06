@@ -126,7 +126,7 @@ function PrimaryButton({ children, onClick, disabled, style = {} }) {
       onMouseDown={() => setP(true)} onMouseUp={() => setP(false)} onMouseLeave={() => setP(false)}
       style={{
         width: "100%", height: 56,
-        background: disabled ? DS.colors.surfaceHigh : `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`,
+        background: disabled ? DS.colors.surfaceHigh : `linear-gradient(135deg, ${DS.colors.primary}, #00C896)`,
         border: "1px solid rgba(255,255,255,0.1)", borderRadius: DS.radius.md,
         color: disabled ? DS.colors.textDim : "white", fontSize: 16,
         cursor: disabled ? "not-allowed" : "pointer",
@@ -900,9 +900,9 @@ function AuthScreen({ onAuth }) {
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
       <div style={{ paddingTop: 80, paddingBottom: 48, textAlign: "center" }}>
-        <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>⚡</div>
-        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 48, color: "white", marginBottom: 4, letterSpacing: "0.15em" }}>VOLTRA</h1>
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.2em" }}>{mode === "login" ? "CONTENT DE TE REVOIR" : "COMMENCE TON PARCOURS"}</p>
+        <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: `linear-gradient(135deg, #00FF87, #00C896)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: "0 0 40px rgba(0,255,135,0.4)" }}>⚡</div>
+        <h1 style={{ ...s.display, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>Voltra</h1>
+        <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>{mode === "login" ? "Content de te revoir" : "Commence ton parcours"}</p>
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ display: "flex", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: 4, marginBottom: 32 }}>
@@ -923,7 +923,7 @@ function AuthScreen({ onAuth }) {
             {mode === "login" ? "Connexion..." : "Creation du compte..."}
           </div>
         ) : (
-          <PrimaryButton onClick={handleSubmit} style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 17, letterSpacing: "0.1em", fontWeight: 700 }}>{mode === "login" ? "SE CONNECTER →" : "CREER MON COMPTE ⚡"}</PrimaryButton>
+          <PrimaryButton onClick={handleSubmit}>{mode === "login" ? "Se connecter" : "Creer mon compte"}</PrimaryButton>
         )}
         {mode === "login" && <button onClick={handleForgotPassword} style={{ width: "100%", marginTop: 16, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Mot de passe oublie ?</button>}
       </div>
@@ -1098,7 +1098,7 @@ function OnboardingScreen({ onComplete }) {
             <div key={i} style={{ flex: 1, height: 3, borderRadius: DS.radius.full, background: i <= step ? DS.colors.primary : DS.colors.surfaceHigh, transition: "background 0.4s ease", boxShadow: i === step ? `0 0 8px ${DS.colors.primary}` : "none" }} />
           ))}
         </div>
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.primary, letterSpacing: "0.25em" }}>ETAPE {step + 1} / {totalSteps}</p>
+        <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading }}>Etape {step + 1} sur {totalSteps}</p>
       </div>
 
       <div style={{ flex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(12px)", transition: "all 0.25s ease", overflowY: "auto" }}>
@@ -1106,8 +1106,8 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 1 - Sport */}
         {contentStep === 0 && (
           <div>
-            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Quel est ton sport ?</h1>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 32 }}>Le programme sera adapte a tes besoins.</p>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton sport ?</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera entierement adapte.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
                 <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.sport === sport.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.03)" : "scale(1)" }}>
@@ -1122,8 +1122,8 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 2 - Objectif */}
         {contentStep === 1 && (
           <div>
-            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Quel est ton objectif ?</h1>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 32 }}>Les exercices et charges s'adapteront.</p>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Les exercices et charges s'adapteront.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
                 <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
@@ -1142,8 +1142,8 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 3 - Poste (sauf natation) */}
         {contentStep === 2 && (
           <div>
-              <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Ton poste ?</h1>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 32 }}>Le programme cible les qualites de ton poste.</p>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Ton poste ?</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme cible les qualites de ton poste.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(POSTES_PAR_SPORT[data.sport] || []).map(poste => (
                 <div key={poste.id} onClick={() => setData(d => ({ ...d, poste: poste.id }))} style={{ background: data.poste === poste.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.poste === poste.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
@@ -1162,8 +1162,8 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 4 - Douleurs */}
         {contentStep === 3 && (
           <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Des douleurs ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 12 }}>Les exercices s'adapteront automatiquement.</p>
+            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Des douleurs ?</h1>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 12 }}>Les exercices s'adapteront automatiquement.</p>
             <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,107,53,0.2)", borderRadius: DS.radius.md, padding: "10px 14px", marginBottom: 24, display: "flex", gap: 10, alignItems: "center" }}>
               <span style={{ fontSize: 16 }}>⚠️</span>
               <p style={{ color: DS.colors.warning, fontSize: 12, ...s.body }}>Tu peux selectionner plusieurs zones. Les exercices a risque seront remplaces.</p>
@@ -1186,8 +1186,8 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 5 - Equipement */}
         {contentStep === 4 && (
           <div>
-            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Ton equipement ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Les exercices seront adaptes a ce que tu as.</p>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Ton equipement ?</h1>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 32 }}>Les exercices seront adaptes a ce que tu as.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {EQUIPEMENTS.map(eq => (
                 <div key={eq.id} onClick={() => setData(d => ({ ...d, equipement: eq.id }))} style={{ background: data.equipement === eq.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.equipement === eq.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
@@ -1206,8 +1206,8 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 6 - Niveau + Frequence */}
         {contentStep === 5 && (
           <div>
-             <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Derniers reglages</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 36 }}>Le programme se calibre sur ton profil.</p>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Derniers reglages</h1>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 36 }}>Le programme se calibre sur ton profil.</p>
             <div style={{ marginBottom: 36 }}>
               <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Niveau actuel</p>
               <div style={{ display: "flex", gap: 10 }}>
@@ -1234,10 +1234,10 @@ function OnboardingScreen({ onComplete }) {
 
       <div style={{ paddingBottom: 48, paddingTop: 24 }}>
         <PrimaryButton onClick={isLastStep ? handleFinish : goNext} disabled={!canNext}>
-          {isLastStep ? "GENERER MON PROGRAMME ⚡" : "CONTINUER →"}
+          {isLastStep ? "Generer mon programme" : "Continuer"}
         </PrimaryButton>
         {step > 0 && (
-          <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 12, cursor: "pointer", fontFamily: "'Space Mono',monospace", letterSpacing: "0.1em" }}>← RETOUR</button>
+          <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>
         )}
       </div>
     </div>
@@ -1272,8 +1272,8 @@ function PricingScreen({ onSelectPlan, programme }) {
     <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40 }}>
       <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.primary, letterSpacing: "0.3em", marginBottom: 10 }}>✦ PROGRAMME PRET</p>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 34, color: "white", lineHeight: 1, marginBottom: 16, letterSpacing: "0.02em", textTransform: "uppercase" }}>
+          <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>Programme pret</p>
+          <h1 style={{ ...s.display, fontSize: 28, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 16 }}>
             {programme?.titre || "Ton programme est pret"}
           </h1>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
@@ -1288,7 +1288,7 @@ function PricingScreen({ onSelectPlan, programme }) {
               </div>
             ))}
           </div>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em" }}>Debloque l'acces complet pour commencer.</p>
+          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>Debloque l'acces complet pour commencer.</p>
         </div>
         <div style={{ background: DS.colors.goldSoft, border: `1px solid rgba(255,209,102,0.25)`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
@@ -1329,7 +1329,7 @@ function PricingScreen({ onSelectPlan, programme }) {
           ))}
         </div>
         <button onClick={() => onSelectPlan(selected)} style={{ width: "100%", height: 58, background: currentPlan.highlight ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : currentPlan.urgency ? `linear-gradient(135deg, ${DS.colors.gold}, #F0B800)` : `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, border: "1px solid rgba(255,255,255,0.1)", borderRadius: DS.radius.md, color: currentPlan.urgency ? DS.colors.bg : "white", fontSize: 16, cursor: "pointer", boxShadow: DS.shadow.primary, ...s.heading, marginBottom: 12 }}>
-          COMMENCER AVEC {currentPlan.label.toUpperCase()} →
+          Commencer avec {currentPlan.label}
         </button>
         <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", marginBottom: 24 }}>Paiement securise · Annulation en 1 clic · Remboursement 7 jours</p>
         <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 20px", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", ...s.heading, marginBottom: 8 }}>
@@ -1346,7 +1346,7 @@ function PricingScreen({ onSelectPlan, programme }) {
             ))}
           </div>
         )}
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 11, cursor: "pointer", textDecoration: "underline", fontFamily: "'Space Mono',monospace", letterSpacing: "0.1em" }}>CONTINUER GRATUITEMENT</button>
+        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", textDecoration: "underline", ...s.body }}>Continuer avec le plan gratuit</button>
       </div>
     </div>
   );
@@ -1413,7 +1413,7 @@ function MatchsScreen({ user, onBack }) {
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "14px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
-          <h1 style={{ ...s.display, fontSize: 22, color: DS.colors.textPrimary }}>Mes matchs</h1>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 26, color: "white", letterSpacing: "0.1em" }}>MES MATCHS</h1>
           <button onClick={() => setShowForm(v => !v)} style={{ background: DS.colors.primary, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: "white", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: DS.shadow.primary }}>+</button>
         </div>
       </div>
@@ -1542,8 +1542,8 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, sport: sport
             <span style={{ fontSize: 11 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
             <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>{sport || "SPORT"}</span>
           </div>
-          <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 2 }}>{greeting},</p>
-          <p style={{ color: DS.colors.textPrimary, fontSize: 20, ...s.display, letterSpacing: "0.08em" }}>{userName.toUpperCase()}</p>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.25em", marginBottom: 2 }}>{greeting.toUpperCase()},</p>
+          <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 22, color: "white", letterSpacing: "0.06em" }}>{userName.toUpperCase()}</p>
         </div>
         <div style={{ width: 42, height: 42, background: theme.accent + "20", borderRadius: DS.radius.md, border: `1px solid ${theme.accent}40`, display: "flex", alignItems: "center", justifyContent: "center", color: theme.accent, fontSize: 18, fontWeight: 800, fontFamily: "'Rajdhani', sans-serif" }}>
           {userName[0].toUpperCase()}
@@ -1580,7 +1580,7 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, sport: sport
             <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.2em", textTransform: "uppercase" }}>SEMAINE {prog.semaineCourante} / {prog.totalSemaines}</div>
             <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${theme.accent}40, transparent)` }} />
           </div>
-          <h1 style={{ ...s.display, fontSize: 38, color: DS.colors.textPrimary, lineHeight: 0.95, marginBottom: 16, letterSpacing: "0.02em" }}>{(seance.titre || "").toUpperCase()}</h1>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 42, color: "white", lineHeight: 0.92, marginBottom: 16, letterSpacing: "0.02em" }}>{(seance.titre || "").toUpperCase()}</h1>
           <ProgressBar value={prog.progression} />
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, marginTop: 6, letterSpacing: "0.15em" }}>{prog.progression}% COMPLETE</p>
         </div>
@@ -1736,9 +1736,9 @@ function HistoriqueScreen() {
   });
 
   const stats = [
-    { value: String(totalSeances || 0), label: "seances", color: DS.colors.primary },
-    { value: `${dureeAvg}m`, label: "duree moy.", color: DS.colors.success },
-    { value: `${streak}`, label: "streak", color: DS.colors.warning },
+    { value: String(totalSeances || 0), label: "SEANCES", color: DS.colors.primary },
+    { value: `${dureeAvg}m`, label: "DUREE MOY.", color: DS.colors.success },
+    { value: `${streak}`, label: "STREAK", color: DS.colors.warning },
   ];
 
   const feedbackColor = (f) => f === "easy" ? DS.colors.primary : f === "good" ? DS.colors.success : DS.colors.warning;
@@ -1747,7 +1747,7 @@ function HistoriqueScreen() {
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px" }}>
-        <h1 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary }}>Progression</h1>
+        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 30, color: "white", letterSpacing: "0.1em" }}>PROGRESSION</h1>
       </div>
 
       {/* Drawer detail seance */}
@@ -2175,7 +2175,7 @@ function BottomNav({ activeTab, setTab }) {
         return (
           <button key={tab.id} onClick={() => setTab(tab.id)} style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, cursor: "pointer", padding: "4px 0", transition: "transform 0.15s ease", transform: isActive ? "scale(1.05)" : "scale(1)" }}>
             {tab.icon(isActive)}
-            <span style={{ color: isActive ? DS.colors.primary : DS.colors.textDim, fontSize: 11, ...s.heading, transition: "color 0.2s ease" }}>{tab.label}</span>
+            <span style={{ color: isActive ? DS.colors.primary : DS.colors.textDim, fontSize: 10, fontFamily: "'Space Mono',monospace", letterSpacing: "0.05em", transition: "color 0.2s ease" }}>{tab.label}</span>
             {isActive && <div style={{ width: 4, height: 4, borderRadius: DS.radius.full, background: DS.colors.primary, boxShadow: `0 0 6px ${DS.colors.primary}`, marginTop: -2 }} />}
           </button>
         );
