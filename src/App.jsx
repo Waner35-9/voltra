@@ -2356,25 +2356,12 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
           ))}
         </div>
 
-        {/* Rappel seance */}
-        <Card style={{ marginBottom: 16, padding: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <span style={{ fontSize: 20 }}>🔔</span>
-              <div>
-                <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace", letterSpacing: "0.08em" }}>Rappel seance</p>
-                <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading }}>Notifications</p>
-              </div>
-            </div>
-            <div onClick={() => setNotifOn(v => !v)} style={{ width: 48, height: 28, background: notifOn ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s ease" }}>
-              <div style={{ position: "absolute", top: 3, left: notifOn ? 23 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
-            </div>
-          </div>
-        </Card>
+        {/* Deconnexion */}
+        <div onClick={onLogout} style={{ background: "rgba(255,45,85,0.06)", border: "1px solid rgba(255,45,85,0.15)", borderRadius: DS.radius.xl, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
+          <div style={{ width: 40, height: 40, background: "rgba(255,45,85,0.1)", border: "1px solid rgba(255,45,85,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚪</div>
+          <p style={{ color: "#FF2D55", fontSize: 15, ...s.heading }}>Se deconnecter</p>
+        </div>
 
-        <button onClick={onLogout} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 0", color: DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading }}>
-          Se deconnecter
-        </button>
       </div>
     </div>
   );
