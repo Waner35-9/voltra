@@ -1098,7 +1098,7 @@ function OnboardingScreen({ onComplete }) {
             <div key={i} style={{ flex: 1, height: 3, borderRadius: DS.radius.full, background: i <= step ? DS.colors.primary : DS.colors.surfaceHigh, transition: "background 0.4s ease", boxShadow: i === step ? `0 0 8px ${DS.colors.primary}` : "none" }} />
           ))}
         </div>
-        <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading }}>Etape {step + 1} sur {totalSteps}</p>
+        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.primary, letterSpacing: "0.25em" }}>ETAPE {step + 1} / {totalSteps}</p>
       </div>
 
       <div style={{ flex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(12px)", transition: "all 0.25s ease", overflowY: "auto" }}>
@@ -1106,7 +1106,7 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 1 - Sport */}
         {contentStep === 0 && (
           <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton sport ?</h1>
+            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Quel est ton sport ?</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera entierement adapte.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
@@ -1122,7 +1122,7 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 2 - Objectif */}
         {contentStep === 1 && (
           <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
+            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Quel est ton objectif ?</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Les exercices et charges s'adapteront.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
