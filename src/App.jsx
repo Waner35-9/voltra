@@ -7,7 +7,6 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-
 async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Pas de session");
@@ -497,19 +496,19 @@ async function getExercicePhoto(nom) {
 // ─────────────────────────────────────────────
 // ECRAN SEANCE LIVE
 // ─────────────────────────────────────────────
-function SeanceScreen({ seance, onFinish, onBack }) {
+function SeanceScreen({ seance, onFinish, onBack, sport }) {
   const [exIdx, setExIdx] = useState(0);
   const [setIdx, setSetIdx] = useState(0);
   const [resting, setResting] = useState(false);
   const [waitingRest, setWaitingRest] = useState(false);
-  const [completedSets, setCompletedSets] = useState({}); // { "exIdx-setIdx": { reps, kg } }
+  const [completedSets, setCompletedSets] = useState({});
   const [showSummary, setShowSummary] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [animKey, setAnimKey] = useState(0);
   const [toast, setToast] = useState(null);
   const [showCoach, setShowCoach] = useState(false);
   const [coachMessages, setCoachMessages] = useState([
-    { role: "assistant", text: "Coach IA pret ! Dis-moi si tu as du mal avec un exercice, si tu ressens une douleur ou si tu veux adapter la seance." }
+    { role: "assistant", text: "Coach IA pret ! Dis-moi si tu as du mal avec un exercice, une douleur ou si tu veux adapter la seance." }
   ]);
   const [coachInput, setCoachInput] = useState("");
   const [coachLoading, setCoachLoading] = useState(false);
@@ -517,6 +516,331 @@ function SeanceScreen({ seance, onFinish, onBack }) {
   const [startTime] = useState(() => Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [celebrate, setCelebrate] = useState(false);
+
+  const theme = getSportTheme(sport);
+
+  useEffect(() => {
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [startTime]);
+
+  const formatElapsed = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+
+  const exercices = seance.exercices;
+  const currentEx = exercices[exIdx];
+
+  useEffect(() => {
+    if (!currentEx) return;
+    setPhotoUrl(null);
+    getExercicePhoto(currentEx.nom).then(url => setPhotoUrl(url));
+  }, [exIdx]);
+
+  if (!currentEx && !showSummary) return null;
+
+  const totalSets = currentEx ? (currentEx.sets || 4) : 4;
+  const progressPct = currentEx ? Math.round(((exIdx + setIdx / totalSets) / exercices.length) * 100) : 100;
+  const accentColor = theme.accent;
+
+  const sendCoachMessage = async () => {
+    if (!coachInput.trim() || coachLoading) return;
+    const userMsg = coachInput.trim();
+    setCoachInput("");
+    setCoachMessages(prev => [...prev, { role: "user", text: userMsg }]);
+    setCoachLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Pas de session");
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ message: userMsg, exercice: currentEx, seance: { titre: seance?.titre }, history: coachMessages.slice(-6) }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setCoachMessages(prev => [...prev, { role: "assistant", text: data.reply || "Desolé, erreur." }]);
+    } catch (err) {
+      setCoachMessages(prev => [...prev, { role: "assistant", text: "Erreur. Reessaie." }]);
+    }
+    setCoachLoading(false);
+  };
+
+  const handleSetComplete = () => {
+    const key = `${exIdx}-${setIdx}`;
+    setCompletedSets(prev => ({ ...prev, [key]: { reps: parseInt(currentEx.reps) || 8, kg: currentEx.chargeKg || 0 } }));
+    const msg = getRandom(MOTIVATION.complete);
+    setToast(msg);
+    setTimeout(() => setToast(null), 1400);
+    if (setIdx < totalSets - 1) {
+      setWaitingRest(true);
+    } else {
+      if (exIdx < exercices.length - 1) {
+        setCelebrate(true);
+        setTimeout(() => setCelebrate(false), 1200);
+        setTimeout(() => { setExIdx(i => i + 1); setSetIdx(0); setAnimKey(k => k + 1); }, 500);
+      } else {
+        setTimeout(() => setShowSummary(true), 600);
+      }
+    }
+  };
+
+  // ── ECRAN RECAPITULATIF ──
+  if (showSummary) {
+    const totalSetsCount = exercices.reduce((acc, ex) => acc + (ex.sets || 3), 0);
+    const durationMin = Math.max(1, Math.round((Date.now() - startTime) / 60000));
+    return (
+      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", maxWidth: 430, margin: "0 auto", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 300px 300px at 50% 30%, ${accentColor}08, transparent)`, pointerEvents: "none" }} />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 40, position: "relative" }}>
+
+          {/* Trophee */}
+          <div style={{ width: 100, height: 100, borderRadius: 26, background: accentColor + "15", border: `2px solid ${accentColor}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46, marginBottom: 24, boxShadow: `0 0 60px ${accentColor}30`, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
+            🏆
+          </div>
+
+          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8 }}>SEANCE TERMINEE</div>
+          <h1 style={{ ...s.display, fontSize: 36, color: "white", marginBottom: 6, textAlign: "center", letterSpacing: "0.02em" }}>{getRandom(MOTIVATION.finish).toUpperCase()}</h1>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, marginBottom: 36, letterSpacing: "0.15em" }}>{(seance.titre || "").toUpperCase()}</p>
+
+          {/* Stats */}
+          <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 36 }}>
+            {[
+              { val: exercices.length, label: "EXO", color: accentColor },
+              { val: totalSetsCount, label: "SERIES", color: DS.colors.success },
+              { val: `${durationMin}`, label: "MIN", color: "#FF8C00" },
+            ].map((stat, i) => (
+              <div key={i} style={{ flex: 1, background: DS.colors.surface, border: `1px solid ${stat.color}25`, borderRadius: DS.radius.lg, padding: "18px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
+                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 28, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
+                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Ressenti */}
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 14 }}>Comment tu te sens ?</p>
+          <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 24 }}>
+            {[
+              { id: "easy", emoji: "😤", label: "FACILE", color: accentColor },
+              { id: "good", emoji: "💪", label: "PARFAIT", color: DS.colors.success },
+              { id: "hard", emoji: "🔥", label: "DUR", color: "#FF4500" },
+            ].map(fb => (
+              <button key={fb.id} onClick={() => setFeedback(fb.id)} style={{ flex: 1, padding: "16px 8px", background: feedback === fb.id ? fb.color + "20" : DS.colors.surface, border: `2px solid ${feedback === fb.id ? fb.color : DS.colors.border}`, borderRadius: DS.radius.lg, cursor: "pointer", transition: "all 0.2s", transform: feedback === fb.id ? "scale(1.05)" : "scale(1)" }}>
+                <div style={{ fontSize: 26, marginBottom: 6 }}>{fb.emoji}</div>
+                <div style={{ fontFamily: "'Space Mono',monospace", color: feedback === fb.id ? fb.color : DS.colors.textSec, fontSize: 9, letterSpacing: "0.1em" }}>{fb.label}</div>
+              </button>
+            ))}
+          </div>
+
+          <button onClick={() => onFinish(feedback, completedSets, exercices, durationMin)} disabled={!feedback} style={{ width: "100%", height: 56, background: feedback ? `linear-gradient(135deg, ${accentColor}, ${accentColor}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? "#000" : DS.colors.textSec, fontSize: 15, cursor: feedback ? "pointer" : "not-allowed", fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", boxShadow: feedback ? `0 8px 32px ${accentColor}40` : "none", transition: "all 0.3s" }}>
+            {feedback ? "ENREGISTRER ET CONTINUER" : "SELECTIONNE TON RESSENTI"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── ECRAN SEANCE LIVE ──
+  return (
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, maxWidth: 430, margin: "0 auto", position: "relative" }}>
+
+      {/* Celebration */}
+      {celebrate && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+          <div style={{ fontSize: 80, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards" }}>💥</div>
+          <div style={{ position: "absolute", fontSize: 40, top: "35%", left: "20%", animation: "floatUp 1s ease forwards", opacity: 0 }}>⚡</div>
+          <div style={{ position: "absolute", fontSize: 30, top: "30%", right: "20%", animation: "floatUp 1s ease forwards", animationDelay: "0.15s", opacity: 0 }}>✨</div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: accentColor, color: "#000", padding: "8px 20px", borderRadius: DS.radius.full, fontFamily: "'Rajdhani',sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: "0.08em", zIndex: 200, boxShadow: `0 4px 20px ${accentColor}60`, whiteSpace: "nowrap" }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Header sticky */}
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,6,14,0.95)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "12px 20px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <button onClick={onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
+          <div style={{ textAlign: "center" }}>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase" }}>{exIdx + 1} / {exercices.length} EXERCICES</p>
+            <p style={{ ...s.display, color: "white", fontSize: 16, letterSpacing: "0.05em" }}>{(seance.titre || "").toUpperCase()}</p>
+          </div>
+          <div style={{ background: accentColor + "15", border: `1px solid ${accentColor}40`, borderRadius: DS.radius.full, padding: "5px 12px" }}>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 13, color: accentColor, fontWeight: 700 }}>{formatElapsed(elapsed)}</p>
+          </div>
+        </div>
+        {/* Barre progression */}
+        <div style={{ height: 2, background: DS.colors.surfaceHigh, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${progressPct}%`, background: accentColor, transition: "width 0.6s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: `0 0 8px ${accentColor}` }} />
+        </div>
+      </div>
+
+      <div style={{ padding: "16px 20px 140px" }}>
+
+        {/* Card exercice */}
+        <div key={animKey} style={{ borderRadius: DS.radius.xl, marginBottom: 14, overflow: "hidden" }}>
+
+          {/* Photo */}
+          <div style={{ height: 220, backgroundImage: photoUrl ? `url(${photoUrl})` : "none", backgroundSize: "cover", backgroundPosition: "center", position: "relative", backgroundColor: DS.colors.surfaceHigh }}>
+            <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to bottom, rgba(6,6,14,0.1) 0%, rgba(6,6,14,0.9) 100%)` }} />
+
+            {/* Numero exercice */}
+            <div style={{ position: "absolute", top: 14, left: 14, background: "rgba(6,6,14,0.8)", backdropFilter: "blur(10px)", border: `1px solid ${accentColor}50`, borderRadius: 8, padding: "3px 10px" }}>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.15em" }}>EX {exIdx + 1}/{exercices.length}</p>
+            </div>
+
+            {/* Icone muscle */}
+            <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(6,6,14,0.7)", backdropFilter: "blur(10px)", border: `1px solid ${accentColor}30`, borderRadius: DS.radius.md, padding: 8 }}>
+              {getMuscleIcon(currentEx.muscles, accentColor)}
+            </div>
+
+            {/* Nom exercice */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "16px 18px 18px" }}>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 4 }}>{currentEx.muscles}</p>
+              <h2 style={{ ...s.display, fontSize: 30, color: "white", lineHeight: 0.95, textShadow: "0 2px 12px rgba(0,0,0,0.8)", letterSpacing: "0.01em" }}>
+                {(currentEx.nom || "").toUpperCase()}
+              </h2>
+            </div>
+          </div>
+
+          {/* Stats exercice */}
+          <div style={{ background: DS.colors.surface, borderTop: "none", padding: "14px 16px" }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: currentEx.conseil ? 12 : 0 }}>
+              {[
+                { val: currentEx.sets, label: "SERIES", hi: true },
+                { val: currentEx.reps, label: "REPS", hi: false },
+                ...(currentEx.chargeKg > 0 ? [{ val: `${currentEx.chargeKg}kg`, label: "CHARGE", hi: false }] : []),
+                { val: `${currentEx.reposSec || 90}s`, label: "REPOS", hi: false },
+              ].map((stat, i) => (
+                <div key={i} style={{ flex: 1, background: stat.hi ? accentColor + "12" : DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 4px", textAlign: "center", border: stat.hi ? `1px solid ${accentColor}25` : "none" }}>
+                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 16, color: stat.hi ? accentColor : "white", fontWeight: 700 }}>{stat.val}</div>
+                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, marginTop: 2, letterSpacing: "0.08em" }}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+            {currentEx.conseil && (
+              <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 12px", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ fontSize: 13, flexShrink: 0 }}>💡</span>
+                <p style={{ color: DS.colors.textSec, fontSize: 12, lineHeight: 1.5 }}>{currentEx.conseil}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Zone repos / sets */}
+        {waitingRest ? (
+          <button onClick={() => { setWaitingRest(false); setResting(true); }} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${accentColor}, ${accentColor}AA)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontSize: 15, cursor: "pointer", fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 14, boxShadow: `0 8px 24px ${accentColor}40` }}>
+            DEMARRER LE REPOS
+          </button>
+        ) : resting ? (
+          <RestTimer seconds={currentEx.reposSec || 90} onComplete={() => { setResting(false); setWaitingRest(false); setSetIdx(i => i + 1); }} />
+        ) : (
+          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 14 }}>
+            {/* Header sets */}
+            <div style={{ background: DS.colors.surfaceHigh, padding: "10px 18px", display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${DS.colors.border}` }}>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", flex: 1 }}>SERIE</p>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase" }}>OBJECTIF</p>
+            </div>
+            {Array.from({ length: totalSets }).map((_, i) => {
+              const done = completedSets[`${exIdx}-${i}`];
+              const isActive = i === setIdx && !done;
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderBottom: i < totalSets - 1 ? `1px solid ${DS.colors.border}` : "none", background: isActive ? accentColor + "06" : "transparent", opacity: done ? 0.4 : 1, transition: "all 0.2s" }}>
+                  <div style={{ width: 30, height: 30, borderRadius: DS.radius.full, background: done ? DS.colors.success + "20" : isActive ? accentColor + "20" : DS.colors.surfaceHigh, border: `2px solid ${done ? DS.colors.success : isActive ? accentColor : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {done ? <span style={{ color: DS.colors.success, fontSize: 14 }}>✓</span> : <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: isActive ? accentColor : DS.colors.textSec }}>{i + 1}</span>}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 13, color: isActive ? "white" : DS.colors.textSec, fontWeight: isActive ? 700 : 400 }}>
+                      {currentEx.sets} x {currentEx.reps}
+                      {currentEx.chargeKg > 0 && <span style={{ color: accentColor }}> @ {currentEx.chargeKg}kg</span>}
+                    </p>
+                    {isActive && <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, marginTop: 2, letterSpacing: "0.1em" }}>SERIE ACTIVE</p>}
+                  </div>
+                  <button onClick={() => isActive && handleSetComplete()} disabled={!isActive || done} style={{ width: 44, height: 44, borderRadius: DS.radius.md, background: done ? DS.colors.success + "15" : isActive ? accentColor : DS.colors.surfaceHigh, border: `1px solid ${done ? DS.colors.success : isActive ? accentColor : DS.colors.border}`, cursor: isActive && !done ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, transition: "all 0.2s", boxShadow: isActive && !done ? `0 4px 16px ${accentColor}50` : "none", flexShrink: 0 }}>
+                    {done ? <span style={{ color: DS.colors.success }}>✓</span> : <span style={{ color: isActive ? "#000" : DS.colors.textSec, fontWeight: 700 }}>→</span>}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Exercices suivants */}
+        {exIdx < exercices.length - 1 && !resting && (
+          <div>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10 }}>ENSUITE</p>
+            {exercices.slice(exIdx + 1, exIdx + 3).map((ex, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 14px", marginBottom: 8, opacity: i === 0 ? 0.85 : 0.45 }}>
+                <div style={{ width: 32, height: 32, borderRadius: DS.radius.sm, background: accentColor + "15", border: `1px solid ${accentColor}25`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: accentColor }}>{exIdx + 2 + i}</p>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: "white", fontSize: 13, ...s.heading }}>{ex.nom}</p>
+                  <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{(ex.muscles || "").split(" ")[0]}</p>
+                </div>
+                <p style={{ fontFamily: "'Space Mono',monospace", color: accentColor, fontSize: 12, fontWeight: 700 }}>{ex.sets}x{ex.reps}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Bouton Coach IA flottant */}
+      <button onClick={() => setShowCoach(true)} style={{ position: "fixed", bottom: 32, right: 20, width: 54, height: 54, borderRadius: DS.radius.full, background: accentColor, border: "none", color: "#000", fontSize: 22, cursor: "pointer", boxShadow: `0 0 24px ${accentColor}60`, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150 }}>
+        🤖
+      </button>
+
+      {/* Drawer Coach IA */}
+      {showCoach && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div onClick={() => setShowCoach(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "0 0 40px", maxHeight: "75vh", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "18px 20px 14px", borderBottom: `1px solid ${DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: DS.radius.full, background: accentColor + "20", border: `1px solid ${accentColor}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🤖</div>
+                <div>
+                  <p style={{ ...s.heading, fontSize: 15, color: "white" }}>Coach IA</p>
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.15em" }}>EN LIGNE</p>
+                </div>
+              </div>
+              <button onClick={() => setShowCoach(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 30, height: 30, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
+            </div>
+            {currentEx && (
+              <div style={{ margin: "10px 20px 0", background: accentColor + "10", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.md, padding: "7px 12px" }}>
+                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: accentColor }}>{currentEx.nom} — {currentEx.sets}x{currentEx.reps}{currentEx.chargeKg > 0 ? ` @ ${currentEx.chargeKg}kg` : ""}</p>
+              </div>
+            )}
+            <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {coachMessages.map((msg, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                  <div style={{ maxWidth: "82%", padding: "10px 14px", borderRadius: DS.radius.lg, background: msg.role === "user" ? accentColor : DS.colors.surfaceHigh, color: msg.role === "user" ? "#000" : "white", fontSize: 14, lineHeight: 1.5, fontWeight: msg.role === "user" ? 600 : 400 }}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {coachLoading && (
+                <div style={{ display: "flex", gap: 4, padding: "10px 16px", background: DS.colors.surfaceHigh, borderRadius: DS.radius.lg, width: "fit-content" }}>
+                  {[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: DS.radius.full, background: DS.colors.textSec, animation: `pulse 1s ease ${i*0.2}s infinite` }} />)}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: "10px 20px 0", display: "flex", gap: 8 }}>
+              <input value={coachInput} onChange={e => setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder="J'arrive pas a finir les reps..." style={{ flex: 1, height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: "white", fontSize: 14, outline: "none" }} />
+              <button onClick={sendCoachMessage} disabled={!coachInput.trim() || coachLoading} style={{ width: 44, height: 44, borderRadius: DS.radius.full, background: coachInput.trim() ? accentColor : DS.colors.surfaceHigh, border: "none", color: coachInput.trim() ? "#000" : DS.colors.textSec, cursor: "pointer", fontSize: 18, flexShrink: 0, fontWeight: 700 }}>→</button>
+            </div>
+            <div style={{ padding: "8px 20px 0", display: "flex", gap: 8, overflowX: "auto" }}>
+              {["J'arrive pas a finir", "J'ai mal", "Trop lourd", "Alternative ?"].map((sug, i) => (
+                <button key={i} onClick={() => setCoachInput(sug)} style={{ flexShrink: 0, padding: "5px 12px", background: accentColor + "12", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.full, color: accentColor, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'Space Mono',monospace" }}>{sug}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
   useEffect(() => {
     const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
@@ -2328,6 +2652,7 @@ export default function VoltraApp() {
       ) : seanceActive ? (
         <SeanceScreen
           seance={seanceActive}
+          sport={sportActif}
           onBack={() => setSeanceActive(null)}
           onFinish={async (feedback, completedSetsData, exercices, durationMin) => {
             try {
