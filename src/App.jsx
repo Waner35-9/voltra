@@ -237,6 +237,7 @@ const SPORTS = [
   { id: "tennis", label: "Tennis", emoji: "🎾" },
   { id: "rugby", label: "Rugby", emoji: "🏉" },
   { id: "natation", label: "Natation", emoji: "🏊" },
+  { id: "sprint", label: "Sprint", emoji: "🏃" },
   { id: "combat", label: "Combat", emoji: "🥊" },
 ];
 const SPORT_EMOJIS = {
