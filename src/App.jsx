@@ -2144,8 +2144,8 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
         {/* Infos sport - cliquable pour modifier */}
         <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, marginBottom: 16, overflow: "hidden" }}>
           {[
-            { emoji: SPORT_EMOJIS[sportActif] || SPORT_EMOJIS[sport] || "🏅", label: "Mon sport", value: (sportActif || sport || "Non defini").charAt(0).toUpperCase() + (sportActif || sport || "Non defini").slice(1) },
-            { emoji: "⚡", label: "Mon objectif", value: objectif !== "default" && objectif !== "Non defini" ? objectif.charAt(0).toUpperCase() + objectif.slice(1) : "Non defini" },
+            { emoji: SPORT_EMOJIS[sport] || "🏅", label: "Mon sport", value: sport !== "default" ? sport.charAt(0).toUpperCase() + sport.slice(1) : "Non defini" },
+            { emoji: "⚡", label: "Mon objectif", value: objectif && objectif !== "Non defini" ? objectif.charAt(0).toUpperCase() + objectif.slice(1) : "Non defini" },
             { emoji: "📅", label: "Frequence", value: `${frequence} seances / semaine` }
           ].map((item, i, arr) => (
             <div key={i} onClick={openEdit} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: i < arr.length - 1 ? `1px solid ${DS.colors.border}` : "none", cursor: "pointer" }}>
