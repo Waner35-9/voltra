@@ -516,6 +516,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
   const [startTime] = useState(() => Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [celebrate, setCelebrate] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   const theme = getSportTheme(sport);
 
