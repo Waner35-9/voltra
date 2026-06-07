@@ -1286,7 +1286,7 @@ function PricingScreen({ onSelectPlan, programme }) {
             {[
               { val: programme?.data_json?.semaines?.length || 8, label: "semaines" },
               { val: programme?.data_json?.semaines?.[0]?.seances?.[0]?.exercices?.length || 5, label: "exercices/seance" },
-              { val: programme?.data_json?.semaines?.[0]?.seances?.length || 3, label: "seances/sem" },
+              { val: programme?.data_json?.frequence || programme?.data_json?.semaines?.[0]?.seances?.length || 3, label: "seances/sem" },
             ].map((stat, i) => (
               <div key={i} style={{ flex: 1, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center" }}>
                 <div style={{ ...s.mono, fontSize: 20, color: DS.colors.primary, fontWeight: 700 }}>{stat.val}</div>
