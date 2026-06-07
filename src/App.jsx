@@ -2315,6 +2315,7 @@ export default function VoltraApp() {
               console.error("onFinish error:", err);
             } finally {
               setSeanceActive(null);
+              setActiveTab("dashboard");
               setScreen("app");
             }
           }}
