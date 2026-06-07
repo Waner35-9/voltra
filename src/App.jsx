@@ -640,6 +640,45 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
     📲 PARTAGER MES RESULTATS
   </button>
 )}
+
+{showShare && (
+  <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.95)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+    <div id="share-card" style={{ width: "100%", maxWidth: 360, background: `linear-gradient(135deg, #06060E 0%, #0D0D18 100%)`, border: `1px solid ${accentColor}40`, borderRadius: 24, padding: "32px 28px", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: -40, right: -40, fontSize: 160, opacity: 0.05, lineHeight: 1 }}>{SPORT_EMOJIS[sport] || "⚡"}</div>
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${accentColor}, ${accentColor}50)` }} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 22, color: "white", letterSpacing: "0.15em" }}>VOLTRA</div>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: accentColor + "20", border: `1px solid ${accentColor}40`, borderRadius: 6, padding: "3px 10px" }}>
+          <span style={{ fontSize: 12 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
+          <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.15em" }}>{(sport || "SPORT").toUpperCase()}</span>
+        </div>
+      </div>
+      <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.25em", marginBottom: 6 }}>SEANCE TERMINEE</div>
+      <div style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: "white", lineHeight: 1, marginBottom: 24 }}>{(seance.titre || "").toUpperCase()}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 24 }}>
+        {[
+          { val: exercices.length, label: "EXO", color: accentColor },
+          { val: exercices.reduce((a, e) => a + (e.sets || 3), 0), label: "SERIES", color: "#00FF87" },
+          { val: `${Math.max(1, Math.round((Date.now() - startTime) / 60000))}`, label: "MIN", color: "#FF8C00" },
+        ].map((stat, i) => (
+          <div key={i} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
+            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 24, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
+            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em" }}>{stat.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em" }}>
+          {new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }).toUpperCase()}
+        </div>
+        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.1em" }}>VOLTRA.APP</div>
+      </div>
+    </div>
+    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.15em", marginTop: 20, marginBottom: 24, textAlign: "center" }}>FAIS UN SCREENSHOT POUR PARTAGER</p>
+    <button onClick={() => setShowShare(false)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 99, padding: "10px 28px", color: "rgba(255,255,255,0.5)", fontFamily: "'Space Mono',monospace", fontSize: 11, cursor: "pointer", letterSpacing: "0.1em" }}>FERMER</button>
+  </div>
+)}
         </div>
       </div>
     );
