@@ -551,7 +551,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Pas de session");
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`, {
+      await supabase.auth.refreshSession();
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
         body: JSON.stringify({ message: userMsg, exercice: currentEx, seance: { titre: seance?.titre }, history: coachMessages.slice(-6) }),
@@ -2269,11 +2269,11 @@ export default function VoltraApp() {
       else { setScreen("auth"); }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-      } else if (_event === "SIGNED_OUT") {
+      if (_event === "SIGNED_OUT") {
         setUser(null);
         setScreen("auth");
+      } else if (session?.user) {
+        setUser(session.user);
       }
     });
     return () => subscription.unsubscribe();
