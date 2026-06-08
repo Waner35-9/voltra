@@ -1249,7 +1249,7 @@ function OnboardingScreen({ onComplete }) {
 // ─────────────────────────────────────────────
 // ECRAN PRICING
 // ─────────────────────────────────────────────
-function PricingScreen({ onSelectPlan, programme }) {
+function PricingScreen({ onSelectPlan, programme, frequence }) {
   const [selected, setSelected] = useState("annual");
   const [timeLeft, setTimeLeft] = useState({ h: 23, m: 47, s: 12 });
   const [showFeatures, setShowFeatures] = useState(false);
@@ -1282,7 +1282,7 @@ function PricingScreen({ onSelectPlan, programme }) {
             {[
               { val: programme?.data_json?.semaines?.length || 8, label: "semaines" },
               { val: programme?.data_json?.semaines?.[0]?.seances?.[0]?.exercices?.length || 5, label: "exercices/seance" },
-              { val: programme?.data_json?.semaines?.[0]?.seances?.length || 3, label: "seances/sem" },
+              { val: frequence || programme?.data_json?.semaines?.[0]?.seances?.length || 3, label: "seances/sem" },
             ].map((stat, i) => (
               <div key={i} style={{ flex: 1, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center" }}>
                 <div style={{ ...s.mono, fontSize: 20, color: DS.colors.primary, fontWeight: 700 }}>{stat.val}</div>
@@ -2179,6 +2179,7 @@ export default function VoltraApp() {
   const [seanceActive, setSeanceActive] = useState(null);
   const [programmeActif, setProgrammeActif] = useState(null);
   const [sportActif, setSportActif] = useState(null);
+  const [onboardingData, setOnboardingData] = useState(null);
   const [matchs, setMatchs] = useState([]);
   const [showMatchs, setShowMatchs] = useState(false);
   const [derniereSeance, setDerniereSeance] = useState(null);
@@ -2267,8 +2268,8 @@ export default function VoltraApp() {
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
-  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => { setProgrammeActif(programme); setSportActif(data.sport); setScreen("pricing"); }} />;
-  if (screen === "pricing") return <PricingScreen programme={programmeActif} onSelectPlan={() => setScreen("app")} />;
+  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => { setProgrammeActif(programme); setSportActif(data.sport); setOnboardingData(data); setScreen("pricing"); }} />;
+  if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} onSelectPlan={() => setScreen("app")} />;
 
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
