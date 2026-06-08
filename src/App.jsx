@@ -551,11 +551,22 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Pas de session");
-      await supabase.auth.refreshSession();
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({ message: userMsg, exercice: currentEx, seance: { titre: seance?.titre }, history: coachMessages.slice(-6) }),
-      });
+      const { data: { session } } = await supabase.auth.refreshSession();
+
+const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/TA_FONCTION`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${session.access_token}`,
+    "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
+  },
+  body: JSON.stringify({
+    message: userMsg,
+    exercice: currentEx,
+    seance: { titre: seance?.titre },
+    history: coachMessages.slice(-6),
+  }),
+});
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setCoachMessages(prev => [...prev, { role: "assistant", text: data.reply || "Desolé, erreur." }]);
