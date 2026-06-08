@@ -2230,6 +2230,8 @@ export default function VoltraApp() {
   const [matchs, setMatchs] = useState([]);
   const [showMatchs, setShowMatchs] = useState(false);
   const [derniereSeance, setDerniereSeance] = useState(null);
+  const [isPro, setIsPro] = useState(false);
+  const [showUpsell, setShowUpsell] = useState(false);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -2316,10 +2318,40 @@ export default function VoltraApp() {
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
   if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => { setProgrammeActif(programme); setSportActif(data.sport); setOnboardingData(data); setScreen("pricing"); }} />;
-  if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} onSelectPlan={() => setScreen("app")} />;
+  if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} onSelectPlan={(plan) => {
+    if (plan !== "free") setIsPro(true);
+    setScreen("app");
+  }} />;
 
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
+      {showUpsell && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(6,6,14,0.97)", backdropFilter: "blur(20px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
+          <div style={{ width: 80, height: 80, borderRadius: 22, background: "linear-gradient(135deg, #00FF87, #00C896)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, marginBottom: 24, boxShadow: "0 0 60px rgba(0,255,135,0.4)" }}>⚡</div>
+          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.primary, letterSpacing: "0.3em", marginBottom: 12 }}>SEANCE GRATUITE UTILISEE</div>
+          <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: "white", textAlign: "center", lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em" }}>PASSE PRO POUR CONTINUER</h2>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, textAlign: "center", lineHeight: 1.8, letterSpacing: "0.08em", marginBottom: 32 }}>Tu as complete ta seance gratuite. Debloque l'acces illimite pour continuer ta progression.</p>
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              { emoji: "📈", text: "Seances illimitees" },
+              { emoji: "⚡", text: "Progression automatique des charges" },
+              { emoji: "🤖", text: "Coach IA en temps reel" },
+              { emoji: "🏆", text: "Historique et records complets" },
+            ].map((f, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px" }}>
+                <span style={{ fontSize: 18 }}>{f.emoji}</span>
+                <p style={{ color: "white", fontSize: 14, ...s.heading }}>{f.text}</p>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => { setShowUpsell(false); setScreen("pricing"); }} style={{ width: "100%", height: 56, background: "linear-gradient(135deg, #00FF87, #00C896)", border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", marginTop: 24, boxShadow: "0 8px 32px rgba(0,255,135,0.3)" }}>
+            VOIR LES OFFRES →
+          </button>
+          <button onClick={() => setShowUpsell(false)} style={{ marginTop: 14, background: "none", border: "none", color: DS.colors.textSec, fontFamily: "'Space Mono',monospace", fontSize: 10, cursor: "pointer", letterSpacing: "0.1em" }}>
+            PAS MAINTENANT
+          </button>
+        </div>
+      )}
       {showMatchs ? (
         <MatchsScreen user={user} onBack={() => {
           setShowMatchs(false);
@@ -2359,6 +2391,10 @@ export default function VoltraApp() {
               sport={sportActif}
               onOpenMatchs={() => setShowMatchs(true)}
               onStartSession={() => {
+                if (!isPro && derniereSeance) {
+                  setShowUpsell(true);
+                  return;
+                }
                 const prog = programmeActif?.data_json;
                 const seance = prog?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
                 setSeanceActive(seance);
