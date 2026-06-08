@@ -1002,6 +1002,7 @@ function OnboardingScreen({ onComplete }) {
     niveau: null, frequence: 3
   });
   const [loading, setLoading] = useState(false);
+  const [genError, setGenError] = useState(false);
   const [animIn, setAnimIn] = useState(true);
 
   const hasPoste = data.sport && data.sport !== "natation";
@@ -1024,17 +1025,37 @@ function OnboardingScreen({ onComplete }) {
 
   const handleFinish = () => {
     setLoading(true);
+    setGenError(false);
+    // Timeout de securite : si pas de reponse en 20s, afficher erreur
+    const timeout = setTimeout(() => {
+      setGenError(true);
+    }, 20000);
     setTimeout(() => {
       onComplete(data, null);
       generateProgramIA(data).then(async programme => {
-        // Sauvegarder le sport dans le profil
+        clearTimeout(timeout);
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           await supabase.from("profiles").upsert({ id: session.user.id, sport: data.sport }, { onConflict: "id" });
         }
         onComplete(data, programme);
-      }).catch(err => console.error(err));
+      }).catch(err => {
+        clearTimeout(timeout);
+        console.error(err);
+        setGenError(true);
+      });
     }, 3200);
+  };
+
+  const retryGeneration = () => {
+    setGenError(false);
+    handleFinish();
+  };
+
+  const skipGeneration = () => {
+    setLoading(false);
+    setGenError(false);
+    onComplete(data, null);
   };
 
   const toggleDouleur = (id) => {
@@ -1076,8 +1097,20 @@ function OnboardingScreen({ onComplete }) {
             </svg>
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>⚡</div>
           </div>
-          <h2 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary, marginBottom: 12 }}>Construction de ton programme...</h2>
-          <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32, lineHeight: 1.6 }}>L'IA analyse ton profil complet pour creer un programme sur mesure.</p>
+          {genError ? (
+            <div style={{ textAlign: "center", animation: "fadeIn 0.4s ease" }}>
+              <div style={{ fontSize: 48, marginBottom: 20 }}>⚠️</div>
+              <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 26, color: "white", marginBottom: 12, letterSpacing: "0.05em" }}>Generation lente...</h2>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, marginBottom: 32, lineHeight: 1.8, letterSpacing: "0.1em" }}>Le serveur prend plus de temps que prevu. Tu peux reessayer ou continuer sans programme — il sera genere en arriere-plan.</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+                <button onClick={retryGeneration} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", boxShadow: DS.shadow.primary }}>REESSAYER</button>
+                <button onClick={skipGeneration} style={{ width: "100%", height: 52, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontFamily: "'Space Mono',monospace", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer" }}>CONTINUER SANS PROGRAMME</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h2 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary, marginBottom: 12 }}>Construction de ton programme...</h2>
+              <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32, lineHeight: 1.6 }}>L'IA analyse ton profil complet pour creer un programme sur mesure.</p>
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
             {[
               { emoji: "🏋️", text: "Selection des exercices", delay: "0s" },
@@ -1091,6 +1124,8 @@ function OnboardingScreen({ onComplete }) {
               </div>
             ))}
           </div>
+            </>
+          )}
         </div>
       )}
 
