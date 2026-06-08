@@ -1985,10 +1985,22 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
 
   const saveEdit = async () => {
     setSaving(true);
+    const sportChanged = editData.sport !== sport;
+    const objectifChanged = editData.objectif !== objectif;
+    const needsRegen = sportChanged || objectifChanged;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) await supabase.from("profiles").upsert({ id: session.user.id, sport: editData.sport }, { onConflict: "id" });
-      if (onRegenerateProgram) await onRegenerateProgram(editData);
+      if (session) {
+        await supabase.from("profiles").upsert({ id: session.user.id, sport: editData.sport }, { onConflict: "id" });
+        if (!needsRegen && programme?.id) {
+          // Juste mettre a jour la frequence sans regenerer
+          const updatedJson = { ...(programme.data_json || {}), frequence: editData.frequence };
+          await supabase.from("programmes").update({ data_json: updatedJson }).eq("id", programme.id);
+          if (onRegenerateProgram) await onRegenerateProgram(editData, false);
+        } else if (needsRegen) {
+          if (onRegenerateProgram) await onRegenerateProgram(editData, true);
+        }
+      }
     } catch (err) { console.error(err); }
     setSaving(false);
     setShowEditDrawer(false);
@@ -2048,7 +2060,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
               <p style={{ color: DS.colors.warning, fontSize: 12 }}>⚠️ Un nouveau programme IA sera genere.</p>
             </div>
             <button onClick={saveEdit} disabled={saving || !editData.sport || !editData.objectif} style={{ width: "100%", height: 52, background: editData.sport && editData.objectif ? `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: editData.sport && editData.objectif ? "#000" : DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading, fontWeight: 700, letterSpacing: "0.05em" }}>
-              {saving ? "Generation en cours..." : "Sauvegarder et regenerer"}
+              {saving ? (editData.sport !== sport || editData.objectif !== objectif ? "Generation en cours..." : "Sauvegarde...") : (editData.sport !== sport || editData.objectif !== objectif ? "Sauvegarder et regenerer ⚡" : "Sauvegarder les changements")}
             </button>
           </div>
         </div>
@@ -2319,10 +2331,17 @@ export default function VoltraApp() {
             />
           )}
           {activeTab === "historique" && <HistoriqueScreen />}
-          {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} sportActif={sportActif} onLogout={handleLogout} onRegenerateProgram={async (data) => {
+          {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} sportActif={sportActif} onLogout={handleLogout} onRegenerateProgram={async (data, shouldRegen = true) => {
             try {
-              const programme = await generateProgramIA(data);
-              if (programme) { setProgrammeActif(programme); setSportActif(data.sport); }
+              if (shouldRegen) {
+                const prog = await generateProgramIA(data);
+                if (prog) { setProgrammeActif(prog); setSportActif(data.sport); }
+              } else {
+                // Juste rafraichir le programme depuis la base
+                setSportActif(data.sport);
+                const { data: prog } = await supabase.from("programmes").select("*").eq("id", programmeActif?.id).single();
+                if (prog) setProgrammeActif(prog);
+              }
             } catch (err) { console.error(err); }
           }} />}
           <BottomNav activeTab={activeTab} setTab={setActiveTab} />
