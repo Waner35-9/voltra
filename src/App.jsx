@@ -1676,6 +1676,282 @@ function HistoriqueScreen() {
         .order("date_realisee", { ascending: false })
         .limit(30);
       if (data) { setSeancesReelles(data); setTotalSeances(data.length); }
+      const { data: logs } = await supabase
+        .from("logs_performance")
+        .select("*, exercices(nom)")
+        .eq("user_id", session.user.id)
+        .order("charge_kg", { ascending: false })
+        .limit(100);
+      if (logs) setLogsPerf(logs);
+      setLoading(false);
+    });
+  }, []);
+
+  // Stats
+  const dureeTotal = seancesReelles.reduce((acc, s) => acc + (s.duree_min || 0), 0);
+  const dureeAvg = totalSeances > 0 ? Math.round(dureeTotal / totalSeances) : 0;
+  const streak = (() => {
+    let count = 0;
+    const today = new Date();
+    const sorted = [...seancesReelles].sort((a, b) => new Date(b.date_realisee) - new Date(a.date_realisee));
+    for (const sc of sorted) {
+      const diff = Math.floor((today - new Date(sc.date_realisee)) / (1000 * 60 * 60 * 24));
+      if (diff <= count + 2) count++;
+      else break;
+    }
+    return count;
+  })();
+
+  // Records
+  const records = {};
+  logsPerf.forEach(log => {
+    const nom = log.exercices?.nom;
+    if (!nom || !log.charge_kg) return;
+    if (!records[nom] || log.charge_kg > records[nom]) records[nom] = log.charge_kg;
+  });
+  const topRecords = Object.entries(records).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  // Progression charges
+  const exosDispos = [...new Set(logsPerf.map(l => l.exercices?.nom).filter(Boolean))];
+  const exoSelectionne = selectedExo || exosDispos[0];
+  const progressionExo = logsPerf
+    .filter(l => l.exercices?.nom === exoSelectionne)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    .slice(-8);
+
+  // Calendrier
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const seanceDates = new Set(seancesReelles.map(s => new Date(s.date_realisee).getDate()));
+
+  // Séances par semaine (8 dernières)
+  const seancesParSemaine = (() => {
+    const buckets = Array(8).fill(0);
+    seancesReelles.forEach(sc => {
+      const diff = Math.floor((now - new Date(sc.date_realisee)) / (1000 * 60 * 60 * 24 * 7));
+      if (diff < 8) buckets[7 - diff]++;
+    });
+    return buckets;
+  })();
+  const maxSemaine = Math.max(...seancesParSemaine, 1);
+
+  const feedbackColor = (f) => f === "easy" ? DS.colors.primary : f === "good" ? DS.colors.success : DS.colors.warning;
+  const feedbackLabel = (f) => f === "easy" ? "Facile" : f === "good" ? "Parfait" : "Dur";
+  const feedbackEmoji = (f) => f === "easy" ? "😤" : f === "good" ? "💪" : "🔥";
+
+  const accentColor = "#FF2D55";
+
+  return (
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
+
+      {/* Drawer detail seance */}
+      {selectedSeance && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div onClick={() => setSelectedSeance(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "24px 20px 48px", maxHeight: "70vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div>
+                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 4 }}>
+                  {new Date(selectedSeance.date_realisee).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }).toUpperCase()}
+                </p>
+                <h3 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 22, color: "white" }}>{selectedSeance.titre}</h3>
+              </div>
+              <button onClick={() => setSelectedSeance(null)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
+            </div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+              {[
+                { val: `${selectedSeance.duree_min || 0}m`, label: "DUREE", color: accentColor },
+                { val: selectedSeance.exercices?.length || 0, label: "EXO", color: DS.colors.success },
+              ].map((stat, i) => (
+                <div key={i} style={{ flex: 1, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "12px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
+                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 20, color: stat.color, fontWeight: 700 }}>{stat.val}</div>
+                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, marginTop: 2, letterSpacing: "0.1em" }}>{stat.label}</div>
+                </div>
+              ))}
+              {selectedSeance.feedback && (
+                <div style={{ flex: 1, background: feedbackColor(selectedSeance.feedback) + "15", borderRadius: DS.radius.md, padding: "12px 8px", textAlign: "center", border: `1px solid ${feedbackColor(selectedSeance.feedback)}30` }}>
+                  <div style={{ fontSize: 20, marginBottom: 2 }}>{feedbackEmoji(selectedSeance.feedback)}</div>
+                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: feedbackColor(selectedSeance.feedback), letterSpacing: "0.08em" }}>{feedbackLabel(selectedSeance.feedback).toUpperCase()}</div>
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {(selectedSeance.exercices || []).map((ex, i) => (
+                <div key={i} style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <p style={{ color: "white", fontSize: 14, ...s.heading }}>{ex.nom}</p>
+                    <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{ex.muscles?.split(" ")[0]}</p>
+                  </div>
+                  <p style={{ fontFamily: "'Space Mono',monospace", color: accentColor, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}{ex.charge_kg > 0 ? ` @ ${ex.charge_kg}kg` : ""}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,6,14,0.95)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, color: "white", letterSpacing: "0.1em" }}>PROGRESSION</h1>
+        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 6, padding: "5px 10px" }}>CE MOIS</div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 60 }}>
+          <div style={{ width: 32, height: 32, borderRadius: DS.radius.full, background: accentColor, animation: "pulse 1s infinite", margin: "0 auto 12px" }} />
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: DS.colors.textSec }}>Chargement...</p>
+        </div>
+      ) : (
+        <div style={{ padding: "20px 20px 0" }}>
+
+          {/* Hero stat */}
+          <div style={{ background: `linear-gradient(135deg, rgba(255,45,85,0.1), rgba(255,45,85,0.03))`, border: `1px solid rgba(255,45,85,0.2)`, borderRadius: DS.radius.xl, padding: "24px 20px", marginBottom: 16, position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: accentColor }} />
+            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: accentColor, letterSpacing: "0.25em", marginBottom: 8 }}>VOLUME TOTAL</div>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 72, color: "white", lineHeight: 0.9, letterSpacing: "-0.02em" }}>{totalSeances}</div>
+            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", marginTop: 8 }}>SEANCES COMPLETEES</div>
+            {streak > 0 && (
+              <div style={{ position: "absolute", top: 20, right: 20, background: "rgba(0,255,135,0.15)", border: "1px solid rgba(0,255,135,0.3)", borderRadius: 8, padding: "6px 12px", fontFamily: "'Space Mono',monospace", fontSize: 11, color: "#00FF87", fontWeight: 700 }}>
+                🔥 {streak} JOURS
+              </div>
+            )}
+          </div>
+
+          {/* 4 stats grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+            {[
+              { val: streak, label: "STREAK ACTUEL", color: accentColor },
+              { val: `${dureeAvg}m`, label: "DUREE MOY.", color: "#00FF87" },
+              { val: topRecords[0] ? `${topRecords[0][1]}kg` : "—", label: `RECORD ${(topRecords[0]?.[0] || "").split(" ")[0].toUpperCase()}`, color: "#FFE500" },
+              { val: seancesReelles.filter(s => s.feedback === "good" || s.feedback === "easy").length, label: "SEANCES REUSSIES", color: "#00C8FF" },
+            ].map((stat, i) => (
+              <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "16px 14px", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: stat.color, lineHeight: 1, marginBottom: 6 }}>{stat.val}</div>
+                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.12em" }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Graphique séances par semaine — cliquable */}
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16 }}>
+            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 14 }}>SEANCES SUR 8 SEMAINES · APPUIE POUR DETAIL</div>
+            <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 100 }}>
+              {seancesParSemaine.map((count, i) => {
+                const isLast = i === 7;
+                const h = count > 0 ? Math.max(12, (count / maxSemaine) * 100) : 8;
+                const isEmpty = count === 0;
+                const seancesOfWeek = seancesReelles.filter(sc => {
+                  const diff = Math.floor((now - new Date(sc.date_realisee)) / (1000 * 60 * 60 * 24 * 7));
+                  return diff === 7 - i;
+                });
+                return (
+                  <div key={i} onClick={() => seancesOfWeek.length > 0 && setSelectedSeance(seancesOfWeek[0])} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, cursor: seancesOfWeek.length > 0 ? "pointer" : "default" }}>
+                    {count > 0 && <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: isLast ? accentColor : "rgba(255,255,255,0.3)" }}>{count}</div>}
+                    <div style={{ width: "100%", height: h, background: isEmpty ? "rgba(255,255,255,0.04)" : isLast ? accentColor : `rgba(255,45,85,${0.2 + (count/maxSemaine)*0.6})`, borderRadius: "4px 4px 0 0", border: isEmpty ? "1px dashed rgba(255,255,255,0.08)" : "none", boxShadow: isLast && count > 0 ? `0 0 12px rgba(255,45,85,0.5)` : "none", transition: "opacity 0.2s" }} />
+                    <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: isLast ? accentColor : "rgba(255,255,255,0.2)" }}>S{i + 1}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Calendrier du mois */}
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: DS.radius.xl, padding: "16px", marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: "white", letterSpacing: "0.08em" }}>{now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }).toUpperCase()}</div>
+              {streak > 0 && <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.1em" }}>🔥 {streak} JOURS</div>}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, marginBottom: 4 }}>
+              {["L","M","M","J","V","S","D"].map((d, i) => (
+                <div key={i} style={{ textAlign: "center", fontFamily: "'Space Mono',monospace", fontSize: 7, color: "rgba(255,255,255,0.2)", paddingBottom: 4 }}>{d}</div>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
+              {Array.from({ length: firstDay === 0 ? 6 : firstDay - 1 }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const isToday = day === now.getDate();
+                const hasSeance = seanceDates.has(day);
+                return (
+                  <div key={day} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 4, background: hasSeance ? accentColor : isToday ? DS.colors.surfaceHigh : "transparent", border: isToday && !hasSeance ? `1px solid ${accentColor}` : "none", boxShadow: hasSeance ? `0 0 8px rgba(255,45,85,0.4)` : "none" }}>
+                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: hasSeance ? "white" : isToday ? accentColor : "rgba(255,255,255,0.25)" }}>{day}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Records personnels */}
+          {topRecords.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 12 }}>RECORDS PERSONNELS</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 0, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: DS.radius.xl, overflow: "hidden" }}>
+                {topRecords.map(([nom, charge], i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderBottom: i < topRecords.length - 1 ? `1px solid rgba(255,255,255,0.04)` : "none" }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: i === 0 ? "rgba(255,229,0,0.1)" : "rgba(255,255,255,0.04)", border: `1px solid ${i === 0 ? "rgba(255,229,0,0.3)" : "rgba(255,255,255,0.06)"}`, flexShrink: 0 }}>
+                      {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                    </div>
+                    <div style={{ flex: 1, fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>{nom}</div>
+                    <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 14, color: "#00FF87", fontWeight: 700 }}>{charge} kg</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Historique séances récentes */}
+          {seancesReelles.length > 0 && (
+            <div>
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 12 }}>DERNIERES SEANCES</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {seancesReelles.slice(0, 6).map((sc, i) => (
+                  <div key={i} onClick={() => setSelectedSeance(sc)} style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: DS.radius.lg, padding: "14px 16px", cursor: "pointer" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: sc.feedback ? feedbackColor(sc.feedback) + "15" : "rgba(255,255,255,0.05)", border: `1px solid ${sc.feedback ? feedbackColor(sc.feedback) + "30" : "rgba(255,255,255,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+                      {feedbackEmoji(sc.feedback) || "🏋️"}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ color: "white", fontSize: 14, ...s.heading, marginBottom: 2 }}>{sc.titre}</p>
+                      <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.08em" }}>
+                        {new Date(sc.date_realisee).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }).toUpperCase()} · {sc.duree_min || 0}min
+                      </p>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: accentColor, fontWeight: 700 }}>{sc.exercices?.length || 0} EXO</p>
+                      {sc.feedback && <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: feedbackColor(sc.feedback), marginTop: 2 }}>{feedbackLabel(sc.feedback).toUpperCase()}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {seancesReelles.length === 0 && (
+            <div style={{ textAlign: "center", padding: "40px 20px" }}>
+              <p style={{ fontSize: 48, marginBottom: 16 }}>🏋️</p>
+              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: "white", letterSpacing: "0.08em", marginBottom: 8 }}>AUCUNE SEANCE ENCORE</p>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em" }}>Complete ta premiere seance pour voir ta progression ici.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { setLoading(false); return; }
+      const { data } = await supabase
+        .from("seances")
+        .select("*, exercices(*)")
+        .eq("user_id", session.user.id)
+        .eq("statut", "faite")
+        .order("date_realisee", { ascending: false })
+        .limit(30);
+      if (data) { setSeancesReelles(data); setTotalSeances(data.length); }
 
       // Charger logs de performance pour les records
       const { data: logs } = await supabase
