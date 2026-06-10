@@ -2117,6 +2117,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
   const [saving, setSaving] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
+  const [lastSessionStats, setLastSessionStats] = useState(null);
   const [streak, setStreak] = useState(0);
 
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
@@ -2340,6 +2341,252 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
 }
 
 // ─────────────────────────────────────────────
+// PROGRAMME PREVIEW — avant inscription
+// ─────────────────────────────────────────────
+function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
+  const theme = getSportTheme(sport);
+  const progData = programme?.data_json;
+  const seance = progData?.semaines?.[0]?.seances?.[0];
+  const exercices = seance?.exercices || [];
+  const totalSemaines = programme?.total_semaines || 8;
+  const frequence = onboardingData?.frequence || 3;
+
+  // Nom de programme personnalisé
+  const nomsProgramme = {
+    basketball: { explosivite: "Protocole Meneur Elite", detente: "Jump Performance Program", force: "Power Basketball System", endurance: "Cardio Court Warrior" },
+    football: { explosivite: "Sprint & Power Protocol", endurance: "Endurance Football Elite", force: "Physical Domination System" },
+    tennis: { explosivite: "Reactive Tennis System", force: "Power Serve Program", endurance: "Court Endurance Pro" },
+    rugby: { force: "Force Brute Protocol", masse: "Mass & Power System", explosivite: "Impact Rugby Program", endurance: "Iron Endurance Rugby" },
+    natation: { endurance: "Aqua Endurance Elite", force: "Power Swimmer System", masse: "Swimmer Physique Pro" },
+    sprint: { explosivite: "Speed Demon Protocol", force: "Power Sprint System", detente: "Explosive Athlete Pro" },
+    combat: { explosivite: "Combat Power System", endurance: "Fight Conditioning Pro", force: "Warrior Strength Program", masse: "Combat Mass Builder" },
+  };
+  const nomProg = nomsProgramme[sport]?.[onboardingData?.objectif] || programme?.titre || "Performance Elite Program";
+
+  // Calcul chiffres
+  const totalSeances = totalSemaines * frequence;
+  const kgEstime = exercices.reduce((acc, ex) => acc + (ex.chargeKg || 20) * (ex.sets || 3) * (parseInt(ex.reps) || 8), 0);
+  const kgTotal = Math.round(kgEstime * totalSeances / 1000);
+
+  return (
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40, position: "relative" }}>
+      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
+        {SPORT_EMOJIS[sport] || "⚡"}
+      </div>
+
+      <div style={{ padding: "52px 20px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "3px 10px", marginBottom: 12 }}>
+            <div style={{ width: 5, height: 5, borderRadius: "50%", background: theme.accent, animation: "pulse 1.5s infinite" }} />
+            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: theme.accent, letterSpacing: "0.2em" }}>TON PROGRAMME EST PRET</span>
+          </div>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 34, color: "white", lineHeight: 0.95, marginBottom: 8, letterSpacing: "0.02em" }}>
+            {nomProg.toUpperCase()}
+          </h1>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em" }}>
+            {totalSemaines} SEMAINES · {frequence}X/SEMAINE · {totalSeances} SEANCES
+          </p>
+        </div>
+
+        {/* Stats chiffrées */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+          {[
+            { val: totalSemaines, label: "SEMAINES", color: theme.accent },
+            { val: totalSeances, label: "SEANCES", color: "#00FF87" },
+            { val: `~${kgTotal}T`, label: "KG TOTAL", color: "#FF8C00" },
+          ].map((stat, i) => (
+            <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
+              <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 26, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Preview première séance */}
+        <div style={{ background: DS.colors.surface, border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16 }}>
+          <div style={{ position: "relative" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
+          </div>
+          <div style={{ padding: "16px 16px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: theme.accent, letterSpacing: "0.2em", marginBottom: 4 }}>SEANCE 1 — APERCU</p>
+              <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 18, color: "white" }}>{seance?.titre?.toUpperCase() || "PREMIERE SEANCE"}</p>
+            </div>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec }}>{seance?.dureeMin || 45} MIN</p>
+          </div>
+          <div style={{ padding: "0 16px 16px" }}>
+            {exercices.slice(0, 3).map((ex, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? `1px solid ${DS.colors.border}` : "none" }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: theme.accent + "15", border: `1px solid ${theme.accent}25`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent }}>{i + 1}</p>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: "white", fontSize: 14, ...s.heading }}>{ex.nom}</p>
+                  <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{(ex.muscles || "").split(" ")[0]}</p>
+                </div>
+                <p style={{ fontFamily: "'Space Mono',monospace", color: theme.accent, fontSize: 11, fontWeight: 700 }}>{ex.sets}×{ex.reps}{ex.chargeKg > 0 ? ` @ ${ex.chargeKg}kg` : ""}</p>
+              </div>
+            ))}
+            {exercices.length > 3 && (
+              <div style={{ padding: "12px 0 0", textAlign: "center" }}>
+                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em" }}>
+                  + {exercices.length - 3} EXERCICES SUPPLEMENTAIRES
+                </p>
+              </div>
+            )}
+            {exercices.length === 0 && (
+              <div style={{ padding: "12px 0", textAlign: "center" }}>
+                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>Exercices personalises prets</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Pitch chiffré */}
+        <div style={{ background: `linear-gradient(135deg, ${theme.accent}10, ${theme.accent}03)`, border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, padding: "16px 20px", marginBottom: 24 }}>
+          <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 16, color: "white", marginBottom: 6 }}>
+            En {totalSemaines} semaines tu vas soulever environ {kgTotal} tonnes.
+          </p>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
+            Chaque kilo souleve est un pas vers ta meilleure version. Ton programme est calibre pour maximiser ta progression semaine apres semaine.
+          </p>
+        </div>
+
+        {/* CTA */}
+        <button onClick={onContinue} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}40` }}>
+          DEVERROUILLER MON PROGRAMME →
+        </button>
+        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textDim, textAlign: "center", letterSpacing: "0.1em" }}>
+          INSCRIPTION GRATUITE · 30 SECONDES
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// POST SESSION UPSELL
+// ─────────────────────────────────────────────
+function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
+  const [selected, setSelected] = useState("annual");
+  const theme = getSportTheme(sportActif);
+  const currentPlan = PLANS.find(p => p.id === selected);
+  const totalSemaines = programme?.total_semaines || 8;
+  const semaineCourante = programme?.semaine_courante || 1;
+
+  const feedbackMsg = stats?.feedback === "easy" ? "Tu as gere facilement —" :
+    stats?.feedback === "good" ? "Seance parfaite —" : "Tu t'es vraiment donne —";
+
+  return (
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40, position: "relative" }}>
+      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
+        {SPORT_EMOJIS[sportActif] || "⚡"}
+      </div>
+
+      <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
+
+        {/* Header celebratoire */}
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ width: 80, height: 80, borderRadius: 22, background: theme.accent + "20", border: `2px solid ${theme.accent}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 20px", boxShadow: `0 0 60px ${theme.accent}30`, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
+            🏆
+          </div>
+          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 10 }}>SEANCE TERMINEE</div>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: "white", lineHeight: 1, marginBottom: 8, letterSpacing: "0.02em" }}>
+            {feedbackMsg}<br />tu progresses !
+          </h1>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.12em" }}>{stats?.titre?.toUpperCase()}</p>
+        </div>
+
+        {/* Stats personnalisées de la séance */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+          {[
+            { val: stats?.exercices || 0, label: "EXERCICES", color: theme.accent },
+            { val: `${stats?.duree || 0}min`, label: "DUREE", color: "#00FF87" },
+            { val: stats?.totalKg > 0 ? `${stats.totalKg}kg` : "💪", label: stats?.totalKg > 0 ? "SOULEVE" : "EFFORT", color: "#FF8C00" },
+          ].map((stat, i) => (
+            <div key={i} style={{ flex: 1, background: DS.colors.surface, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 20, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Message accrocheur */}
+        <div style={{ background: `linear-gradient(135deg, ${theme.accent}12, ${theme.accent}04)`, border: `1px solid ${theme.accent}25`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 24, position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
+          <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 18, color: "white", marginBottom: 6 }}>
+            Ta progression vient de commencer.
+          </p>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
+            Tu es en semaine {semaineCourante} sur {totalSemaines}. Les {totalSemaines - semaineCourante} semaines qui suivent vont transformer tes performances — mais seulement si tu continues.
+          </p>
+        </div>
+
+        {/* Ce qu'il rate */}
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 12 }}>CE QUE TU DEBLOQUES</p>
+          {[
+            { emoji: "📈", title: "Progression automatique", desc: "Tes charges augmentent intelligemment chaque semaine" },
+            { emoji: "🤖", title: "Coach IA illimite", desc: "Adaptation en temps reel pendant chaque seance" },
+            { emoji: "🏆", title: "Suivi des records", desc: "Visualise tes progres et bats tes records" },
+            { emoji: "⚡", title: "Seances illimitees", desc: `Les ${totalSemaines - semaineCourante} semaines restantes de ton programme` },
+          ].map((f, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < 3 ? `1px solid ${DS.colors.border}` : "none" }}>
+              <div style={{ width: 36, height: 36, background: theme.accent + "12", border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{f.emoji}</div>
+              <div>
+                <p style={{ color: "white", fontSize: 14, ...s.heading, marginBottom: 2 }}>{f.title}</p>
+                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Plans */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+          {PLANS.map(plan => (
+            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: selected === plan.id ? plan.colorSoft : DS.colors.surface, border: `1.5px solid ${selected === plan.id ? plan.colorBorder : DS.colors.border}`, borderRadius: DS.radius.xl, padding: "16px 20px", cursor: "pointer", transition: "all 0.2s" }}>
+              {selected === plan.id && <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 2, background: plan.color, borderRadius: DS.radius.full }} />}
+              {plan.badge && <div style={{ display: "inline-flex", padding: "2px 8px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: plan.color, fontSize: 10, ...s.heading, marginBottom: 8 }}>{plan.badge}</div>}
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+                <div>
+                  <p style={{ color: DS.colors.textSec, fontSize: 12, marginBottom: 4 }}>{plan.label}</p>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.price}€</span>
+                    <span style={{ color: DS.colors.textSec, fontSize: 13 }}>{plan.unit}</span>
+                  </div>
+                </div>
+                <div style={{ width: 22, height: 22, borderRadius: DS.radius.full, border: `2px solid ${selected === plan.id ? plan.color : DS.colors.textDim}`, background: selected === plan.id ? plan.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+                  {selected === plan.id && <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: "white" }} />}
+                </div>
+              </div>
+              {plan.savings && (
+                <div style={{ marginTop: 6 }}>
+                  <span style={{ padding: "2px 8px", background: plan.colorSoft, borderRadius: DS.radius.full, color: plan.color, fontSize: 10, ...s.heading }}>{plan.savings}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button onClick={() => onSelectPlan(selected)} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}40` }}>
+          CONTINUER MA PROGRESSION →
+        </button>
+        <p style={{ color: DS.colors.textDim, fontSize: 11, textAlign: "center", marginBottom: 16, fontFamily: "'Space Mono',monospace", letterSpacing: "0.06em" }}>Paiement securise · Annulation en 1 clic</p>
+        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 10, cursor: "pointer", fontFamily: "'Space Mono',monospace", letterSpacing: "0.1em" }}>
+          ABANDONNER MA PROGRESSION
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // BOTTOM NAV
 // ─────────────────────────────────────────────
 function BottomNav({ activeTab, setTab }) {
@@ -2382,6 +2629,7 @@ export default function VoltraApp() {
   const [showUpsell, setShowUpsell] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
+  const [lastSessionStats, setLastSessionStats] = useState(null);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -2405,12 +2653,12 @@ export default function VoltraApp() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) { setUser(session.user); setScreen("app"); }
-      else { setScreen("auth"); }
+      else { setScreen("onboarding"); }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (_event === "SIGNED_OUT") {
         setUser(null);
-        setScreen("auth");
+        setScreen("onboarding");
       } else if (_event === "TOKEN_REFRESHED" && session?.user) {
         setUser(session.user);
       } else if (_event === "SIGNED_IN" && session?.user) {
@@ -2422,8 +2670,12 @@ export default function VoltraApp() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setScreen("auth");
+    setProgrammeActif(null);
+    setSportActif(null);
+    setOnboardingData(null);
+    setIsPro(false);
     setUser(null);
+    setScreen("onboarding");
   };
 
   useEffect(() => {
@@ -2475,63 +2727,59 @@ export default function VoltraApp() {
   }, [screen, user]);
 
   if (screen === "splash") return <SplashScreen />;
-  if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
+  if (screen === "preview") return <ProgrammePreview
+    programme={programmeActif}
+    sport={sportActif}
+    onboardingData={onboardingData}
+    onContinue={() => setScreen("auth")}
+  />;
+  if (screen === "auth") return <AuthScreen onAuth={async (u) => {
+    setUser(u);
+    // Sauvegarder le sport dans le profil si on vient de l'onboarding
+    if (onboardingData?.sport) {
+      await supabase.from("profiles").upsert({ id: u.id, sport: onboardingData.sport }, { onConflict: "id" });
+    }
+    if (programmeActif || onboardingData) {
+      setScreen("pricing");
+    } else {
+      setScreen("onboarding");
+    }
+  }} />;
   if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => {
-    if (programme) { setProgrammeActif(programme); } else { setProgrammeLoading(true); }
+    if (programme) setProgrammeActif(programme);
     setSportActif(data.sport);
     setOnboardingData(data);
-    setScreen("pricing");
+    if (user) {
+      setScreen("pricing");
+    } else {
+      setScreen("preview");
+    }
   }} />;
-  if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} onSelectPlan={async (plan) => {
+  if (screen === "post-session-upsell") return <PostSessionUpsell
+    stats={lastSessionStats}
+    programme={programmeActif}
+    sportActif={sportActif}
+    onSelectPlan={async (plan) => {
+      if (plan !== "free") {
+        setIsPro(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true }, { onConflict: "id" });
+      }
+      setScreen("app");
+    }}
+  />;
+if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} onSelectPlan={async (plan) => {
     if (plan !== "free") {
       setIsPro(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (session) await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true }, { onConflict: "id" });
     }
     setScreen("app");
-    // Si le programme n'est pas encore pret, relancer en arriere-plan
-    if (!programmeActif && onboardingData) {
-      setProgrammeLoading(true);
-      generateProgramIA(onboardingData).then(async prog => {
-        if (prog) {
-          setProgrammeActif(prog);
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) await supabase.from("profiles").upsert({ id: session.user.id, sport: onboardingData.sport }, { onConflict: "id" });
-        }
-        setProgrammeLoading(false);
-      }).catch(() => setProgrammeLoading(false));
-    }
   }} />;
 
   return (
     <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
-      {showUpsell && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(6,6,14,0.97)", backdropFilter: "blur(20px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px" }}>
-          <div style={{ width: 80, height: 80, borderRadius: 22, background: "linear-gradient(135deg, #00FF87, #00C896)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, marginBottom: 24, boxShadow: "0 0 60px rgba(0,255,135,0.4)" }}>⚡</div>
-          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.primary, letterSpacing: "0.3em", marginBottom: 12 }}>SEANCE GRATUITE UTILISEE</div>
-          <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: "white", textAlign: "center", lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em" }}>PASSE PRO POUR CONTINUER</h2>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, textAlign: "center", lineHeight: 1.8, letterSpacing: "0.08em", marginBottom: 32 }}>Tu as complete ta seance gratuite. Debloque l'acces illimite pour continuer ta progression.</p>
-          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
-            {[
-              { emoji: "📈", text: "Seances illimitees" },
-              { emoji: "⚡", text: "Progression automatique des charges" },
-              { emoji: "🤖", text: "Coach IA en temps reel" },
-              { emoji: "🏆", text: "Historique et records complets" },
-            ].map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px" }}>
-                <span style={{ fontSize: 18 }}>{f.emoji}</span>
-                <p style={{ color: "white", fontSize: 14, ...s.heading }}>{f.text}</p>
-              </div>
-            ))}
-          </div>
-          <button onClick={() => { setShowUpsell(false); setScreen("pricing"); }} style={{ width: "100%", height: 56, background: "linear-gradient(135deg, #00FF87, #00C896)", border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", marginTop: 24, boxShadow: "0 8px 32px rgba(0,255,135,0.3)" }}>
-            VOIR LES OFFRES →
-          </button>
-          <button onClick={() => setShowUpsell(false)} style={{ marginTop: 14, background: "none", border: "none", color: DS.colors.textSec, fontFamily: "'Space Mono',monospace", fontSize: 10, cursor: "pointer", letterSpacing: "0.1em" }}>
-            PAS MAINTENANT
-          </button>
-        </div>
-      )}
+
       {showMatchs ? (
         <MatchsScreen user={user} onBack={() => {
           setShowMatchs(false);
@@ -2552,10 +2800,25 @@ export default function VoltraApp() {
                 const { data } = await supabase.from("programmes").select("*").eq("id", programmeActif.id).single();
                 if (data) setProgrammeActif(data);
               }
+              // Si gratuit et premiere seance terminee → paywall personnalise
+              if (!isPro) {
+                const totalKg = (seanceActive?.exercices || []).reduce((acc, ex) => {
+                  return acc + (ex.chargeKg || 0) * (ex.sets || 3) * (parseInt(ex.reps) || 8);
+                }, 0);
+                setLastSessionStats({
+                  titre: seanceActive?.titre || "Seance",
+                  exercices: seanceActive?.exercices?.length || 0,
+                  duree: durationMin,
+                  totalKg: Math.round(totalKg),
+                  feedback,
+                });
+                setScreen("post-session-upsell");
+                return;
+              }
             } catch (err) {
               console.error("onFinish error:", err);
             } finally {
-              setSeancesCount(c => c + 1);
+              setSeancesCount(prev => prev + 1);
               setSeanceActive(null);
               setActiveTab("dashboard");
               setScreen("app");
@@ -2574,10 +2837,7 @@ export default function VoltraApp() {
               sport={sportActif}
               onOpenMatchs={() => setShowMatchs(true)}
               onStartSession={() => {
-                if (!isPro && seancesCount >= 1) {
-                  setShowUpsell(true);
-                  return;
-                }
+
                 const prog = programmeActif?.data_json;
                 const seance = prog?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
                 setSeanceActive(seance);
