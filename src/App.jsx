@@ -1219,8 +1219,7 @@ function OnboardingScreen({ onComplete }) {
 
                 {/* Title */}
                 <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 36, color: "white", lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em", whiteSpace: "pre-line" }}>
-                  {currentSlide.title.replace("\n", "
-")}
+                  {currentSlide.title}
                 </h2>
 
                 {/* Desc */}
