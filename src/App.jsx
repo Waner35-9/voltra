@@ -2232,6 +2232,7 @@ export default function VoltraApp() {
   const [derniereSeance, setDerniereSeance] = useState(null);
   const [isPro, setIsPro] = useState(false);
   const [showUpsell, setShowUpsell] = useState(false);
+  const [seancesCount, setSeancesCount] = useState(0);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -2297,13 +2298,16 @@ export default function VoltraApp() {
       .order("date_match", { ascending: true })
       .limit(5)
       .then(({ data }) => { if (data) setMatchs(data); });
-    // Charger le sport depuis le profil
+    // Charger le sport et is_pro depuis le profil
     supabase
       .from("profiles")
-      .select("sport")
+      .select("sport, is_pro")
       .eq("id", user.id)
       .single()
-      .then(({ data }) => { if (data?.sport) setSportActif(data.sport); });
+      .then(({ data }) => {
+        if (data?.sport) setSportActif(data.sport);
+        if (data?.is_pro) setIsPro(true);
+      });
     supabase
       .from("seances")
       .select("*, exercices(*)")
@@ -2313,13 +2317,23 @@ export default function VoltraApp() {
       .limit(1)
       .single()
       .then(({ data }) => { if (data) setDerniereSeance(data); });
+    supabase
+      .from("seances")
+      .select("id", { count: "exact" })
+      .eq("user_id", user.id)
+      .eq("statut", "faite")
+      .then(({ count }) => { if (count) setSeancesCount(count); });
   }, [screen, user]);
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
   if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => { setProgrammeActif(programme); setSportActif(data.sport); setOnboardingData(data); setScreen("pricing"); }} />;
-  if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} onSelectPlan={(plan) => {
-    if (plan !== "free") setIsPro(true);
+  if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} onSelectPlan={async (plan) => {
+    if (plan !== "free") {
+      setIsPro(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true }, { onConflict: "id" });
+    }
     setScreen("app");
   }} />;
 
@@ -2375,7 +2389,9 @@ export default function VoltraApp() {
             } catch (err) {
               console.error("onFinish error:", err);
             } finally {
+              setSeancesCount(c => c + 1);
               setSeanceActive(null);
+              setActiveTab("dashboard");
               setScreen("app");
             }
           }}
@@ -2391,7 +2407,7 @@ export default function VoltraApp() {
               sport={sportActif}
               onOpenMatchs={() => setShowMatchs(true)}
               onStartSession={() => {
-                if (!isPro && derniereSeance) {
+                if (!isPro && seancesCount >= 1) {
                   setShowUpsell(true);
                   return;
                 }
