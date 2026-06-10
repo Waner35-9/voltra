@@ -845,6 +845,131 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
 }
 
 // ─────────────────────────────────────────────
+// WELCOME SCREEN
+// ─────────────────────────────────────────────
+function WelcomeScreen({ onStart }) {
+  const [phase, setPhase] = useState(0); // 0=logo, 1=features, 2=cta
+  const [featureIdx, setFeatureIdx] = useState(0);
+  const [logoReady, setLogoReady] = useState(false);
+
+  useEffect(() => {
+    // Phase logo → features → cta
+    const t1 = setTimeout(() => { setLogoReady(true); }, 300);
+    const t2 = setTimeout(() => setPhase(1), 1800);
+    const t3 = setTimeout(() => setPhase(2), 5200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+
+  // Auto-scroll features
+  useEffect(() => {
+    if (phase < 1) return;
+    const interval = setInterval(() => {
+      setFeatureIdx(i => (i + 1) % features.length);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, [phase]);
+
+  const features = [
+    { emoji: "🎯", title: "Programme 100% personnalisé", desc: "L'IA crée ton programme selon ton sport, ton niveau et tes objectifs spécifiques", color: "#00FF87" },
+    { emoji: "📈", title: "Progression automatique", desc: "Tes charges augmentent intelligemment chaque semaine pour maximiser tes gains", color: "#FF8C00" },
+    { emoji: "🤖", title: "Coach IA en temps réel", desc: "Un coach disponible pendant chaque séance pour adapter et t'encourager", color: "#00C8FF" },
+    { emoji: "🏆", title: "Suis tes records", desc: "Visualise ta progression semaine après semaine et bats tes limites", color: "#FFE500" },
+  ];
+
+  return (
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+
+      {/* Glow de fond */}
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 500px 500px at 50% 30%, rgba(0,255,135,0.07), transparent)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: -100, left: -100, width: 400, height: 400, background: "radial-gradient(circle, rgba(0,200,255,0.04), transparent)", pointerEvents: "none" }} />
+
+      {/* Phase logo */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: phase === 0 ? "center" : "flex-start", paddingTop: phase === 0 ? 0 : 60, transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1)", position: "relative", zIndex: 1 }}>
+
+        {/* Logo */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: phase === 0 ? 0 : 40, transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1)", transform: logoReady ? "scale(1)" : "scale(0.5)", opacity: logoReady ? 1 : 0 }}>
+          <div style={{ position: "relative", marginBottom: 20 }}>
+            {/* Rings animés */}
+            <div style={{ position: "absolute", inset: -20, borderRadius: "50%", border: "1px solid rgba(0,255,135,0.15)", animation: "pulse 3s ease-in-out infinite" }} />
+            <div style={{ position: "absolute", inset: -36, borderRadius: "50%", border: "1px solid rgba(0,255,135,0.08)", animation: "pulse 3s ease-in-out 0.5s infinite" }} />
+            {/* Icone */}
+            <div style={{ width: 90, height: 90, borderRadius: 26, background: "linear-gradient(135deg, #00FF87, #00C896)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, boxShadow: "0 0 60px rgba(0,255,135,0.5), 0 0 120px rgba(0,255,135,0.2)", position: "relative", zIndex: 1 }}>
+              ⚡
+            </div>
+          </div>
+
+          <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: phase === 0 ? 52 : 36, color: "white", letterSpacing: "0.2em", lineHeight: 1, transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1)", marginBottom: 8 }}>
+            VOLTRA
+          </div>
+          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.3)", letterSpacing: "0.3em", opacity: logoReady ? 1 : 0, transition: "opacity 0.6s ease 0.5s" }}>
+            PERFORMANCE · IA · SPORT
+          </div>
+        </div>
+
+        {/* Features carousel */}
+        {phase >= 1 && (
+          <div style={{ width: "100%", maxWidth: 390, padding: "0 24px", animation: "slideUp 0.6s ease" }}>
+
+            {/* Feature card principale */}
+            <div key={featureIdx} style={{ background: DS.colors.surface, border: `1px solid ${features[featureIdx].color}20`, borderRadius: DS.radius.xl, padding: "28px 24px", marginBottom: 20, position: "relative", overflow: "hidden", animation: "fadeIn 0.4s ease" }}>
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: features[featureIdx].color }} />
+              <div style={{ position: "absolute", top: -30, right: -20, fontSize: 100, opacity: 0.05, lineHeight: 1 }}>{features[featureIdx].emoji}</div>
+              <div style={{ fontSize: 42, marginBottom: 16 }}>{features[featureIdx].emoji}</div>
+              <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 24, color: "white", marginBottom: 10, lineHeight: 1.1, letterSpacing: "0.02em" }}>
+                {features[featureIdx].title}
+              </h2>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
+                {features[featureIdx].desc}
+              </p>
+            </div>
+
+            {/* Dots */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 24 }}>
+              {features.map((_, i) => (
+                <div key={i} onClick={() => setFeatureIdx(i)} style={{ width: i === featureIdx ? 24 : 6, height: 6, borderRadius: 3, background: i === featureIdx ? features[featureIdx].color : "rgba(255,255,255,0.15)", transition: "all 0.3s ease", cursor: "pointer", boxShadow: i === featureIdx ? `0 0 8px ${features[featureIdx].color}` : "none" }} />
+              ))}
+            </div>
+
+            {/* 4 icones features rapides */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+              {features.map((f, i) => (
+                <div key={i} onClick={() => setFeatureIdx(i)} style={{ background: i === featureIdx ? f.color + "15" : DS.colors.surfaceHigh, border: `1px solid ${i === featureIdx ? f.color + "40" : DS.colors.border}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
+                  <div style={{ fontSize: 20, marginBottom: 4 }}>{f.emoji}</div>
+                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: i === featureIdx ? f.color : DS.colors.textSec, letterSpacing: "0.06em", lineHeight: 1.3 }}>{f.title.split(" ")[0]}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* CTA en bas */}
+      <div style={{ padding: "0 24px 52px", position: "relative", zIndex: 1, opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "translateY(0)" : "translateY(40px)", transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1) 0.3s" }}>
+
+        {phase >= 2 && (
+          <div style={{ marginBottom: 16, animation: "slideUp 0.5s ease" }}>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20 }}>
+              {["🏀 Basketball", "⚽ Football", "🥊 Combat", "🏃 Sprint"].map((s, i) => (
+                <div key={i} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: DS.radius.full, padding: "4px 10px", fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{s}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <button onClick={onStart} style={{ width: "100%", height: 60, background: "linear-gradient(135deg, #00FF87, #00C896)", border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", boxShadow: "0 8px 40px rgba(0,255,135,0.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16 }}>
+          <span>⚡</span>
+          <span>CONSTRUIRE MON PROGRAMME</span>
+        </button>
+
+        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.2)", textAlign: "center", letterSpacing: "0.15em" }}>
+          GRATUIT · 2 MINUTES · SANS CARTE BANCAIRE
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // ECRAN SPLASH
 // ─────────────────────────────────────────────
 function SplashScreen() {
@@ -2615,7 +2740,7 @@ function BottomNav({ activeTab, setTab }) {
 // APP ROOT
 // ─────────────────────────────────────────────
 export default function VoltraApp() {
-  const [screen, setScreen] = useState("splash");
+  const [screen, setScreen] = useState("welcome");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
@@ -2726,6 +2851,7 @@ export default function VoltraApp() {
       .then(({ count }) => { if (count) setSeancesCount(count); });
   }, [screen, user]);
 
+  if (screen === "welcome") return <WelcomeScreen onStart={() => setScreen("onboarding")} />;
   if (screen === "splash") return <SplashScreen />;
   if (screen === "preview") return <ProgrammePreview
     programme={programmeActif}
