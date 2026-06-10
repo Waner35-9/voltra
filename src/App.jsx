@@ -1538,13 +1538,13 @@ function MatchsScreen({ user, onBack }) {
 // DASHBOARD
 function DashboardScreen({ user, programme, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs }) {
   const progData = programme?.data_json;
-  const seance = progData?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
+  const seance = progData?.semaines?.[0]?.seances?.[0] || null;
   const sport = sportProp || progData?.sport || user?.user_metadata?.sport || "default";
   const theme = getSportTheme(sport);
   const prog = {
-    titre: programme?.titre || MOCK_PROGRAM.titre,
-    semaineCourante: programme?.semaine_courante || MOCK_PROGRAM.semaineCourante,
-    totalSemaines: programme?.total_semaines || MOCK_PROGRAM.totalSemaines,
+    titre: programme?.titre || null,
+    semaineCourante: programme?.semaine_courante || 1,
+    totalSemaines: programme?.total_semaines || 8,
     progression: Math.round(((programme?.semaine_courante || 1) / (programme?.total_semaines || 8)) * 100),
   };
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
@@ -1617,10 +1617,17 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, sport: sport
             <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.2em", textTransform: "uppercase" }}>SEMAINE {prog.semaineCourante} / {prog.totalSemaines}</div>
             <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${theme.accent}40, transparent)` }} />
           </div>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 42, color: "white", lineHeight: 0.92, marginBottom: 16, letterSpacing: "0.02em" }}>{(seance.titre || "").toUpperCase()}</h1>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 42, color: "white", lineHeight: 0.92, marginBottom: 16, letterSpacing: "0.02em" }}>{(prog.titre || seance?.titre || "PROGRAMME EN COURS").toUpperCase()}</h1>
           <ProgressBar value={prog.progression} />
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, marginTop: 6, letterSpacing: "0.15em" }}>{prog.progression}% COMPLETE</p>
         </div>
+        {!seance ? (
+          <Card style={{ marginBottom: 24, padding: 28, textAlign: "center" }}>
+            <div style={{ fontSize: 40, marginBottom: 14 }}>⚡</div>
+            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 20, color: "white", marginBottom: 8, letterSpacing: "0.05em" }}>Programme en preparation</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em", lineHeight: 1.8 }}>Ton programme IA est en cours de generation. Reviens dans quelques instants.</p>
+          </Card>
+        ) : (
         <Card style={{ marginBottom: 24, overflow: "hidden", position: "relative", background: DS.colors.surface, border: `1px solid ${theme.accent}20` }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -1641,10 +1648,12 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, sport: sport
           </div>
           <PrimaryButton onClick={onStartSession} style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, boxShadow: `0 8px 24px rgba(${theme.accentRgb},0.3)`, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.1em" }}>▶ DEMARRER LA SEANCE</PrimaryButton>
         </Card>
+        )}
+        {seance && (
         <div style={{ marginBottom: 28 }}>
           <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Au programme</p>
           <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
-            {seance.exercices.map((ex, i) => {
+            {(seance.exercices || []).map((ex, i) => {
               const colors = [DS.colors.primary, DS.colors.success, DS.colors.warning, DS.colors.primary, DS.colors.success];
               const color = colors[i % colors.length];
               return (
@@ -1659,6 +1668,7 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, sport: sport
             })}
           </div>
         </div>
+        )}
         <div style={{ marginBottom: 28 }}>
           <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Derniere seance</p>
           {derniereSeance ? (
