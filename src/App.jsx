@@ -1095,8 +1095,7 @@ function OnboardingScreen({ onComplete }) {
           {
             emoji: "⚡",
             tag: "GENERATION EN COURS",
-            title: "Ton programme
-est en creation",
+            title: "Ton programme\nest en creation",
             desc: "L'IA analyse ton profil pour creer un programme sur mesure adapte a ton sport et tes objectifs.",
             visual: (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
@@ -1117,8 +1116,7 @@ est en creation",
           {
             emoji: "🏃",
             tag: "SEANCES LIVE",
-            title: "Suis chaque
-exercice en temps reel",
+            title: "Suis chaque\nexercice en temps reel",
             desc: "Photos, chrono, series guidees. Chaque rep est tracee pour maximiser ta progression.",
             visual: (
               <div style={{ background: DS.colors.surface, border: `1px solid ${sportTheme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", width: "100%" }}>
@@ -1149,8 +1147,7 @@ exercice en temps reel",
           {
             emoji: "🤖",
             tag: "COACH IA",
-            title: "Un coach
-toujours disponible",
+            title: "Un coach\ntoujours disponible",
             desc: "Pendant chaque seance, ton coach IA repond a tes questions, adapte les charges et te motive.",
             visual: (
               <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1172,8 +1169,7 @@ toujours disponible",
           {
             emoji: "📈",
             tag: "PROGRESSION",
-            title: "Vois tes records
-battre semaine apres semaine",
+            title: "Vois tes records\nbattre semaine apres semaine",
             desc: "Charges, series, temps — tout est tracé. Tu vois exactement ou tu en es et ce qui t'attend.",
             visual: (
               <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "14px 16px", width: "100%" }}>
