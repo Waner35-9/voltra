@@ -1004,6 +1004,7 @@ function OnboardingScreen({ onComplete }) {
   const [loading, setLoading] = useState(false);
   const [genError, setGenError] = useState(false);
   const [animIn, setAnimIn] = useState(true);
+  const [slideIndex, setSlideIndex] = useState(0);
 
   const hasPoste = data.sport && data.sport !== "natation";
   const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau"];
@@ -1088,46 +1089,165 @@ function OnboardingScreen({ onComplete }) {
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px" }}>
 
-      {loading && (
-        <div style={{ position: "fixed", inset: 0, background: DS.colors.bg, zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", textAlign: "center" }}>
-          <div style={{ position: "relative", width: 100, height: 100, margin: "0 auto 32px" }}>
-            <svg width="100" height="100" viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
-              <circle cx="50" cy="50" r="44" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="6" />
-              <circle cx="50" cy="50" r="44" fill="none" stroke={DS.colors.primary} strokeWidth="6" strokeLinecap="round" strokeDasharray="276" strokeDashoffset="276" style={{ animation: "fillCircle 3s ease forwards" }} />
-            </svg>
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>⚡</div>
-          </div>
-          {genError ? (
-            <div style={{ textAlign: "center", animation: "fadeIn 0.4s ease" }}>
-              <div style={{ fontSize: 48, marginBottom: 20 }}>⚠️</div>
-              <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 26, color: "white", marginBottom: 12, letterSpacing: "0.05em" }}>Generation lente...</h2>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, marginBottom: 32, lineHeight: 1.8, letterSpacing: "0.1em" }}>Le serveur prend plus de temps que prevu. Tu peux reessayer ou continuer sans programme — il sera genere en arriere-plan.</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-                <button onClick={retryGeneration} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", boxShadow: DS.shadow.primary }}>REESSAYER</button>
-                <button onClick={skipGeneration} style={{ width: "100%", height: 52, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontFamily: "'Space Mono',monospace", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer" }}>CONTINUER SANS PROGRAMME</button>
+      {loading && (() => {
+        const sportTheme = getSportTheme(data.sport);
+        const slides = [
+          {
+            emoji: "⚡",
+            tag: "GENERATION EN COURS",
+            title: "Ton programme
+est en creation",
+            desc: "L'IA analyse ton profil pour creer un programme sur mesure adapte a ton sport et tes objectifs.",
+            visual: (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+                {[
+                  { emoji: "🏋️", text: "Selection des exercices", delay: "0s" },
+                  { emoji: "📈", text: "Calcul des progressions", delay: "0.5s" },
+                  { emoji: "⚡", text: `Optimisation ${data.sport || "sport"}`, delay: "1s" },
+                  { emoji: "✓", text: "Finalisation", delay: "1.5s" },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "10px 14px", opacity: 0, animation: `fadeIn 0.4s ease ${item.delay} forwards` }}>
+                    <span style={{ fontSize: 16 }}>{item.emoji}</span>
+                    <p style={{ color: DS.colors.textSec, fontSize: 13 }}>{item.text}</p>
+                  </div>
+                ))}
               </div>
+            ),
+          },
+          {
+            emoji: "🏃",
+            tag: "SEANCES LIVE",
+            title: "Suis chaque
+exercice en temps reel",
+            desc: "Photos, chrono, series guidees. Chaque rep est tracee pour maximiser ta progression.",
+            visual: (
+              <div style={{ background: DS.colors.surface, border: `1px solid ${sportTheme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", width: "100%" }}>
+                <div style={{ height: 90, background: DS.colors.surfaceHigh, position: "relative", display: "flex", alignItems: "flex-end", padding: "10px 14px" }}>
+                  <div style={{ position: "absolute", top: 8, left: 10, background: "rgba(6,6,14,0.8)", borderRadius: 6, padding: "2px 8px" }}>
+                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent }}>EX 1/5</p>
+                  </div>
+                  <div style={{ position: "absolute", top: 8, right: 10, background: sportTheme.accent + "20", border: `1px solid ${sportTheme.accent}40`, borderRadius: 6, padding: "2px 8px" }}>
+                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: sportTheme.accent, fontWeight: 700 }}>12:34</p>
+                  </div>
+                  <div>
+                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent, marginBottom: 2 }}>QUADRICEPS</p>
+                    <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 20, color: "white" }}>SQUAT BARRE</p>
+                  </div>
+                </div>
+                <div style={{ padding: "10px 14px" }}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {[1,2,3,4].map(i => (
+                      <div key={i} style={{ flex: 1, background: i <= 2 ? sportTheme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${i <= 2 ? sportTheme.accent : DS.colors.border}`, borderRadius: 8, padding: "8px 4px", textAlign: "center" }}>
+                        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: i <= 2 ? sportTheme.accent : DS.colors.textSec }}>{i <= 2 ? "✓" : i}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ),
+          },
+          {
+            emoji: "🤖",
+            tag: "COACH IA",
+            title: "Un coach
+toujours disponible",
+            desc: "Pendant chaque seance, ton coach IA repond a tes questions, adapte les charges et te motive.",
+            visual: (
+              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+                {[
+                  { role: "user", text: "J'arrive pas a finir mes reps" },
+                  { role: "ai", text: "Reduis la charge de 10% et concentre-toi sur la forme. Tu fais du super travail !" },
+                  { role: "user", text: "Merci j'ai mal au genou" },
+                  { role: "ai", text: "Je remplace le squat par du leg press pour proteger ton genou. Continue !" },
+                ].map((msg, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", opacity: 0, animation: `fadeIn 0.3s ease ${i * 0.4}s forwards` }}>
+                    <div style={{ maxWidth: "78%", padding: "8px 12px", borderRadius: DS.radius.md, background: msg.role === "user" ? sportTheme.accent : DS.colors.surface, border: msg.role === "ai" ? `1px solid ${DS.colors.border}` : "none" }}>
+                      <p style={{ color: msg.role === "user" ? "#000" : DS.colors.textPrimary, fontSize: 12, lineHeight: 1.5 }}>{msg.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ),
+          },
+          {
+            emoji: "📈",
+            tag: "PROGRESSION",
+            title: "Vois tes records
+battre semaine apres semaine",
+            desc: "Charges, series, temps — tout est tracé. Tu vois exactement ou tu en es et ce qui t'attend.",
+            visual: (
+              <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "14px 16px", width: "100%" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 60, marginBottom: 8 }}>
+                  {[40, 55, 50, 70, 65, 85, 100].map((h, i) => (
+                    <div key={i} style={{ flex: 1, height: `${h}%`, background: i === 6 ? sportTheme.accent : `rgba(${sportTheme.accentRgb},${0.2 + i * 0.08})`, borderRadius: "3px 3px 0 0", boxShadow: i === 6 ? `0 0 10px ${sportTheme.accent}50` : "none" }} />
+                  ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec }}>S1</p>
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: sportTheme.accent }}>+60% EN 7 SEMAINES</p>
+                </div>
+              </div>
+            ),
+          },
+        ];
+        const currentSlide = slides[Math.min(slideIndex, slides.length - 1)];
+        return (
+          <div style={{ position: "fixed", inset: 0, background: DS.colors.bg, zIndex: 200, display: "flex", flexDirection: "column", padding: "0 24px 40px" }}>
+            {/* Glow */}
+            <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 300px 300px at 50% 30%, ${sportTheme.accent}06, transparent)`, pointerEvents: "none" }} />
+
+            {/* Dots navigation */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingTop: 52, marginBottom: 32, position: "relative", zIndex: 2 }}>
+              {slides.map((_, i) => (
+                <div key={i} style={{ width: i === slideIndex ? 20 : 6, height: 6, borderRadius: 3, background: i === slideIndex ? sportTheme.accent : DS.colors.surfaceHigh, transition: "all 0.3s ease", boxShadow: i === slideIndex ? `0 0 8px ${sportTheme.accent}` : "none" }} />
+              ))}
             </div>
-          ) : (
-            <>
-              <h2 style={{ ...s.display, fontSize: 26, color: DS.colors.textPrimary, marginBottom: 12 }}>Construction de ton programme...</h2>
-              <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32, lineHeight: 1.6 }}>L'IA analyse ton profil complet pour creer un programme sur mesure.</p>
-          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
-            {[
-              { emoji: "🏋️", text: "Selection des exercices", delay: "0s" },
-              { emoji: "📈", text: "Calcul de la progression", delay: "0.7s" },
-              { emoji: "⚡", text: "Optimisation pour " + (data.sport || "ton sport"), delay: "1.4s" },
-              { emoji: "✓", text: "Finalisation du programme", delay: "2.1s" },
-            ].map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", opacity: 0, animation: `fadeIn 0.4s ease ${item.delay} forwards` }}>
-                <span style={{ fontSize: 20 }}>{item.emoji}</span>
-                <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>{item.text}</p>
+
+            {genError ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", position: "relative", zIndex: 2 }}>
+                <div style={{ fontSize: 56, marginBottom: 20 }}>⚠️</div>
+                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: "white", marginBottom: 12, letterSpacing: "0.05em" }}>Generation lente...</h2>
+                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, marginBottom: 32, lineHeight: 1.8, letterSpacing: "0.1em" }}>Le serveur prend du temps. Tu peux reessayer ou continuer — le programme se generera en arriere-plan.</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+                  <button onClick={retryGeneration} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer" }}>REESSAYER</button>
+                  <button onClick={skipGeneration} style={{ width: "100%", height: 52, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontFamily: "'Space Mono',monospace", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer" }}>CONTINUER SANS PROGRAMME</button>
+                </div>
               </div>
-            ))}
+            ) : (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 2 }} key={slideIndex}>
+                {/* Tag */}
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: sportTheme.accent + "15", border: `1px solid ${sportTheme.accent}30`, borderRadius: 6, padding: "3px 10px", marginBottom: 16, alignSelf: "flex-start" }}>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: sportTheme.accent, animation: "pulse 1.5s infinite" }} />
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent, letterSpacing: "0.2em" }}>{currentSlide.tag}</p>
+                </div>
+
+                {/* Title */}
+                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 36, color: "white", lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em", whiteSpace: "pre-line" }}>
+                  {currentSlide.title.replace("\n", "
+")}
+                </h2>
+
+                {/* Desc */}
+                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em", marginBottom: 24 }}>{currentSlide.desc}</p>
+
+                {/* Visual */}
+                <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+                  {currentSlide.visual}
+                </div>
+              </div>
+            )}
+
+            {/* Bottom nav */}
+            {!genError && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 2, paddingTop: 16 }}>
+                <button onClick={() => setSlideIndex(i => Math.max(0, i - 1))} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 44, height: 44, color: DS.colors.textSec, cursor: "pointer", fontSize: 18, opacity: slideIndex === 0 ? 0.3 : 1 }}>←</button>
+                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{slideIndex + 1} / {slides.length}</p>
+                <button onClick={() => setSlideIndex(i => Math.min(slides.length - 1, i + 1))} style={{ background: slideIndex === slides.length - 1 ? sportTheme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${slideIndex === slides.length - 1 ? sportTheme.accent + "40" : "transparent"}`, borderRadius: DS.radius.full, width: 44, height: 44, color: slideIndex === slides.length - 1 ? sportTheme.accent : DS.colors.textSec, cursor: "pointer", fontSize: 18 }}>→</button>
+              </div>
+            )}
           </div>
-            </>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       <div style={{ paddingTop: 60, paddingBottom: 24 }}>
         <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
@@ -1536,7 +1656,7 @@ function MatchsScreen({ user, onBack }) {
 
 // ─────────────────────────────────────────────
 // DASHBOARD
-function DashboardScreen({ user, programme, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs }) {
+function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs }) {
   const progData = programme?.data_json;
   const seance = progData?.semaines?.[0]?.seances?.[0] || null;
   const sport = sportProp || progData?.sport || user?.user_metadata?.sport || "default";
@@ -1573,6 +1693,12 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, sport: sport
         {SPORT_EMOJIS[sport] || SPORT_EMOJIS[progData?.programme?.sport] || SPORT_EMOJIS[user?.user_metadata?.sport] || "⚡"}
       </div>
 
+      {programmeLoading && (
+        <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", zIndex: 200, background: DS.colors.surface, border: `1px solid ${theme.accent}40`, borderRadius: DS.radius.full, padding: "10px 20px", display: "flex", alignItems: "center", gap: 10, boxShadow: `0 8px 32px rgba(0,0,0,0.6)`, whiteSpace: "nowrap" }}>
+          <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: theme.accent, animation: "pulse 1s infinite", boxShadow: `0 0 8px ${theme.accent}` }} />
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, letterSpacing: "0.1em" }}>Generation du programme en cours...</p>
+        </div>
+      )}
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,6,14,0.92)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "2px 8px", marginBottom: 4 }}>
@@ -1619,7 +1745,7 @@ function DashboardScreen({ user, programme, matchs, derniereSeance, sport: sport
           </div>
           <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 42, color: "white", lineHeight: 0.92, marginBottom: 16, letterSpacing: "0.02em" }}>{(prog.titre || seance?.titre || "PROGRAMME EN COURS").toUpperCase()}</h1>
           <ProgressBar value={prog.progression} />
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, marginTop: 6, letterSpacing: "0.15em" }}>{prog.progression}% COMPLETE</p>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, marginTop: 6, letterSpacing: "0.15em" }}>SEMAINE {prog.semaineCourante} SUR {prog.totalSemaines} · {prog.progression}% DU PROGRAMME</p>
         </div>
         {!seance ? (
           <Card style={{ marginBottom: 24, padding: 28, textAlign: "center" }}>
@@ -1989,11 +2115,13 @@ function HistoriqueScreen() {
 // PROFIL
 // ─────────────────────────────────────────────
 function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, onRegenerateProgram }) {
-  const [notifOn, setNotifOn] = useState(true);
+  const [notifOn, setNotifOn] = useState(false);
+  const [notifHeure, setNotifHeure] = useState("08:00");
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [editData, setEditData] = useState({ sport: null, objectif: null, frequence: 3 });
   const [saving, setSaving] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
+  const [programmeLoading, setProgrammeLoading] = useState(false);
   const [streak, setStreak] = useState(0);
 
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
@@ -2031,19 +2159,19 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
   const saveEdit = async () => {
     setSaving(true);
     const sportChanged = editData.sport !== sport;
-    const objectifChanged = editData.objectif !== objectif;
-    const needsRegen = sportChanged || objectifChanged;
+    // Seulement regenerer si le SPORT change — objectif et frequence = mise a jour simple
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         await supabase.from("profiles").upsert({ id: session.user.id, sport: editData.sport }, { onConflict: "id" });
-        if (!needsRegen && programme?.id) {
-          // Juste mettre a jour la frequence sans regenerer
-          const updatedJson = { ...(programme.data_json || {}), frequence: editData.frequence };
+        if (sportChanged && programme?.id) {
+          // Sport change → nouveau programme
+          if (onRegenerateProgram) await onRegenerateProgram(editData, true);
+        } else if (programme?.id) {
+          // Juste mettre a jour objectif + frequence sans regenerer ni remettre a zero
+          const updatedJson = { ...(programme.data_json || {}), objectif: editData.objectif, frequence: editData.frequence };
           await supabase.from("programmes").update({ data_json: updatedJson }).eq("id", programme.id);
           if (onRegenerateProgram) await onRegenerateProgram(editData, false);
-        } else if (needsRegen) {
-          if (onRegenerateProgram) await onRegenerateProgram(editData, true);
         }
       }
     } catch (err) { console.error(err); }
@@ -2160,7 +2288,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
           <ProgressBar value={progression} />
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>{frequence}x / semaine</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>{progression}%</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>S{semaineCourante}/{totalSemaines} · {progression}%</p>
           </div>
         </div>
 
@@ -2177,17 +2305,32 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
         </div>
 
         {/* Notifications */}
-        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 40, height: 40, background: "rgba(255,229,0,0.1)", border: "1px solid rgba(255,229,0,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔔</div>
-            <div>
-              <p style={{ color: "white", fontSize: 15, ...s.heading, marginBottom: 2 }}>Rappels seance</p>
-              <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{notifOn ? "ACTIVE" : "DESACTIVE"}</p>
+        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: notifOn ? 14 : 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 40, height: 40, background: "rgba(255,229,0,0.1)", border: "1px solid rgba(255,229,0,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔔</div>
+              <div>
+                <p style={{ color: "white", fontSize: 15, ...s.heading, marginBottom: 2 }}>Rappels seance</p>
+                <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{notifOn ? `TOUS LES JOURS A ${notifHeure}` : "DESACTIVE"}</p>
+              </div>
+            </div>
+            <div onClick={() => {
+              if (!notifOn) {
+                if ("Notification" in window) {
+                  Notification.requestPermission().then(p => { if (p === "granted") setNotifOn(true); });
+                } else { setNotifOn(true); }
+              } else { setNotifOn(false); }
+            }} style={{ width: 50, height: 28, background: notifOn ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", flexShrink: 0 }}>
+              <div style={{ position: "absolute", top: 3, left: notifOn ? 25 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
             </div>
           </div>
-          <div onClick={() => setNotifOn(v => !v)} style={{ width: 50, height: 28, background: notifOn ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s" }}>
-            <div style={{ position: "absolute", top: 3, left: notifOn ? 25 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
-          </div>
+          {notifOn && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px" }}>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em", flex: 1 }}>HEURE DU RAPPEL</p>
+              <input type="time" value={notifHeure} onChange={e => setNotifHeure(e.target.value)}
+                style={{ background: "transparent", border: `1px solid ${theme.accent}40`, borderRadius: 8, padding: "6px 10px", color: theme.accent, fontFamily: "'Space Mono',monospace", fontSize: 14, outline: "none", colorScheme: "dark", cursor: "pointer" }} />
+            </div>
+          )}
         </div>
 
         {/* Deconnexion */}
@@ -2243,6 +2386,7 @@ export default function VoltraApp() {
   const [isPro, setIsPro] = useState(false);
   const [showUpsell, setShowUpsell] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
+  const [programmeLoading, setProgrammeLoading] = useState(false);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -2337,7 +2481,12 @@ export default function VoltraApp() {
 
   if (screen === "splash") return <SplashScreen />;
   if (screen === "auth") return <AuthScreen onAuth={(u) => { setUser(u); setScreen("onboarding"); }} />;
-  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => { setProgrammeActif(programme); setSportActif(data.sport); setOnboardingData(data); setScreen("pricing"); }} />;
+  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => {
+    if (programme) { setProgrammeActif(programme); } else { setProgrammeLoading(true); }
+    setSportActif(data.sport);
+    setOnboardingData(data);
+    setScreen("pricing");
+  }} />;
   if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} onSelectPlan={async (plan) => {
     if (plan !== "free") {
       setIsPro(true);
@@ -2345,6 +2494,18 @@ export default function VoltraApp() {
       if (session) await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true }, { onConflict: "id" });
     }
     setScreen("app");
+    // Si le programme n'est pas encore pret, relancer en arriere-plan
+    if (!programmeActif && onboardingData) {
+      setProgrammeLoading(true);
+      generateProgramIA(onboardingData).then(async prog => {
+        if (prog) {
+          setProgrammeActif(prog);
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) await supabase.from("profiles").upsert({ id: session.user.id, sport: onboardingData.sport }, { onConflict: "id" });
+        }
+        setProgrammeLoading(false);
+      }).catch(() => setProgrammeLoading(false));
+    }
   }} />;
 
   return (
@@ -2412,6 +2573,7 @@ export default function VoltraApp() {
             <DashboardScreen
               user={user}
               programme={programmeActif}
+              programmeLoading={programmeLoading}
               matchs={matchs}
               derniereSeance={derniereSeance}
               sport={sportActif}
