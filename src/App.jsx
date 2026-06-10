@@ -27,7 +27,6 @@ async function generateProgramIA({ sport, objectif, niveau, frequence }) {
   return data.programme;
 }
 
-
 async function saveCompleteSession(programmeId, seance, completedSetsData, feedback, durationMin) {
   await supabase.auth.refreshSession();
   const { data: { session } } = await supabase.auth.getSession();
