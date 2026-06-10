@@ -1543,7 +1543,7 @@ function PricingScreen({ onSelectPlan, programme, frequence }) {
 
   const pad = n => String(n).padStart(2, "0");
   const currentPlan = PLANS.find(p => p.id === selected);
-  const featuresPro = ["Progression automatique des charges", "Programmes illimites + regeneration IA", "Adaptation si seance skippee", "Deload automatique intelligent", "Historique complet + graphiques", "Jusqu'a 5 seances / semaine", "Coach IA integre", "Export PDF du programme"];
+  const featuresPro = ["Progression automatique des charges", "Nouveau programme IA genere a chaque cycle", "Adaptation si seance skippee", "Deload automatique intelligent", "Historique complet + graphiques", "Jusqu'a 5 seances / semaine", "Coach IA integre", "Export PDF du programme"];
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40 }}>
@@ -1865,7 +1865,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           </div>
           <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 42, color: "white", lineHeight: 0.92, marginBottom: 16, letterSpacing: "0.02em" }}>{(prog.titre || seance?.titre || "PROGRAMME EN COURS").toUpperCase()}</h1>
           <ProgressBar value={prog.progression} />
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, marginTop: 6, letterSpacing: "0.15em" }}>SEMAINE {prog.semaineCourante} SUR {prog.totalSemaines} · {prog.progression}% DU PROGRAMME</p>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, marginTop: 6, letterSpacing: "0.15em" }}>CYCLE {prog.semaineCourante} · {prog.progression}% · PROGRESSION CONTINUE</p>
         </div>
         {!seance ? (
           <Card style={{ marginBottom: 24, padding: 28, textAlign: "center" }}>
@@ -2403,13 +2403,13 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
               <p style={{ color: "white", fontSize: 16, ...s.heading }}>{programme?.titre || "Aucun programme"}</p>
             </div>
             <div style={{ background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "4px 10px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent }}>S{semaineCourante}/{totalSemaines}</p>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent }}>CYCLE {semaineCourante}</p>
             </div>
           </div>
           <ProgressBar value={progression} />
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>{frequence}x / semaine</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>S{semaineCourante}/{totalSemaines} · {progression}%</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>CYCLE {semaineCourante} · {progression}%</p>
           </div>
         </div>
 
@@ -2490,7 +2490,16 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
 
   // Calcul chiffres
   const totalSeances = totalSemaines * frequence;
-  const kgEstime = exercices.reduce((acc, ex) => acc + (ex.chargeKg || 20) * (ex.sets || 3) * (parseInt(ex.reps) || 8), 0);
+  const kgEstime = exercices.reduce((acc, ex) => {
+    const charge = ex.chargeKg > 0 ? ex.chargeKg :
+      ex.nom?.toLowerCase().includes("squat") ? 60 :
+      ex.nom?.toLowerCase().includes("deadlift") || ex.nom?.toLowerCase().includes("rdl") ? 55 :
+      ex.nom?.toLowerCase().includes("bench") || ex.nom?.toLowerCase().includes("developpe") ? 50 :
+      ex.nom?.toLowerCase().includes("rowing") ? 45 :
+      ex.nom?.toLowerCase().includes("hip") ? 50 :
+      ex.chargeKg === 0 ? 20 : 30;
+    return acc + charge * (ex.sets || 3) * (parseInt(ex.reps) || 8);
+  }, 0);
   const kgTotal = Math.round(kgEstime * totalSeances / 1000);
 
   return (
@@ -2512,16 +2521,16 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
             {nomProg.toUpperCase()}
           </h1>
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em" }}>
-            {totalSemaines} SEMAINES · {frequence}X/SEMAINE · {totalSeances} SEANCES
+            {frequence}X / SEMAINE · PROGRESSION CONTINUE · IA
           </p>
         </div>
 
         {/* Stats chiffrées */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
           {[
-            { val: totalSemaines, label: "SEMAINES", color: theme.accent },
+            { val: exercices.length, label: "EXO / SEANCE", color: theme.accent },
             { val: totalSeances, label: "SEANCES", color: "#00FF87" },
-            { val: `~${kgTotal}T`, label: "KG TOTAL", color: "#FF8C00" },
+            { val: "∞", label: "PROGRESSION", color: "#FF8C00" },
           ].map((stat, i) => (
             <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
@@ -2574,7 +2583,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         {/* Pitch chiffré */}
         <div style={{ background: `linear-gradient(135deg, ${theme.accent}10, ${theme.accent}03)`, border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, padding: "16px 20px", marginBottom: 24 }}>
           <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 16, color: "white", marginBottom: 6 }}>
-            En {totalSemaines} semaines tu vas soulever environ {kgTotal} tonnes.
+            Ton programme evolue avec toi. Pour toujours.
           </p>
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
             Chaque kilo souleve est un pas vers ta meilleure version. Ton programme est calibre pour maximiser ta progression semaine apres semaine.
@@ -2649,7 +2658,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
             Ta progression vient de commencer.
           </p>
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
-            Tu es en semaine {semaineCourante} sur {totalSemaines}. Les {totalSemaines - semaineCourante} semaines qui suivent vont transformer tes performances — mais seulement si tu continues.
+            Tu viens de terminer ta premiere seance. La vraie transformation commence maintenant — chaque semaine ton programme s'adapte et devient plus intense.
           </p>
         </div>
 
@@ -2660,7 +2669,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
             { emoji: "📈", title: "Progression automatique", desc: "Tes charges augmentent intelligemment chaque semaine" },
             { emoji: "🤖", title: "Coach IA illimite", desc: "Adaptation en temps reel pendant chaque seance" },
             { emoji: "🏆", title: "Suivi des records", desc: "Visualise tes progres et bats tes records" },
-            { emoji: "⚡", title: "Seances illimitees", desc: `Les ${totalSemaines - semaineCourante} semaines restantes de ton programme` },
+            { emoji: "⚡", title: "Progression sans fin", desc: "Nouveau programme genere automatiquement a chaque cycle" },
           ].map((f, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < 3 ? `1px solid ${DS.colors.border}` : "none" }}>
               <div style={{ width: 36, height: 36, background: theme.accent + "12", border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{f.emoji}</div>
