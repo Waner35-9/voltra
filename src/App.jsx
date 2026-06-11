@@ -1,4 +1,4 @@
-m// @ts-nocheck
+// @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -408,7 +408,7 @@ function RestTimer({ seconds, onComplete }) {
   const circumference = 2 * Math.PI * 54;
 
   return (
-    <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "28px 24px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+    <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "28px 24px", textAlign: "center", position: "relative", overflow: "hidden", boxShadow: DS.shadow.card }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 50% 40%, ${color}10, transparent 70%)`, transition: "background 0.5s ease", pointerEvents: "none" }} />
       <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.1em" }}>Temps de repos</p>
       <div style={{ position: "relative", width: 148, height: 148, margin: "0 auto 16px" }}>
@@ -657,7 +657,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
 
   // ── ECRAN SEANCE LIVE ──
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, maxWidth: 430, margin: "0 auto", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "#0E100F", maxWidth: 430, margin: "0 auto", position: "relative" }}>
 
       {/* Celebration */}
       {celebrate && (
@@ -843,7 +843,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
               )}
             </div>
             <div style={{ padding: "10px 20px 0", display: "flex", gap: 8 }}>
-              <input value={coachInput} onChange={e => setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder="J'arrive pas a finir les reps..." style={{ flex: 1, height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: "white", fontSize: 14, outline: "none" }} />
+              <input value={coachInput} onChange={e => setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder="J'arrive pas a finir les reps..." style={{ flex: 1, height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 14, outline: "none" }} />
               <button onClick={sendCoachMessage} disabled={!coachInput.trim() || coachLoading} style={{ width: 44, height: 44, borderRadius: DS.radius.full, background: coachInput.trim() ? accentColor : DS.colors.surfaceHigh, border: "none", color: coachInput.trim() ? "#000" : DS.colors.textSec, cursor: "pointer", fontSize: 18, flexShrink: 0, fontWeight: 700 }}>→</button>
             </div>
             <div style={{ padding: "8px 20px 0", display: "flex", gap: 8, overflowX: "auto" }}>
@@ -1080,7 +1080,7 @@ function WelcomeScreen({ onStart }) {
 // ─────────────────────────────────────────────
 function SplashScreen() {
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "#0E100F", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(0,255,135,0.06), transparent)", pointerEvents: "none" }} />
       <div style={{ animation: "splashPulse 1.5s ease-in-out infinite" }}>
         <div style={{ width: 80, height: 80, borderRadius: 22, background: "linear-gradient(135deg, #00FF87, #00C896)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, boxShadow: "0 0 60px rgba(0,255,135,0.4)", marginBottom: 24, margin: "0 auto 24px" }}>⚡</div>
@@ -1133,12 +1133,12 @@ function AuthScreen({ onAuth }) {
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
       <div style={{ paddingTop: 80, paddingBottom: 48, textAlign: "center" }}>
-        <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: `linear-gradient(135deg, #00FF87, #00C896)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: "0 0 40px rgba(0,255,135,0.4)" }}>⚡</div>
+        <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>⚡</div>
         <h1 style={{ ...s.display, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>Voltra</h1>
         <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>{mode === "login" ? "Content de te revoir" : "Commence ton parcours"}</p>
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: 4, marginBottom: 32 }}>
+        <div style={{ display: "flex", background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, padding: 4, marginBottom: 32 }}>
           {["login", "signup"].map(m => (
             <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{ flex: 1, height: 40, borderRadius: DS.radius.sm - 2, background: mode === m ? DS.colors.primary : "transparent", border: "none", color: mode === m ? "white" : DS.colors.textSec, fontSize: 14, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>
               {m === "login" ? "Connexion" : "Inscription"}
@@ -1912,7 +1912,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100, position: "relative" }}>
       {/* Sport background glow */}
-      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none", opacity: 0.5 }} />
 
       {/* Sport illustration en fond */}
       <div style={{ position: "absolute", top: 20, right: -10, fontSize: 180, opacity: 0.06, pointerEvents: "none", lineHeight: 1, userSelect: "none", zIndex: 0, transform: "rotate(-15deg)" }}>
@@ -1925,14 +1925,14 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, letterSpacing: "0.1em" }}>Generation du programme en cours...</p>
         </div>
       )}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(244,245,246,0.95)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(244,245,246,0.95)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 0 rgba(0,0,0,0.05)" }}>
         <div>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "2px 8px", marginBottom: 4 }}>
             <span style={{ fontSize: 11 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
             <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>{sport || "SPORT"}</span>
           </div>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.25em", marginBottom: 2 }}>{greeting.toUpperCase()},</p>
-          <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 22, color: "white", letterSpacing: "0.06em" }}>{userName.toUpperCase()}</p>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.2em", marginBottom: 2 }}>{greeting.toUpperCase()},</p>
+          <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 22, color: DS.colors.textPrimary, letterSpacing: "0.06em" }}>{userName.toUpperCase()}</p>
         </div>
         <div style={{ width: 42, height: 42, background: theme.accent + "20", borderRadius: DS.radius.md, border: `1px solid ${theme.accent}40`, display: "flex", alignItems: "center", justifyContent: "center", color: theme.accent, fontSize: 18, fontWeight: 800, fontFamily: "'Rajdhani', sans-serif" }}>
           {userName[0].toUpperCase()}
@@ -2263,7 +2263,7 @@ function HistoriqueScreen() {
 
       {/* Header */}
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(244,245,246,0.97)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, color: "white", letterSpacing: "0.1em" }}>PROGRESSION</h1>
+        <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, color: DS.colors.textPrimary, letterSpacing: "0.1em" }}>PROGRESSION</h1>
         <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 6, padding: "5px 10px" }}>CE MOIS</div>
       </div>
 
