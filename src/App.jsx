@@ -2773,7 +2773,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
               <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{DS.colors.isDark ? "THEME SOMBRE" : "THEME LUMINEUX"}</p>
             </div>
           </div>
-          <div onClick={() => onThemeChange && onThemeChange(DS.colors.isDark ? "light" : "dark")} style={{ width: 50, height: 28, background: DS.colors.isDark ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", border: `1px solid ${DS.colors.border}` }}>
+          <div onClick={() => { const next = DS.colors.isDark ? "light" : "dark"; DS.colors = THEMES[next]; DS.shadow = THEMES[next].shadow; onThemeChange && onThemeChange(next); }} style={{ width: 50, height: 28, background: DS.colors.isDark ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", border: `1px solid ${DS.colors.border}` }}>
             <div style={{ position: "absolute", top: 3, left: DS.colors.isDark ? 25 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>
               {DS.colors.isDark ? "🌙" : "☀️"}
             </div>
@@ -3094,7 +3094,9 @@ export default function VoltraApp() {
   const [cycleComplete, setCycleComplete] = useState(false);
 
   useEffect(() => {
-    setAppTheme(appTheme);
+    // Update global DS immediately
+    DS.colors = THEMES[appTheme];
+    DS.shadow = THEMES[appTheme].shadow;
     document.body.style.background = DS.colors.bg;
     document.body.style.color = DS.colors.textPrimary;
   }, [appTheme]);
@@ -3195,7 +3197,8 @@ export default function VoltraApp() {
   }, [screen, user]);
 
   if (screen === "theme-choice") return <ThemeChoiceScreen onChoose={(theme) => {
-    setAppTheme(theme);
+    DS.colors = THEMES[theme];
+    DS.shadow = THEMES[theme].shadow;
     setAppTheme(theme);
     setScreen("welcome");
   }} />;
@@ -3258,7 +3261,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
   }} />;
 
   return (
-    <div style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
+    <div key={appTheme} style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
 
       {showMatchs ? (
         <MatchsScreen user={user} onBack={() => {
