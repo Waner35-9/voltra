@@ -7,6 +7,7 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
+
 function getNiveauCycle(niveau) {
   if (!niveau) return 1;
   const n = niveau.toLowerCase();
