@@ -2012,8 +2012,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                   {ex.chargeKg > 0 && <div style={{ ...s.mono, fontSize: 11, color: DS.colors.textSec, marginTop: 2 }}>{ex.chargeKg} kg</div>}
                 </div>
               );
-            });
-            })()}
+            })}
           </div>
         </div>
         )}
@@ -2084,12 +2083,10 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                   <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, lineHeight: 1.6, letterSpacing: "0.04em" }}>{c.desc}</p>
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
         </div>
-
-        <div style={{ marginBottom: 28 }}>
-          <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Derniere seance</p>
           {derniereSeance ? (
             <Card>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
