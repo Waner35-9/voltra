@@ -109,10 +109,9 @@ const s = {
   body: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 },
 };
 
-const DS = {
-  colors: {
+const THEMES = {
+  light: {
     bg: "#F4F5F6", surface: "#FFFFFF", surfaceUp: "#F4F5F6", surfaceHigh: "#ECEEF0",
-    bgDark: "#0E100F",
     primary: "#9BE84F", primarySoft: "rgba(155,232,79,0.12)", primaryGlow: "rgba(155,232,79,0.3)",
     primaryDark: "#5FAE2E",
     success: "#4CAF50", successSoft: "rgba(76,175,80,0.12)",
@@ -120,16 +119,32 @@ const DS = {
     gold: "#FFD700", goldSoft: "rgba(255,215,0,0.12)",
     textPrimary: "#16181A", textSec: "#8A8F94", textDim: "#C4C7CB",
     border: "rgba(0,0,0,0.07)", borderAccent: "rgba(155,232,79,0.4)",
+    shadow: { primary: "0 4px 24px rgba(155,232,79,0.3)", card: "0 4px 24px rgba(0,0,0,0.06)", glow: "0 0 40px rgba(155,232,79,0.2)" },
+    navBg: "rgba(255,255,255,0.95)",
+    stickyBg: "rgba(244,245,246,0.95)",
+    isDark: false,
   },
-  radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 },
-  shadow: { primary: "0 4px 24px rgba(155,232,79,0.3)", card: "0 4px 24px rgba(0,0,0,0.06)", glow: "0 0 40px rgba(155,232,79,0.2)" },
-  fonts: {
-    display: { fontFamily: "'Rajdhani', 'Barlow Condensed', system-ui, sans-serif", fontWeight: 700, letterSpacing: "0.02em" },
-    mono: { fontFamily: "'Space Mono', 'Courier New', monospace" },
-    heading: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 600 },
-    body: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 },
-  }
+  dark: {
+    bg: "#06060E", surface: "#0D0D18", surfaceUp: "#141420", surfaceHigh: "#1A1A28",
+    primary: "#9BE84F", primarySoft: "rgba(155,232,79,0.12)", primaryGlow: "rgba(155,232,79,0.3)",
+    primaryDark: "#7BC73C",
+    success: "#00FF87", successSoft: "rgba(0,255,135,0.12)",
+    warning: "#FF8C00", warningSoft: "rgba(255,140,0,0.12)",
+    gold: "#FFE500", goldSoft: "rgba(255,229,0,0.12)",
+    textPrimary: "#FFFFFF", textSec: "#6B6B8A", textDim: "#2A2A3A",
+    border: "rgba(255,255,255,0.06)", borderAccent: "rgba(155,232,79,0.3)",
+    shadow: { primary: "0 8px 32px rgba(155,232,79,0.2)", card: "0 4px 24px rgba(0,0,0,0.6)", glow: "0 0 40px rgba(155,232,79,0.15)" },
+    navBg: "rgba(6,6,14,0.95)",
+    stickyBg: "rgba(6,6,14,0.92)",
+    isDark: true,
+  },
 };
+
+let DS = { colors: THEMES.light, radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 }, shadow: THEMES.light.shadow };
+
+function setAppTheme(theme) {
+  DS = { colors: THEMES[theme], radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 }, shadow: THEMES[theme].shadow };
+}
 
 function PrimaryButton({ children, onClick, disabled, style = {} }) {
   const [p, setP] = useState(false);
@@ -676,7 +691,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
       )}
 
       {/* Header sticky */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(244,245,246,0.97)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "12px 20px 0" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "12px 20px 0" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
           <div style={{ textAlign: "center" }}>
@@ -951,6 +966,122 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
 }
 
 // ─────────────────────────────────────────────
+// THEME CHOICE SCREEN
+// ─────────────────────────────────────────────
+function ThemeChoiceScreen({ onChoose }) {
+  const [selected, setSelected] = useState(null);
+  const [animIn, setAnimIn] = useState(false);
+
+  useEffect(() => {
+    setTimeout(() => setAnimIn(true), 100);
+  }, []);
+
+  const themes = [
+    {
+      id: "light",
+      name: "LUMINEUX",
+      desc: "Épuré, moderne, premium",
+      bg: "#F4F5F6",
+      surface: "#FFFFFF",
+      text: "#16181A",
+      textSec: "#8A8F94",
+      accent: "#9BE84F",
+      preview: [
+        { type: "card", bg: "#FFFFFF", shadow: true },
+        { type: "bar", color: "#9BE84F" },
+        { type: "btn", bg: "#9BE84F", text: "#16181A" },
+      ],
+    },
+    {
+      id: "dark",
+      name: "SOMBRE",
+      desc: "Intense, immersif, athlétique",
+      bg: "#06060E",
+      surface: "#0D0D18",
+      text: "#FFFFFF",
+      textSec: "#6B6B8A",
+      accent: "#9BE84F",
+      preview: [
+        { type: "card", bg: "#0D0D18", border: "rgba(255,255,255,0.06)" },
+        { type: "bar", color: "#9BE84F" },
+        { type: "btn", bg: "#9BE84F", text: "#000" },
+      ],
+    },
+  ];
+
+  return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+
+      {/* Background glow */}
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.06), transparent)", pointerEvents: "none" }} />
+
+      <div style={{ width: "100%", maxWidth: 390, position: "relative", zIndex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(30px)", transition: "all 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
+
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <div style={{ width: 64, height: 64, borderRadius: 18, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 16px", boxShadow: "0 0 40px rgba(155,232,79,0.4)" }}>⚡</div>
+          <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 32, color: "white", letterSpacing: "0.15em", marginBottom: 8 }}>VOLTRA</div>
+          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.2em" }}>CHOISIS TON STYLE</div>
+        </div>
+
+        {/* Theme cards */}
+        <div style={{ display: "flex", gap: 14, marginBottom: 32 }}>
+          {themes.map(theme => (
+            <div key={theme.id} onClick={() => setSelected(theme.id)} style={{ flex: 1, borderRadius: 24, overflow: "hidden", border: `2px solid ${selected === theme.id ? "#9BE84F" : "rgba(255,255,255,0.1)"}`, cursor: "pointer", transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)", transform: selected === theme.id ? "scale(1.02)" : "scale(1)", boxShadow: selected === theme.id ? "0 0 30px rgba(155,232,79,0.3)" : "none" }}>
+
+              {/* Preview mini app */}
+              <div style={{ background: theme.bg, padding: "16px 12px", height: 200 }}>
+                {/* Mini header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 8, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>⚡</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ height: 5, background: theme.text, borderRadius: 3, opacity: 0.7, marginBottom: 3, width: "60%" }} />
+                    <div style={{ height: 3, background: theme.textSec, borderRadius: 3, opacity: 0.5, width: "40%" }} />
+                  </div>
+                </div>
+                {/* Mini card */}
+                <div style={{ background: theme.surface, borderRadius: 12, padding: "10px 10px", marginBottom: 8, boxShadow: theme.id === "light" ? "0 2px 12px rgba(0,0,0,0.08)" : "none", border: theme.id === "dark" ? `1px solid ${theme.preview[0].border}` : "none" }}>
+                  <div style={{ height: 4, background: theme.accent, borderRadius: 99, marginBottom: 6, width: "70%" }} />
+                  <div style={{ height: 3, background: theme.textSec, borderRadius: 3, opacity: 0.4, marginBottom: 4, width: "90%" }} />
+                  <div style={{ height: 3, background: theme.textSec, borderRadius: 3, opacity: 0.3, width: "60%" }} />
+                </div>
+                {/* Mini progress */}
+                <div style={{ height: 4, background: theme.id === "light" ? "#ECEEF0" : "#1A1A28", borderRadius: 99, marginBottom: 8, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: "65%", background: theme.accent, borderRadius: 99 }} />
+                </div>
+                {/* Mini button */}
+                <div style={{ height: 28, background: theme.accent, borderRadius: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ height: 3, width: "50%", background: theme.id === "light" ? "#16181A" : "#16181A", borderRadius: 3, opacity: 0.8 }} />
+                </div>
+              </div>
+
+              {/* Theme label */}
+              <div style={{ background: selected === theme.id ? "#9BE84F" : "rgba(255,255,255,0.06)", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 15, color: selected === theme.id ? "#16181A" : "white", letterSpacing: "0.08em" }}>{theme.name}</p>
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: selected === theme.id ? "#16181A" : "rgba(255,255,255,0.4)", letterSpacing: "0.1em", marginTop: 2 }}>{theme.desc}</p>
+                </div>
+                <div style={{ width: 22, height: 22, borderRadius: 9999, border: `2px solid ${selected === theme.id ? "#16181A" : "rgba(255,255,255,0.3)"}`, background: selected === theme.id ? "#16181A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {selected === theme.id && <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round"/></svg>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Note */}
+        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.3)", textAlign: "center", letterSpacing: "0.1em", marginBottom: 24 }}>TU POURRAS CHANGER CA DANS TON PROFIL</p>
+
+        {/* CTA */}
+        <button onClick={() => selected && onChoose(selected)} disabled={!selected} style={{ width: "100%", height: 56, background: selected ? "#9BE84F" : "rgba(255,255,255,0.1)", border: "none", borderRadius: 9999, color: selected ? "#16181A" : "rgba(255,255,255,0.3)", fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.1em", cursor: selected ? "pointer" : "not-allowed", transition: "all 0.3s", boxShadow: selected ? "0 8px 32px rgba(155,232,79,0.4)" : "none" }}>
+          {selected ? `CONTINUER EN MODE ${themes.find(t => t.id === selected)?.name} →` : "SÉLECTIONNE UN THÈME"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // WELCOME SCREEN
 // ─────────────────────────────────────────────
 function WelcomeScreen({ onStart }) {
@@ -1080,7 +1211,7 @@ function WelcomeScreen({ onStart }) {
 // ─────────────────────────────────────────────
 function SplashScreen() {
   return (
-    <div style={{ minHeight: "100vh", background: "#0E100F", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.isDark ? DS.colors.bg : "#0E100F", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(0,255,135,0.06), transparent)", pointerEvents: "none" }} />
       <div style={{ animation: "splashPulse 1.5s ease-in-out infinite" }}>
         <div style={{ width: 80, height: 80, borderRadius: 22, background: "linear-gradient(135deg, #00FF87, #00C896)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, boxShadow: "0 0 60px rgba(0,255,135,0.4)", marginBottom: 24, margin: "0 auto 24px" }}>⚡</div>
@@ -1925,7 +2056,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, letterSpacing: "0.1em" }}>Generation du programme en cours...</p>
         </div>
       )}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(244,245,246,0.95)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 0 rgba(0,0,0,0.05)" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 0 rgba(0,0,0,0.05)" }}>
         <div>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "2px 8px", marginBottom: 4 }}>
             <span style={{ fontSize: 11 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
@@ -2262,7 +2393,7 @@ function HistoriqueScreen() {
       )}
 
       {/* Header */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(244,245,246,0.97)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, color: DS.colors.textPrimary, letterSpacing: "0.1em" }}>PROGRESSION</h1>
         <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 6, padding: "5px 10px" }}>CE MOIS</div>
       </div>
@@ -2412,7 +2543,7 @@ function HistoriqueScreen() {
 // ─────────────────────────────────────────────
 // PROFIL
 // ─────────────────────────────────────────────
-function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, onRegenerateProgram }) {
+function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, onThemeChange, onLogout, onRegenerateProgram }) {
   const [notifOn, setNotifOn] = useState(false);
   const [notifHeure, setNotifHeure] = useState("08:00");
   const [showEditDrawer, setShowEditDrawer] = useState(false);
@@ -2631,6 +2762,22 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
                 style={{ background: "transparent", border: `1px solid ${theme.accent}40`, borderRadius: 8, padding: "6px 10px", color: theme.accent, fontFamily: "'Space Mono',monospace", fontSize: 14, outline: "none", colorScheme: "dark", cursor: "pointer" }} />
             </div>
           )}
+        </div>
+
+        {/* Theme */}
+        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 40, height: 40, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{DS.colors.isDark ? "🌙" : "☀️"}</div>
+            <div>
+              <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Apparence</p>
+              <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{DS.colors.isDark ? "THEME SOMBRE" : "THEME LUMINEUX"}</p>
+            </div>
+          </div>
+          <div onClick={() => onThemeChange && onThemeChange(DS.colors.isDark ? "light" : "dark")} style={{ width: 50, height: 28, background: DS.colors.isDark ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", border: `1px solid ${DS.colors.border}` }}>
+            <div style={{ position: "absolute", top: 3, left: DS.colors.isDark ? 25 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>
+              {DS.colors.isDark ? "🌙" : "☀️"}
+            </div>
+          </div>
         </div>
 
         {/* Deconnexion */}
@@ -2909,7 +3056,7 @@ function BottomNav({ activeTab, setTab }) {
     { id: "profil", label: "Profil", icon: Icons.user },
   ];
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${DS.colors.border}`, padding: "10px 0 28px", display: "flex", maxWidth: 430, margin: "0 auto", boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: DS.colors.navBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${DS.colors.border}`, padding: "10px 0 28px", display: "flex", maxWidth: 430, margin: "0 auto", boxShadow: DS.colors.isDark ? "none" : "0 -4px 20px rgba(0,0,0,0.06)" }}>
       {tabs.map(tab => {
         const isActive = activeTab === tab.id;
         return (
@@ -2928,7 +3075,8 @@ function BottomNav({ activeTab, setTab }) {
 // APP ROOT
 // ─────────────────────────────────────────────
 export default function VoltraApp() {
-  const [screen, setScreen] = useState("welcome");
+  const [screen, setScreen] = useState("theme-choice");
+  const [appTheme, setAppTheme] = useState("light");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
@@ -2946,11 +3094,17 @@ export default function VoltraApp() {
   const [cycleComplete, setCycleComplete] = useState(false);
 
   useEffect(() => {
+    setAppTheme(appTheme);
+    document.body.style.background = DS.colors.bg;
+    document.body.style.color = DS.colors.textPrimary;
+  }, [appTheme]);
+
+  useEffect(() => {
     const style = document.createElement("style");
     style.textContent = `
       @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Bebas+Neue&display=swap');
       * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-      body { background: #F4F5F6; color: #16181A; font-family: 'Inter', system-ui, sans-serif; }
+      body { background: ${DS.colors.bg}; color: ${DS.colors.textPrimary}; font-family: 'Inter', system-ui, sans-serif; }
       ::-webkit-scrollbar { display: none; }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -3040,6 +3194,11 @@ export default function VoltraApp() {
       .then(({ count }) => { if (count) setSeancesCount(count); });
   }, [screen, user]);
 
+  if (screen === "theme-choice") return <ThemeChoiceScreen onChoose={(theme) => {
+    setAppTheme(theme);
+    setAppTheme(theme);
+    setScreen("welcome");
+  }} />;
   if (screen === "welcome") return <WelcomeScreen onStart={() => setScreen("onboarding")} />;
   if (screen === "splash") return <SplashScreen />;
   if (screen === "cycle-complete") return <CycleCompleteScreen
@@ -3198,7 +3357,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
             />
           )}
           {activeTab === "historique" && <HistoriqueScreen />}
-          {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} sportActif={sportActif} onLogout={handleLogout} onRegenerateProgram={async (data, shouldRegen = true) => {
+          {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} sportActif={sportActif} appTheme={appTheme} onThemeChange={setAppTheme} onLogout={handleLogout} onRegenerateProgram={async (data, shouldRegen = true) => {
             try {
               if (shouldRegen) {
                 const prog = await generateProgramIA(data);
