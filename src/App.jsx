@@ -1417,12 +1417,13 @@ function OnboardingScreen({ onComplete }) {
   const handleFinish = () => {
     setLoading(true);
     setGenError(false);
+    setSlideIndex(0);
     // Timeout de securite : si pas de reponse en 20s, afficher erreur
     const timeout = setTimeout(() => {
       setGenError(true);
     }, 20000);
-    setTimeout(() => {
-      onComplete(data, null);
+    // Lancer la generation immediatement sans delai
+    onComplete(data, null);
       generateProgramIA(data).then(async programme => {
         clearTimeout(timeout);
         const { data: { session } } = await supabase.auth.getSession();
