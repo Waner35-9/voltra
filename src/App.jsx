@@ -1383,7 +1383,7 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 1 - Sport */}
         {contentStep === 0 && (
           <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton sport ?</h1>
+            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>{data.sport === "combat" ? "Choisis ta discipline" : "Quel est ton sport ?"}</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera entierement adapte.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
@@ -1399,7 +1399,7 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 2 - Objectif */}
         {contentStep === 1 && (
           <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Quel est ton objectif ?</h1>
+            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>{data.sport === "combat" ? "Ton objectif de combat ?" : "Quel est ton objectif ?"}</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Les exercices et charges s'adapteront.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
