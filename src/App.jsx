@@ -845,6 +845,97 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
 }
 
 // ─────────────────────────────────────────────
+// CYCLE COMPLETE SCREEN
+// ─────────────────────────────────────────────
+function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
+  const theme = getSportTheme(sport);
+  const cycle = (programme?.data_json?.cycle || 1);
+  const [showContinue, setShowContinue] = useState(false);
+
+  useEffect(() => {
+    if (!cycleLoading) {
+      const t = setTimeout(() => setShowContinue(true), 1000);
+      return () => clearTimeout(t);
+    }
+  }, [cycleLoading]);
+
+  const messages = [
+    { emoji: "🏆", title: "Cycle terminé !", desc: "Tu as completé ton premier cycle. Tu es déjà plus fort qu'avant." },
+    { emoji: "⚡", title: "Cycle 2 débloqué !", desc: "Plus intense, plus ciblé. Ton corps est prêt pour le niveau suivant." },
+    { emoji: "🔥", title: "Cycle 3 accompli !", desc: "Tu fais partie des rares qui vont aussi loin. La progression continue." },
+    { emoji: "💎", title: "Elite !", desc: "Peu d'athlètes atteignent ce niveau de constance. Impressionnant." },
+  ];
+  const msg = messages[Math.min(cycle - 1, messages.length - 1)];
+
+  return (
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
+        {SPORT_EMOJIS[sport] || "⚡"}
+      </div>
+
+      <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
+
+        {/* Trophée animé */}
+        <div style={{ fontSize: 80, marginBottom: 24, animation: "celebrate 0.8s cubic-bezier(0.34,1.56,0.64,1)" }}>
+          {msg.emoji}
+        </div>
+
+        {/* Titre */}
+        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 12 }}>
+          CYCLE {cycle} COMPLETE
+        </div>
+        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 42, color: "white", lineHeight: 0.95, marginBottom: 12, letterSpacing: "0.02em" }}>
+          {msg.title.toUpperCase()}
+        </h1>
+        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.1em", marginBottom: 40, maxWidth: 300, margin: "0 auto 40px" }}>
+          {msg.desc}
+        </p>
+
+        {/* Stats du cycle */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 40, justifyContent: "center" }}>
+          {[
+            { val: cycle, label: "CYCLES", color: theme.accent },
+            { val: `${(programme?.semaine_courante || 8)}`, label: "SEMAINES", color: "#00FF87" },
+            { val: "↑↑↑", label: "NIVEAU", color: "#FF8C00" },
+          ].map((stat, i) => (
+            <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 16px", textAlign: "center", position: "relative", overflow: "hidden", minWidth: 80 }}>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
+              <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 24, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Status génération */}
+        {cycleLoading ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surface, border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "12px 20px", marginBottom: 24, justifyContent: "center" }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: theme.accent, animation: "pulse 1s infinite", boxShadow: `0 0 8px ${theme.accent}` }} />
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, letterSpacing: "0.15em" }}>
+              GENERATION DU CYCLE {cycle + 1} EN COURS...
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(0,255,135,0.08)", border: "1px solid rgba(0,255,135,0.25)", borderRadius: DS.radius.full, padding: "12px 20px", marginBottom: 24, justifyContent: "center" }}>
+            <span style={{ fontSize: 16 }}>✅</span>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#00FF87", letterSpacing: "0.15em" }}>
+              CYCLE {cycle + 1} PRET · PLUS INTENSE
+            </p>
+          </div>
+        )}
+
+        {/* CTA */}
+        {showContinue && (
+          <button onClick={onContinue} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", boxShadow: `0 8px 32px ${theme.accent}40`, animation: "slideUp 0.5s ease" }}>
+            ATTAQUER LE CYCLE {cycle + 1} →
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // WELCOME SCREEN
 // ─────────────────────────────────────────────
 function WelcomeScreen({ onStart }) {
@@ -2243,6 +2334,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, onLogout, o
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
   const [lastSessionStats, setLastSessionStats] = useState(null);
+  const [cycleComplete, setCycleComplete] = useState(false);
   const [streak, setStreak] = useState(0);
 
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
@@ -2764,6 +2856,7 @@ export default function VoltraApp() {
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
   const [lastSessionStats, setLastSessionStats] = useState(null);
+  const [cycleComplete, setCycleComplete] = useState(false);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -2862,6 +2955,12 @@ export default function VoltraApp() {
 
   if (screen === "welcome") return <WelcomeScreen onStart={() => setScreen("onboarding")} />;
   if (screen === "splash") return <SplashScreen />;
+  if (screen === "cycle-complete") return <CycleCompleteScreen
+    programme={programmeActif}
+    sport={sportActif}
+    cycleLoading={cycleComplete}
+    onContinue={() => setScreen("app")}
+  />;
   if (screen === "preview") return <ProgrammePreview
     programme={programmeActif}
     sport={sportActif}
@@ -2935,6 +3034,38 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                 const { data } = await supabase.from("programmes").select("*").eq("id", programmeActif.id).single();
                 if (data) setProgrammeActif(data);
               }
+              // Verifier si le cycle est termine
+              const updatedProg = await supabase.from("programmes").select("*").eq("id", programmeActif?.id).single();
+              const prog = updatedProg.data;
+              if (prog && prog.semaine_courante >= prog.total_semaines) {
+                // Cycle termine → generer nouveau programme plus intense
+                setCycleComplete(true);
+                setScreen("cycle-complete");
+                const newData = {
+                  sport: sportActif,
+                  objectif: prog.data_json?.objectif,
+                  niveau: "avance",
+                  frequence: prog.data_json?.frequence || 3,
+                  cycle: (prog.data_json?.cycle || 1) + 1,
+                };
+                generateProgramIA(newData).then(async newProg => {
+                  if (newProg) {
+                    setProgrammeActif(newProg);
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session) {
+                      await supabase.from("programmes")
+                        .update({ statut: "termine" })
+                        .eq("id", prog.id);
+                    }
+                  }
+                  setCycleComplete(false);
+                }).catch(err => {
+                  console.error("Cycle regen error:", err);
+                  setCycleComplete(false);
+                });
+                return;
+              }
+
               // Si gratuit et premiere seance terminee → paywall personnalise
               if (!isPro) {
                 const totalKg = (seanceActive?.exercices || []).reduce((acc, ex) => {
