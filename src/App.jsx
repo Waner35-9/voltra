@@ -111,23 +111,23 @@ const s = {
 
 const THEMES = {
   light: {
-    bg: "#F4F5F6", surface: "#FFFFFF", surfaceUp: "#F4F5F6", surfaceHigh: "#ECEEF0",
-    primary: "#9BE84F", primarySoft: "rgba(155,232,79,0.12)", primaryGlow: "rgba(155,232,79,0.3)",
-    primaryDark: "#5FAE2E",
-    success: "#4CAF50", successSoft: "rgba(76,175,80,0.12)",
-    warning: "#FF8C00", warningSoft: "rgba(255,140,0,0.10)",
-    gold: "#FFD700", goldSoft: "rgba(255,215,0,0.12)",
-    textPrimary: "#16181A", textSec: "#8A8F94", textDim: "#C4C7CB",
-    border: "rgba(0,0,0,0.07)", borderAccent: "rgba(155,232,79,0.4)",
-    shadow: { primary: "0 4px 24px rgba(155,232,79,0.3)", card: "0 4px 24px rgba(0,0,0,0.06)", glow: "0 0 40px rgba(155,232,79,0.2)" },
-    navBg: "rgba(255,255,255,0.95)",
-    stickyBg: "rgba(244,245,246,0.95)",
+    bg: "#ECEEF0", surface: "#FFFFFF", surfaceUp: "#F4F5F6", surfaceHigh: "#E4E6E8",
+    primary: "#5FAE2E", primarySoft: "rgba(95,174,46,0.12)", primaryGlow: "rgba(95,174,46,0.3)",
+    primaryDark: "#4A8A23",
+    success: "#3D9B35", successSoft: "rgba(61,155,53,0.12)",
+    warning: "#E07800", warningSoft: "rgba(224,120,0,0.10)",
+    gold: "#C9A000", goldSoft: "rgba(201,160,0,0.12)",
+    textPrimary: "#0D0F10", textSec: "#555B63", textDim: "#9DA3AA",
+    border: "rgba(0,0,0,0.10)", borderAccent: "rgba(95,174,46,0.4)",
+    shadow: { primary: "0 4px 24px rgba(95,174,46,0.3)", card: "0 2px 16px rgba(0,0,0,0.08)", glow: "0 0 40px rgba(95,174,46,0.2)" },
+    navBg: "rgba(255,255,255,0.97)",
+    stickyBg: "rgba(236,238,240,0.97)",
     isDark: false,
   },
   dark: {
     bg: "#06060E", surface: "#0D0D18", surfaceUp: "#141420", surfaceHigh: "#1A1A28",
-    primary: "#9BE84F", primarySoft: "rgba(155,232,79,0.12)", primaryGlow: "rgba(155,232,79,0.3)",
-    primaryDark: "#7BC73C",
+    primary: "#9BE84F", primarySoft: "rgba(155,232,79,0.15)", primaryGlow: "rgba(155,232,79,0.3)",
+    primaryDark: "#9BE84F",
     success: "#00FF87", successSoft: "rgba(0,255,135,0.12)",
     warning: "#FF8C00", warningSoft: "rgba(255,140,0,0.12)",
     gold: "#FFE500", goldSoft: "rgba(255,229,0,0.12)",
@@ -239,9 +239,9 @@ function ProgressBar({ value }) {
 }
 
 const Icons = {
-  home: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 12L12 3L21 12V21H15V15H9V21H3V12Z" stroke={a ? DS.colors.primary : DS.colors.textSec} strokeWidth="2" strokeLinejoin="round" fill={a ? DS.colors.primarySoft : "none"} /></svg>,
-  chart: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 20H21M5 20V12M9 20V8M13 20V14M17 20V4" stroke={a ? DS.colors.primary : DS.colors.textDim} strokeWidth="2" strokeLinecap="round" /></svg>,
-  user: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={a ? DS.colors.primary : DS.colors.textDim} strokeWidth="2" /><path d="M4 20C4 16.686 7.582 14 12 14C16.418 14 20 16.686 20 20" stroke={a ? DS.colors.primary : DS.colors.textDim} strokeWidth="2" strokeLinecap="round" /></svg>,
+  home: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 12L12 3L21 12V21H15V15H9V21H3V12Z" stroke={a ? DS.colors.primaryDark : DS.colors.textSec} strokeWidth="2" strokeLinejoin="round" fill={a ? DS.colors.primarySoft : "none"} /></svg>,
+  chart: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 20H21M5 20V12M9 20V8M13 20V14M17 20V4" stroke={a ? DS.colors.primaryDark : DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
+  user: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={a ? DS.colors.primaryDark : DS.colors.textSec} strokeWidth="2" /><path d="M4 20C4 16.686 7.582 14 12 14C16.418 14 20 16.686 20 20" stroke={a ? DS.colors.primaryDark : DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
   arrow: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18L15 12L9 6" stroke={DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
   clock: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={DS.colors.textSec} strokeWidth="2" /><path d="M12 7V12L15 15" stroke={DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
 };
@@ -3084,13 +3084,13 @@ function BottomNav({ activeTab, setTab }) {
     { id: "profil", label: "Profil", icon: Icons.user },
   ];
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: DS.colors.navBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${DS.colors.border}`, padding: "10px 0 28px", display: "flex", maxWidth: 430, margin: "0 auto", boxShadow: DS.colors.isDark ? "none" : "0 -4px 20px rgba(0,0,0,0.06)" }}>
+    <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", zIndex: 100, background: DS.colors.navBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${DS.colors.border}`, padding: "10px 0 28px", display: "flex", width: "100%", maxWidth: 430, boxShadow: DS.colors.isDark ? "none" : "0 -4px 20px rgba(0,0,0,0.06)" }}>
       {tabs.map(tab => {
         const isActive = activeTab === tab.id;
         return (
           <button key={tab.id} onClick={() => setTab(tab.id)} style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, cursor: "pointer", padding: "4px 0", transition: "transform 0.15s ease", transform: isActive ? "scale(1.05)" : "scale(1)" }}>
             {tab.icon(isActive)}
-            <span style={{ color: isActive ? DS.colors.primaryDark : DS.colors.textSec, fontSize: 10, fontFamily: "'Inter',sans-serif", fontWeight: isActive ? 700 : 400, letterSpacing: "0.02em", transition: "color 0.2s ease" }}>{tab.label}</span>
+            <span style={{ color: isActive ? DS.colors.primaryDark : DS.colors.textSec, fontSize: 10, fontFamily: "'Inter',sans-serif", fontWeight: isActive ? 700 : 500, letterSpacing: "0.02em", transition: "color 0.2s ease" }}>{tab.label}</span>
             {isActive && <div style={{ width: 20, height: 3, borderRadius: DS.radius.full, background: DS.colors.primary, marginTop: -2 }} />}
           </button>
         );
