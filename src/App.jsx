@@ -1422,21 +1422,19 @@ function OnboardingScreen({ onComplete }) {
     const timeout = setTimeout(() => {
       setGenError(true);
     }, 20000);
-    // Lancer la generation immediatement sans delai
-    onComplete(data, null);
-      generateProgramIA(data).then(async programme => {
+        onComplete(data, null);
+    generateProgramIA(data).then(async programme => {
         clearTimeout(timeout);
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           await supabase.from("profiles").upsert({ id: session.user.id, sport: data.sport }, { onConflict: "id" });
         }
         onComplete(data, programme);
-      }).catch(err => {
+            }).catch(err => {
         clearTimeout(timeout);
         console.error(err);
         setGenError(true);
       });
-    }, 3200);
   };
 
   const retryGeneration = () => {
