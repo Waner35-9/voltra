@@ -1,4 +1,4 @@
-// @ts-nocheck
+m// @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -94,7 +94,7 @@ const SPORT_THEMES = {
   natation:   { accent: "#00C8FF", accentRgb: "0,200,255", bg: "radial-gradient(ellipse 400px 200px at 50% 0%, rgba(0,200,255,0.07), transparent)" },
   sprint:     { accent: "#FF2D55", accentRgb: "255,45,85", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(255,45,85,0.06), transparent)" },
   combat:     { accent: "#CC00FF", accentRgb: "204,0,255", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(204,0,255,0.07), transparent)" },
-  default:    { accent: "#00FF87", accentRgb: "0,255,135", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(0,255,135,0.06), transparent)" },
+  default:    { accent: "#9BE84F", accentRgb: "155,232,79", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(155,232,79,0.06), transparent)" },
 };
 
 function getSportTheme(sport) {
@@ -111,20 +111,22 @@ const s = {
 
 const DS = {
   colors: {
-    bg: "#06060E", surface: "#0D0D18", surfaceUp: "#141420", surfaceHigh: "#1A1A28",
-    primary: "#00FF87", primarySoft: "rgba(0,255,135,0.10)", primaryGlow: "rgba(0,255,135,0.25)",
-    success: "#00FF87", successSoft: "rgba(0,255,135,0.12)",
-    warning: "#FF8C00", warningSoft: "rgba(255,140,0,0.12)",
-    gold: "#FFE500", goldSoft: "rgba(255,229,0,0.12)",
-    textPrimary: "#FFFFFF", textSec: "#6B6B8A", textDim: "#2A2A3A",
-    border: "rgba(255,255,255,0.05)", borderAccent: "rgba(0,255,135,0.25)",
+    bg: "#F4F5F6", surface: "#FFFFFF", surfaceUp: "#F4F5F6", surfaceHigh: "#ECEEF0",
+    bgDark: "#0E100F",
+    primary: "#9BE84F", primarySoft: "rgba(155,232,79,0.12)", primaryGlow: "rgba(155,232,79,0.3)",
+    primaryDark: "#5FAE2E",
+    success: "#4CAF50", successSoft: "rgba(76,175,80,0.12)",
+    warning: "#FF8C00", warningSoft: "rgba(255,140,0,0.10)",
+    gold: "#FFD700", goldSoft: "rgba(255,215,0,0.12)",
+    textPrimary: "#16181A", textSec: "#8A8F94", textDim: "#C4C7CB",
+    border: "rgba(0,0,0,0.07)", borderAccent: "rgba(155,232,79,0.4)",
   },
-  radius: { sm: 8, md: 14, lg: 18, xl: 24, full: 999 },
-  shadow: { primary: "0 8px 32px rgba(0,255,135,0.2)", card: "0 4px 24px rgba(0,0,0,0.6)", glow: "0 0 40px rgba(0,255,135,0.15)" },
+  radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 },
+  shadow: { primary: "0 4px 24px rgba(155,232,79,0.3)", card: "0 4px 24px rgba(0,0,0,0.06)", glow: "0 0 40px rgba(155,232,79,0.2)" },
   fonts: {
     display: { fontFamily: "'Rajdhani', 'Barlow Condensed', system-ui, sans-serif", fontWeight: 700, letterSpacing: "0.02em" },
     mono: { fontFamily: "'Space Mono', 'Courier New', monospace" },
-    heading: { fontFamily: "'Rajdhani', system-ui, sans-serif", fontWeight: 600 },
+    heading: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 600 },
     body: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 },
   }
 };
@@ -163,11 +165,11 @@ function Input({ label, type = "text", value, onChange, placeholder }) {
         style={{
           width: "100%", height: 52, padding: "0 16px",
           background: DS.colors.surface,
-          border: `1px solid ${focused ? DS.colors.primary : DS.colors.border}`,
-          borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 16,
+          border: `1.5px solid ${focused ? DS.colors.primary : DS.colors.border}`,
+          borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 16,
           outline: "none", transition: "border 0.2s ease",
-          boxShadow: focused ? `0 0 0 3px ${DS.colors.primarySoft}` : "none",
-          ...s.body,
+          boxShadow: focused ? `0 0 0 3px ${DS.colors.primarySoft}` : DS.shadow.card,
+          fontFamily: "'Inter', system-ui, sans-serif",
         }}
       />
     </div>
@@ -177,8 +179,11 @@ function Input({ label, type = "text", value, onChange, placeholder }) {
 function Card({ children, style = {} }) {
   return (
     <div style={{
-      background: DS.colors.surface, border: `1px solid ${DS.colors.border}`,
-      borderRadius: DS.radius.lg, padding: 20, ...style,
+      background: DS.colors.surface,
+      borderRadius: DS.radius.xl,
+      padding: 20,
+      boxShadow: DS.shadow.card,
+      ...style,
     }}>
       {children}
     </div>
@@ -207,19 +212,19 @@ function ProgressBar({ value }) {
   const [width, setWidth] = useState(0);
   useEffect(() => { const t = setTimeout(() => setWidth(value), 100); return () => clearTimeout(t); }, [value]);
   return (
-    <div style={{ height: 4, background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, overflow: "hidden" }}>
+    <div style={{ height: 6, background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, overflow: "hidden" }}>
       <div style={{
         height: "100%", width: `${width}%`,
-        background: `linear-gradient(90deg, ${DS.colors.primary}, ${DS.colors.success})`,
+        background: DS.colors.primary,
         borderRadius: DS.radius.full, transition: "width 0.8s cubic-bezier(0.34,1.56,0.64,1)",
-        boxShadow: `0 0 8px ${DS.colors.primary}`,
+        boxShadow: `0 0 8px ${DS.colors.primaryGlow}`,
       }} />
     </div>
   );
 }
 
 const Icons = {
-  home: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 12L12 3L21 12V21H15V15H9V21H3V12Z" stroke={a ? DS.colors.primary : DS.colors.textDim} strokeWidth="2" strokeLinejoin="round" fill={a ? DS.colors.primarySoft : "none"} /></svg>,
+  home: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 12L12 3L21 12V21H15V15H9V21H3V12Z" stroke={a ? DS.colors.primary : DS.colors.textSec} strokeWidth="2" strokeLinejoin="round" fill={a ? DS.colors.primarySoft : "none"} /></svg>,
   chart: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 20H21M5 20V12M9 20V8M13 20V14M17 20V4" stroke={a ? DS.colors.primary : DS.colors.textDim} strokeWidth="2" strokeLinecap="round" /></svg>,
   user: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={a ? DS.colors.primary : DS.colors.textDim} strokeWidth="2" /><path d="M4 20C4 16.686 7.582 14 12 14C16.418 14 20 16.686 20 20" stroke={a ? DS.colors.primary : DS.colors.textDim} strokeWidth="2" strokeLinecap="round" /></svg>,
   arrow: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18L15 12L9 6" stroke={DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
@@ -671,7 +676,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
       )}
 
       {/* Header sticky */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,6,14,0.95)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "12px 20px 0" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(244,245,246,0.97)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "12px 20px 0" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
           <div style={{ textAlign: "center" }}>
@@ -978,7 +983,7 @@ function WelcomeScreen({ onStart }) {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
 
       {/* Glow de fond */}
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 500px 500px at 50% 30%, rgba(0,255,135,0.07), transparent)", pointerEvents: "none" }} />
@@ -1126,7 +1131,7 @@ function AuthScreen({ onAuth }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
       <div style={{ paddingTop: 80, paddingBottom: 48, textAlign: "center" }}>
         <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: `linear-gradient(135deg, #00FF87, #00C896)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: "0 0 40px rgba(0,255,135,0.4)" }}>⚡</div>
         <h1 style={{ ...s.display, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>Voltra</h1>
@@ -1313,7 +1318,7 @@ function OnboardingScreen({ onComplete }) {
   const isLastStep = step === totalSteps - 1;
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px" }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 20px" }}>
 
       {loading && (() => {
         const sportTheme = getSportTheme(data.sport);
@@ -1488,9 +1493,9 @@ function OnboardingScreen({ onComplete }) {
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera entierement adapte.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
-                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.sport === sport.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.03)" : "scale(1)" }}>
+                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primary : DS.colors.surface, borderRadius: DS.radius.full, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.05)" : "scale(1)", boxShadow: data.sport === sport.id ? DS.shadow.primary : "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)" }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{sport.emoji}</div>
-                  <div style={{ color: data.sport === sport.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 13, ...s.heading }}>{sport.label}</div>
+                  <div style={{ color: data.sport === sport.id ? "#16181A" : DS.colors.textPrimary, fontSize: 12, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>{sport.label}</div>
                 </div>
               ))}
             </div>
@@ -1920,7 +1925,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, letterSpacing: "0.1em" }}>Generation du programme en cours...</p>
         </div>
       )}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,6,14,0.92)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(244,245,246,0.95)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "2px 8px", marginBottom: 4 }}>
             <span style={{ fontSize: 11 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
@@ -2257,7 +2262,7 @@ function HistoriqueScreen() {
       )}
 
       {/* Header */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(6,6,14,0.95)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(244,245,246,0.97)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, color: "white", letterSpacing: "0.1em" }}>PROGRESSION</h1>
         <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 6, padding: "5px 10px" }}>CE MOIS</div>
       </div>
@@ -2904,14 +2909,14 @@ function BottomNav({ activeTab, setTab }) {
     { id: "profil", label: "Profil", icon: Icons.user },
   ];
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderTop: `1px solid ${DS.colors.border}`, padding: "12px 0 28px", display: "flex", maxWidth: 430, margin: "0 auto" }}>
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${DS.colors.border}`, padding: "10px 0 28px", display: "flex", maxWidth: 430, margin: "0 auto", boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
       {tabs.map(tab => {
         const isActive = activeTab === tab.id;
         return (
           <button key={tab.id} onClick={() => setTab(tab.id)} style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, cursor: "pointer", padding: "4px 0", transition: "transform 0.15s ease", transform: isActive ? "scale(1.05)" : "scale(1)" }}>
             {tab.icon(isActive)}
-            <span style={{ color: isActive ? DS.colors.primary : DS.colors.textDim, fontSize: 10, fontFamily: "'Space Mono',monospace", letterSpacing: "0.05em", transition: "color 0.2s ease" }}>{tab.label}</span>
-            {isActive && <div style={{ width: 4, height: 4, borderRadius: DS.radius.full, background: DS.colors.primary, boxShadow: `0 0 6px ${DS.colors.primary}`, marginTop: -2 }} />}
+            <span style={{ color: isActive ? DS.colors.primaryDark : DS.colors.textSec, fontSize: 10, fontFamily: "'Inter',sans-serif", fontWeight: isActive ? 700 : 400, letterSpacing: "0.02em", transition: "color 0.2s ease" }}>{tab.label}</span>
+            {isActive && <div style={{ width: 20, height: 3, borderRadius: DS.radius.full, background: DS.colors.primary, marginTop: -2 }} />}
           </button>
         );
       })}
@@ -2945,7 +2950,7 @@ export default function VoltraApp() {
     style.textContent = `
       @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Bebas+Neue&display=swap');
       * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-      body { background: #06060E; color: #FFFFFF; font-family: 'Inter', system-ui, sans-serif; }
+      body { background: #F4F5F6; color: #16181A; font-family: 'Inter', system-ui, sans-serif; }
       ::-webkit-scrollbar { display: none; }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
