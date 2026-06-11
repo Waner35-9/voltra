@@ -1418,23 +1418,22 @@ function OnboardingScreen({ onComplete }) {
     setLoading(true);
     setGenError(false);
     setSlideIndex(0);
-    // Timeout de securite : si pas de reponse en 20s, afficher erreur
     const timeout = setTimeout(() => {
       setGenError(true);
     }, 20000);
-        onComplete(data, null);
+    onComplete(data, null);
     generateProgramIA(data).then(async programme => {
-        clearTimeout(timeout);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await supabase.from("profiles").upsert({ id: session.user.id, sport: data.sport }, { onConflict: "id" });
-        }
-        onComplete(data, programme);
-            }).catch(err => {
-        clearTimeout(timeout);
-        console.error(err);
-        setGenError(true);
-      });
+      clearTimeout(timeout);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.from("profiles").upsert({ id: session.user.id, sport: data.sport }, { onConflict: "id" });
+      }
+      onComplete(data, programme);
+    }).catch(err => {
+      clearTimeout(timeout);
+      console.error(err);
+      setGenError(true);
+    });
   };
 
   const retryGeneration = () => {
@@ -1626,7 +1625,9 @@ function OnboardingScreen({ onComplete }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 2, paddingTop: 16 }}>
                 <button onClick={() => setSlideIndex(i => Math.max(0, i - 1))} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 44, height: 44, color: DS.colors.textSec, cursor: "pointer", fontSize: 18, opacity: slideIndex === 0 ? 0.3 : 1 }}>←</button>
                 <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{slideIndex + 1} / {slides.length}</p>
-                <button onClick={() => setSlideIndex(i => Math.min(slides.length - 1, i + 1))} style={{ background: slideIndex === slides.length - 1 ? sportTheme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${slideIndex === slides.length - 1 ? sportTheme.accent + "40" : "transparent"}`, borderRadius: DS.radius.full, width: 44, height: 44, color: slideIndex === slides.length - 1 ? sportTheme.accent : DS.colors.textSec, cursor: "pointer", fontSize: 18 }}>→</button>
+                <button onClick={() => setSlideIndex(i => Math.min(slides.length - 1, i + 1))} style={{ background: slideIndex === slides.length - 1 ? sportTheme.accent : DS.colors.surfaceHigh, border: "none", borderRadius: slideIndex === slides.length - 1 ? DS.radius.full : DS.radius.full, padding: slideIndex === slides.length - 1 ? "0 20px" : "0", width: slideIndex === slides.length - 1 ? "auto" : 44, height: 44, color: slideIndex === slides.length - 1 ? "#000" : DS.colors.textSec, cursor: "pointer", fontSize: slideIndex === slides.length - 1 ? 13 : 18, fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.05em", boxShadow: slideIndex === slides.length - 1 ? `0 4px 20px ${sportTheme.accent}50` : "none" }}>
+                  {slideIndex === slides.length - 1 ? "VOIR MON PROGRAMME →" : "→"}
+                </button>
               </div>
             )}
           </div>
