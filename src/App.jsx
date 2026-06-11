@@ -1209,15 +1209,43 @@ function WelcomeScreen({ onStart }) {
 // ─────────────────────────────────────────────
 // ECRAN SPLASH
 // ─────────────────────────────────────────────
-function SplashScreen() {
+function SplashScreen({ onDone }) {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase(1), 400);
+    const t2 = setTimeout(() => setPhase(2), 1200);
+    const t3 = setTimeout(() => onDone && onDone(), 2600);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.isDark ? DS.colors.bg : "#0E100F", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(0,255,135,0.06), transparent)", pointerEvents: "none" }} />
-      <div style={{ animation: "splashPulse 1.5s ease-in-out infinite" }}>
-        <div style={{ width: 80, height: 80, borderRadius: 22, background: "linear-gradient(135deg, #00FF87, #00C896)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, boxShadow: "0 0 60px rgba(0,255,135,0.4)", marginBottom: 24, margin: "0 auto 24px" }}>⚡</div>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
+
+      {/* Logo animé */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.4)", transition: "all 0.7s cubic-bezier(0.34,1.56,0.64,1)" }}>
+        <div style={{ position: "relative", marginBottom: 24 }}>
+          <div style={{ position: "absolute", inset: -16, borderRadius: "50%", border: "1px solid rgba(155,232,79,0.2)", animation: phase >= 2 ? "pulse 2s ease infinite" : "none" }} />
+          <div style={{ position: "absolute", inset: -32, borderRadius: "50%", border: "1px solid rgba(155,232,79,0.1)", animation: phase >= 2 ? "pulse 2s ease 0.4s infinite" : "none" }} />
+          <div style={{ width: 90, height: 90, borderRadius: 26, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, boxShadow: "0 0 60px rgba(155,232,79,0.5)", position: "relative", zIndex: 1 }}>
+            ⚡
+          </div>
+        </div>
+        <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 52, color: "white", letterSpacing: "0.2em", lineHeight: 1, opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "translateY(0)" : "translateY(10px)", transition: "all 0.5s ease 0.3s" }}>
+          VOLTRA
+        </div>
+        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.3em", marginTop: 8, opacity: phase >= 2 ? 1 : 0, transition: "opacity 0.5s ease 0.6s" }}>
+          PERFORMANCE · IA · SPORT
+        </div>
       </div>
-      <div style={{ ...s.display, fontSize: 42, color: "white", letterSpacing: "0.15em", marginBottom: 8, textAlign: "center" }}>VOLTRA</div>
-      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase" }}>Performance · IA · Sport</div>
+
+      {/* Loading dots */}
+      <div style={{ position: "absolute", bottom: 60, display: "flex", gap: 6, opacity: phase >= 2 ? 1 : 0, transition: "opacity 0.4s ease 0.8s" }}>
+        {[0,1,2].map(i => (
+          <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "#9BE84F", animation: `pulse 1s ease ${i*0.2}s infinite` }} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -3075,7 +3103,7 @@ function BottomNav({ activeTab, setTab }) {
 // APP ROOT
 // ─────────────────────────────────────────────
 export default function VoltraApp() {
-  const [screen, setScreen] = useState("theme-choice");
+  const [screen, setScreen] = useState("splash");
   const [appTheme, setAppTheme] = useState("light");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
@@ -3196,14 +3224,14 @@ export default function VoltraApp() {
       .then(({ count }) => { if (count) setSeancesCount(count); });
   }, [screen, user]);
 
-  if (screen === "theme-choice") return <ThemeChoiceScreen onChoose={(theme) => {
+  if (screen === "theme-choice") return <ThemeChoiceScreen key={appTheme} onChoose={(theme) => {
     DS.colors = THEMES[theme];
     DS.shadow = THEMES[theme].shadow;
     setAppTheme(theme);
     setScreen("welcome");
   }} />;
-  if (screen === "welcome") return <WelcomeScreen onStart={() => setScreen("onboarding")} />;
-  if (screen === "splash") return <SplashScreen />;
+  if (screen === "welcome") return <div key={appTheme}><WelcomeScreen onStart={() => setScreen("onboarding")} /></div>;
+  if (screen === "splash") return <SplashScreen onDone={() => setScreen("theme-choice")} />;
   if (screen === "cycle-complete") return <CycleCompleteScreen
     programme={programmeActif}
     sport={sportActif}
@@ -3261,7 +3289,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
   }} />;
 
   return (
-    <div key={appTheme} style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
+    <div key={`${appTheme}-${screen}`} style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
 
       {showMatchs ? (
         <MatchsScreen user={user} onBack={() => {
