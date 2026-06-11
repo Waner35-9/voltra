@@ -2087,6 +2087,9 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
             })()}
           </div>
         </div>
+
+        <div style={{ marginBottom: 28 }}>
+          <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Derniere seance</p>
           {derniereSeance ? (
             <Card>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
