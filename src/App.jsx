@@ -2006,6 +2006,71 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           </div>
         </div>
         )}
+        {/* Parcours des cycles */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <p style={{ color: "white", fontSize: 16, ...s.heading }}>Ton parcours</p>
+            <div style={{ background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "3px 10px" }}>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.12em" }}>CYCLE {prog.semaineCourante}</p>
+            </div>
+          </div>
+
+          {/* Barre de progression des cycles */}
+          <div style={{ display: "flex", gap: 0, marginBottom: 14, position: "relative" }}>
+            {/* Ligne de connexion */}
+            <div style={{ position: "absolute", top: 20, left: 20, right: 20, height: 2, background: DS.colors.surfaceHigh, zIndex: 0 }} />
+            <div style={{ position: "absolute", top: 20, left: 20, height: 2, width: `${Math.min(100, (prog.semaineCourante - 1) / 3 * 100)}%`, background: theme.accent, zIndex: 0, transition: "width 1s ease", boxShadow: `0 0 8px ${theme.accent}` }} />
+            {[
+              { num: 1, label: "FONDATIONS" },
+              { num: 2, label: "INTENSITE" },
+              { num: 3, label: "PUISSANCE" },
+              { num: 4, label: "ELITE" },
+            ].map((c, i) => {
+              const isDone = prog.semaineCourante > c.num;
+              const isCurrent = prog.semaineCourante === c.num;
+              return (
+                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative", zIndex: 1 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: DS.radius.full, background: isDone ? theme.accent : isCurrent ? theme.accent + "25" : DS.colors.surfaceHigh, border: `2px solid ${isDone || isCurrent ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.4s", boxShadow: isCurrent ? `0 0 16px ${theme.accent}60` : "none" }}>
+                    {isDone
+                      ? <span style={{ color: "#000", fontSize: 16 }}>✓</span>
+                      : <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: isCurrent ? theme.accent : DS.colors.textSec, fontWeight: 700 }}>{c.num}</span>
+                    }
+                  </div>
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: isDone || isCurrent ? theme.accent : DS.colors.textSec, letterSpacing: "0.08em", textAlign: "center" }}>{c.label}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Cards cycles en scroll horizontal */}
+          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8 }}>
+            {[
+              { num: 1, emoji: "🌱", title: "Fondations", desc: "Technique, bases solides, charges moderees. On construit l'athlete.", color: "#00FF87", tag: "DEBUT DU PARCOURS" },
+              { num: 2, emoji: "⚡", title: "Intensification", desc: "Volume augmente, repos reduits. Le corps s'adapte rapidement.", color: "#FF8C00", tag: "PLUS INTENSE" },
+              { num: 3, emoji: "🔥", title: "Puissance max", desc: "Charges lourdes, explosivite maximale. Tu touches tes limites.", color: "#FF2D55", tag: "NIVEAU AVANCE" },
+              { num: 4, emoji: "💎", title: "Elite", desc: "Protocole d'athlete professionnel. Peu arrivent ici.", color: "#CC00FF", tag: "NIVEAU ELITE" },
+            ].map((c, i) => {
+              const isDone = prog.semaineCourante > c.num;
+              const isCurrent = prog.semaineCourante === c.num;
+              const isLocked = prog.semaineCourante < c.num;
+              return (
+                <div key={i} style={{ flexShrink: 0, width: 160, background: isCurrent ? c.color + "12" : DS.colors.surface, border: `1px solid ${isCurrent ? c.color + "40" : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "14px 12px", position: "relative", overflow: "hidden", opacity: isLocked ? 0.55 : 1, transition: "all 0.3s" }}>
+                  {isCurrent && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: c.color }} />}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span style={{ fontSize: 22 }}>{c.emoji}</span>
+                    {isLocked && <span style={{ fontSize: 14 }}>🔒</span>}
+                    {isDone && <span style={{ fontSize: 14 }}>✅</span>}
+                    {isCurrent && <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.color, animation: "pulse 1.5s infinite", boxShadow: `0 0 6px ${c.color}` }} />}
+                  </div>
+                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: isCurrent ? c.color : DS.colors.textSec, letterSpacing: "0.12em", marginBottom: 4 }}>{c.tag}</div>
+                  <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 15, color: isCurrent ? "white" : DS.colors.textSec, marginBottom: 4 }}>{c.title}</p>
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, lineHeight: 1.6, letterSpacing: "0.04em" }}>{c.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         <div style={{ marginBottom: 28 }}>
           <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Derniere seance</p>
           {derniereSeance ? (
