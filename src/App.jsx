@@ -7,9 +7,18 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-async function generateProgramIA({ sport, objectif, niveau, frequence }) {
+function getNiveauCycle(niveau) {
+  if (!niveau) return 1;
+  const n = niveau.toLowerCase();
+  if (n === "avance" || n === "avancé") return 3;
+  if (n === "intermediaire" || n === "intermédiaire") return 2;
+  return 1;
+}
+
+async function generateProgramIA({ sport, objectif, niveau, frequence, cycle }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Pas de session");
+  const startCycle = cycle || getNiveauCycle(niveau);
   const res = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-program`,
     {
@@ -19,7 +28,7 @@ async function generateProgramIA({ sport, objectif, niveau, frequence }) {
         "Authorization": `Bearer ${session.access_token}`,
         "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ sport, objectif, niveau, frequence }),
+      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle }),
     }
   );
   const data = await res.json();
@@ -859,13 +868,14 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
     }
   }, [cycleLoading]);
 
-  const messages = [
-    { emoji: "🏆", title: "Cycle terminé !", desc: "Tu as completé ton premier cycle. Tu es déjà plus fort qu'avant." },
-    { emoji: "⚡", title: "Cycle 2 débloqué !", desc: "Plus intense, plus ciblé. Ton corps est prêt pour le niveau suivant." },
-    { emoji: "🔥", title: "Cycle 3 accompli !", desc: "Tu fais partie des rares qui vont aussi loin. La progression continue." },
-    { emoji: "💎", title: "Elite !", desc: "Peu d'athlètes atteignent ce niveau de constance. Impressionnant." },
-  ];
-  const msg = messages[Math.min(cycle - 1, messages.length - 1)];
+  const getCycleMsg = (n) => {
+    if (n === 1) return { emoji: "🏆", title: "Cycle 1 termine !", desc: "Tu as complete ton premier cycle. Tu es deja plus fort." };
+    if (n === 2) return { emoji: "⚡", title: "Cycle 2 accompli !", desc: "Plus intense, plus cible. Ton corps s'est adapte." };
+    if (n === 3) return { emoji: "🔥", title: "Niveau avance atteint !", desc: "Tu fais partie des rares qui vont aussi loin." };
+    if (n === 4) return { emoji: "💎", title: "Elite !", desc: "Peu d'athletes atteignent ce niveau. Impressionnant." };
+    return { emoji: "🚀", title: `Elite+ ${n - 4} accompli !`, desc: `Cycle ${n} termine. Tu repousses des limites que peu connaissent.` };
+  };
+  const msg = getCycleMsg(cycle);
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
@@ -2002,7 +2012,8 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                   {ex.chargeKg > 0 && <div style={{ ...s.mono, fontSize: 11, color: DS.colors.textSec, marginTop: 2 }}>{ex.chargeKg} kg</div>}
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
         </div>
         )}
@@ -2011,7 +2022,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <p style={{ color: "white", fontSize: 16, ...s.heading }}>Ton parcours</p>
             <div style={{ background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "3px 10px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.12em" }}>CYCLE {prog.semaineCourante}</p>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.12em" }}>CYCLE {programme?.data_json?.cycle || 1}</p>
             </div>
           </div>
 
@@ -2019,15 +2030,14 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           <div style={{ display: "flex", gap: 0, marginBottom: 14, position: "relative" }}>
             {/* Ligne de connexion */}
             <div style={{ position: "absolute", top: 20, left: 20, right: 20, height: 2, background: DS.colors.surfaceHigh, zIndex: 0 }} />
-            <div style={{ position: "absolute", top: 20, left: 20, height: 2, width: `${Math.min(100, (prog.semaineCourante - 1) / 3 * 100)}%`, background: theme.accent, zIndex: 0, transition: "width 1s ease", boxShadow: `0 0 8px ${theme.accent}` }} />
-            {[
-              { num: 1, label: "FONDATIONS" },
-              { num: 2, label: "INTENSITE" },
-              { num: 3, label: "PUISSANCE" },
-              { num: 4, label: "ELITE" },
-            ].map((c, i) => {
-              const isDone = prog.semaineCourante > c.num;
-              const isCurrent = prog.semaineCourante === c.num;
+            <div style={{ position: "absolute", top: 20, left: 20, height: 2, width: `${Math.min(100, (1 / 4) * 100)}%`, background: theme.accent, zIndex: 0, transition: "width 1s ease", boxShadow: `0 0 8px ${theme.accent}` }} />
+            {(() => {
+              const currentCycle = programme?.data_json?.cycle || 1;
+              const getLabel = (n) => n === 1 ? "FONDATIONS" : n === 2 ? "INTENSITE" : n === 3 ? "PUISSANCE" : n === 4 ? "ELITE" : `ELITE+${n-4}`;
+              const start = Math.max(1, currentCycle - 1);
+              return Array.from({ length: 4 }, (_, i) => ({ num: start + i, label: getLabel(start + i) })).map((c, i) => {
+              const isDone = currentCycle > c.num;
+              const isCurrent = currentCycle === c.num;
               return (
                 <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative", zIndex: 1 }}>
                   <div style={{ width: 40, height: 40, borderRadius: DS.radius.full, background: isDone ? theme.accent : isCurrent ? theme.accent + "25" : DS.colors.surfaceHigh, border: `2px solid ${isDone || isCurrent ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.4s", boxShadow: isCurrent ? `0 0 16px ${theme.accent}60` : "none" }}>
@@ -2039,20 +2049,27 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                   <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: isDone || isCurrent ? theme.accent : DS.colors.textSec, letterSpacing: "0.08em", textAlign: "center" }}>{c.label}</p>
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
-
-          {/* Cards cycles en scroll horizontal */}
           <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8 }}>
-            {[
-              { num: 1, emoji: "🌱", title: "Fondations", desc: "Technique, bases solides, charges moderees. On construit l'athlete.", color: "#00FF87", tag: "DEBUT DU PARCOURS" },
-              { num: 2, emoji: "⚡", title: "Intensification", desc: "Volume augmente, repos reduits. Le corps s'adapte rapidement.", color: "#FF8C00", tag: "PLUS INTENSE" },
-              { num: 3, emoji: "🔥", title: "Puissance max", desc: "Charges lourdes, explosivite maximale. Tu touches tes limites.", color: "#FF2D55", tag: "NIVEAU AVANCE" },
-              { num: 4, emoji: "💎", title: "Elite", desc: "Protocole d'athlete professionnel. Peu arrivent ici.", color: "#CC00FF", tag: "NIVEAU ELITE" },
-            ].map((c, i) => {
-              const isDone = prog.semaineCourante > c.num;
-              const isCurrent = prog.semaineCourante === c.num;
-              const isLocked = prog.semaineCourante < c.num;
+            {(() => {
+              const currentCycle = programme?.data_json?.cycle || 1;
+              const getCycleInfo = (num) => {
+                if (num === 1) return { emoji: "🌱", title: "Fondations", desc: "Technique, bases solides. On construit l'athlete.", color: "#00FF87", tag: "DEBUT" };
+                if (num === 2) return { emoji: "⚡", title: "Intensification", desc: "Volume augmente, repos reduits. Adaptation rapide.", color: "#FF8C00", tag: "INTENSITE" };
+                if (num === 3) return { emoji: "🔥", title: "Puissance max", desc: "Charges lourdes, explosivite maximale.", color: "#FF2D55", tag: "AVANCE" };
+                if (num === 4) return { emoji: "💎", title: "Elite", desc: "Protocole athlete professionnel. Peu arrivent ici.", color: "#CC00FF", tag: "ELITE" };
+                return { emoji: "🚀", title: `Elite+ ${num - 4}`, desc: `Niveau extreme. Cycle ${num} sur mesure pour toi.`, color: "#00C8FF", tag: `ELITE+ ${num - 4}` };
+              };
+              // Affiche depuis max(1, currentCycle-1) jusqu'a currentCycle+3
+              const start = Math.max(1, currentCycle - 1);
+              const cycles = Array.from({ length: 5 }, (_, i) => start + i);
+              return cycles.map((num, i) => {
+              const c = { num, ...getCycleInfo(num) };
+              const isDone = currentCycle > num;
+              const isCurrent = currentCycle === num;
+              const isLocked = currentCycle < num;
               return (
                 <div key={i} style={{ flexShrink: 0, width: 160, background: isCurrent ? c.color + "12" : DS.colors.surface, border: `1px solid ${isCurrent ? c.color + "40" : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "14px 12px", position: "relative", overflow: "hidden", opacity: isLocked ? 0.55 : 1, transition: "all 0.3s" }}>
                   {isCurrent && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: c.color }} />}
