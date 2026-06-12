@@ -3115,6 +3115,7 @@ export default function VoltraApp() {
   const [screen, setScreen] = useState("splash");
   const [appTheme, setAppTheme] = useState(() => localStorage.getItem("voltra_theme") || "light");
   const [themeChosen, setThemeChosen] = useState(() => !!localStorage.getItem("voltra_theme"));
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
@@ -3161,7 +3162,7 @@ export default function VoltraApp() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) { setUser(session.user); }
-      // Splash will handle routing to theme-choice
+      setSessionChecked(true);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (_event === "SIGNED_OUT") {
@@ -3244,12 +3245,27 @@ export default function VoltraApp() {
   }} />;
   if (screen === "welcome") return <div key={appTheme}><WelcomeScreen onStart={() => setScreen("onboarding")} /></div>;
   if (screen === "splash") return <SplashScreen onDone={() => {
-    if (!themeChosen) {
-      setScreen("theme-choice");
-    } else if (user) {
-      setScreen("app");
+    // Attendre que la session soit verifiee
+    const route = () => {
+      if (!themeChosen) {
+        setScreen("theme-choice");
+      } else if (user) {
+        setScreen("app");
+      } else {
+        setScreen("onboarding");
+      }
+    };
+    if (sessionChecked) {
+      route();
     } else {
-      setScreen("onboarding");
+      // Attendre max 2s de plus puis router
+      const check = setInterval(() => {
+        if (sessionChecked) {
+          clearInterval(check);
+          route();
+        }
+      }, 100);
+      setTimeout(() => { clearInterval(check); route(); }, 2000);
     }
   }} />;
   if (screen === "cycle-complete") return <CycleCompleteScreen
