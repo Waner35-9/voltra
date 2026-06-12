@@ -2836,10 +2836,25 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
   const progData = programme?.data_json;
   const seance = progData?.semaines?.[0]?.seances?.[0];
   const exercices = seance?.exercices || [];
-  const totalSemaines = programme?.total_semaines || 8;
   const frequence = onboardingData?.frequence || 3;
 
-  // Nom de programme personnalisé
+  // Compte à rebours 1 heure
+  const [timeLeft, setTimeLeft] = useState({ m: 59, s: 59 });
+  useEffect(() => {
+    const t = setInterval(() => {
+      setTimeLeft(prev => {
+        let { m, s } = prev;
+        s--;
+        if (s < 0) { s = 59; m--; }
+        if (m < 0) return { m: 0, s: 0 };
+        return { m, s };
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+  const pad = n => String(n).padStart(2, "0");
+
+  // Nom personnalisé
   const nomsProgramme = {
     basketball: { explosivite: "Protocole Meneur Elite", detente: "Jump Performance Program", force: "Power Basketball System", endurance: "Cardio Court Warrior" },
     football: { explosivite: "Sprint & Power Protocol", endurance: "Endurance Football Elite", force: "Physical Domination System" },
@@ -2851,114 +2866,145 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
   };
   const nomProg = nomsProgramme[sport]?.[onboardingData?.objectif] || programme?.titre || "Performance Elite Program";
 
-  // Calcul chiffres
-  const totalSeances = totalSemaines * frequence;
-  const kgEstime = exercices.reduce((acc, ex) => {
-    const charge = ex.chargeKg > 0 ? ex.chargeKg :
-      ex.nom?.toLowerCase().includes("squat") ? 60 :
-      ex.nom?.toLowerCase().includes("deadlift") || ex.nom?.toLowerCase().includes("rdl") ? 55 :
-      ex.nom?.toLowerCase().includes("bench") || ex.nom?.toLowerCase().includes("developpe") ? 50 :
-      ex.nom?.toLowerCase().includes("rowing") ? 45 :
-      ex.nom?.toLowerCase().includes("hip") ? 50 :
-      ex.chargeKg === 0 ? 20 : 30;
-    return acc + charge * (ex.sets || 3) * (parseInt(ex.reps) || 8);
-  }, 0);
-  const kgTotal = Math.round(kgEstime * totalSeances / 1000);
+  // Social proof dynamique
+  const inscrits = Math.floor(Math.random() * 80 + 250);
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40, position: "relative" }}>
-      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", overflowY: "auto", paddingBottom: 40, position: "relative" }}>
+      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none", opacity: 0.5 }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sport] || "⚡"}
       </div>
 
       <div style={{ padding: "52px 20px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
 
+        {/* Compte à rebours urgence */}
+        <div style={{ background: "rgba(255,45,85,0.1)", border: "1px solid rgba(255,45,85,0.3)", borderRadius: DS.radius.lg, padding: "10px 16px", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "#FF2D55", letterSpacing: "0.15em", marginBottom: 2 }}>🔥 OFFRE -30% EXPIRE DANS</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em" }}>Seulement pour ta premiere inscription</p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {[{ val: pad(timeLeft.m), label: "MIN" }, { val: pad(timeLeft.s), label: "SEC" }].map((t, i) => (
+              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div style={{ background: "#FF2D55", borderRadius: 6, padding: "4px 8px", minWidth: 36, textAlign: "center" }}>
+                  <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 18, color: "white", fontWeight: 700 }}>{t.val}</span>
+                </div>
+                <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{t.label}</span>
+                {i === 0 && <span style={{ position: "absolute", fontSize: 16, color: "#FF2D55", marginLeft: 44, marginTop: -2, fontWeight: 700 }}>:</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Header */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "3px 10px", marginBottom: 12 }}>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "3px 10px", marginBottom: 10 }}>
             <div style={{ width: 5, height: 5, borderRadius: "50%", background: theme.accent, animation: "pulse 1.5s infinite" }} />
             <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: theme.accent, letterSpacing: "0.2em" }}>TON PROGRAMME EST PRET</span>
           </div>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 34, color: "white", lineHeight: 0.95, marginBottom: 8, letterSpacing: "0.02em" }}>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: "white", lineHeight: 0.95, marginBottom: 6, letterSpacing: "0.02em" }}>
             {nomProg.toUpperCase()}
           </h1>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em" }}>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.15em" }}>
             {frequence}X / SEMAINE · PROGRESSION CONTINUE · IA
           </p>
         </div>
 
-        {/* Stats chiffrées */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
           {[
-            { val: exercices.length, label: "EXO / SEANCE", color: theme.accent },
-            { val: totalSeances, label: "SEANCES", color: "#00FF87" },
+            { val: exercices.length || "5+", label: "EXO / SEANCE", color: theme.accent },
+            { val: frequence * 8, label: "SEANCES", color: "#00FF87" },
             { val: "∞", label: "PROGRESSION", color: "#FF8C00" },
           ].map((stat, i) => (
-            <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+            <div key={i} style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "12px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 26, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
+              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 24, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: "rgba(255,255,255,0.3)", letterSpacing: "0.08em" }}>{stat.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Preview première séance */}
-        <div style={{ background: DS.colors.surface, border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16 }}>
-          <div style={{ position: "relative" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
-          </div>
-          <div style={{ padding: "16px 16px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: theme.accent, letterSpacing: "0.2em", marginBottom: 4 }}>SEANCE 1 — APERCU</p>
-              <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 18, color: "white" }}>{seance?.titre?.toUpperCase() || "PREMIERE SEANCE"}</p>
+        {/* Exercices — 2 visibles, reste floutés */}
+        <div style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16 }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
+          <div style={{ padding: "14px 16px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid rgba(255,255,255,0.05)` }}>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: theme.accent, letterSpacing: "0.2em" }}>SEANCE 1 — APERCU</p>
+            <div style={{ background: "#FF2D55" + "20", border: "1px solid #FF2D5540", borderRadius: DS.radius.full, padding: "2px 8px" }}>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: "#FF2D55", letterSpacing: "0.1em" }}>🔒 ACCES RESTREINT</p>
             </div>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec }}>{seance?.dureeMin || 45} MIN</p>
           </div>
-          <div style={{ padding: "0 16px 16px" }}>
-            {exercices.slice(0, 3).map((ex, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? `1px solid ${DS.colors.border}` : "none" }}>
+          <div style={{ padding: "8px 16px 16px" }}>
+            {/* 2 premiers exercices visibles */}
+            {exercices.slice(0, 2).map((ex, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: `1px solid rgba(255,255,255,0.05)` }}>
                 <div style={{ width: 28, height: 28, borderRadius: 8, background: theme.accent + "15", border: `1px solid ${theme.accent}25`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent }}>{i + 1}</p>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ color: "white", fontSize: 14, ...s.heading }}>{ex.nom}</p>
-                  <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{(ex.muscles || "").split(" ")[0]}</p>
+                  <p style={{ color: "white", fontSize: 14, fontFamily: "'Rajdhani',sans-serif", fontWeight: 600 }}>{ex.nom}</p>
+                  <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>{(ex.muscles || "").split(" ")[0]}</p>
                 </div>
-                <p style={{ fontFamily: "'Space Mono',monospace", color: theme.accent, fontSize: 11, fontWeight: 700 }}>{ex.sets}×{ex.reps}{ex.chargeKg > 0 ? ` @ ${ex.chargeKg}kg` : ""}</p>
+                <p style={{ fontFamily: "'Space Mono',monospace", color: theme.accent, fontSize: 11, fontWeight: 700 }}>{ex.sets}×{ex.reps}</p>
               </div>
             ))}
-            {exercices.length > 3 && (
-              <div style={{ padding: "12px 0 0", textAlign: "center" }}>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em" }}>
-                  + {exercices.length - 3} EXERCICES SUPPLEMENTAIRES
-                </p>
-              </div>
-            )}
-            {exercices.length === 0 && (
-              <div style={{ padding: "12px 0", textAlign: "center" }}>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>Exercices personalises prets</p>
+            {/* Reste floutés */}
+            {(exercices.length > 2 || exercices.length === 0) && (
+              <div style={{ position: "relative", marginTop: 4 }}>
+                {[...Array(Math.max(exercices.length - 2, 3))].map((_, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? `1px solid rgba(255,255,255,0.05)` : "none", filter: "blur(4px)", userSelect: "none", pointerEvents: "none" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.06)", flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ height: 12, background: "rgba(255,255,255,0.08)", borderRadius: 4, width: "70%", marginBottom: 4 }} />
+                      <div style={{ height: 8, background: "rgba(255,255,255,0.05)", borderRadius: 4, width: "40%" }} />
+                    </div>
+                    <div style={{ width: 40, height: 10, background: "rgba(255,255,255,0.06)", borderRadius: 4 }} />
+                  </div>
+                ))}
+                {/* Overlay cadenas */}
+                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(6,6,14,0.6)", backdropFilter: "blur(2px)", borderRadius: DS.radius.md }}>
+                  <span style={{ fontSize: 24, marginBottom: 6 }}>🔒</span>
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", textAlign: "center" }}>
+                    {exercices.length - 2 > 0 ? exercices.length - 2 : 3}+ EXERCICES BLOQUES
+                  </p>
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Pitch chiffré */}
-        <div style={{ background: `linear-gradient(135deg, ${theme.accent}10, ${theme.accent}03)`, border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, padding: "16px 20px", marginBottom: 24 }}>
-          <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 16, color: "white", marginBottom: 6 }}>
-            Ton programme evolue avec toi. Pour toujours.
+        {/* Social proof */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.04)", border: `1px solid rgba(255,255,255,0.06)`, borderRadius: DS.radius.lg, padding: "10px 14px", marginBottom: 20 }}>
+          <div style={{ display: "flex" }}>
+            {["🏀","⚽","🥊","🏊","🏃"].slice(0, 4).map((e, i) => (
+              <div key={i} style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, marginLeft: i > 0 ? -6 : 0 }}>{e}</div>
+            ))}
+          </div>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em", flex: 1 }}>
+            <span style={{ color: theme.accent, fontWeight: 700 }}>{inscrits} athletes</span> ont rejoint Voltra cette semaine
           </p>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
-            Chaque kilo souleve est un pas vers ta meilleure version. Ton programme est calibre pour maximiser ta progression semaine apres semaine.
+        </div>
+
+        {/* Réduction */}
+        <div style={{ background: `linear-gradient(135deg, ${theme.accent}15, ${theme.accent}05)`, border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.xl, padding: "14px 18px", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 16, color: "white" }}>Offre de bienvenue</p>
+            <div style={{ background: theme.accent, borderRadius: DS.radius.full, padding: "2px 10px" }}>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#000", fontWeight: 700 }}>-30%</p>
+            </div>
+          </div>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", lineHeight: 1.7 }}>
+            Cree ton compte maintenant et beneficie de -30% sur tous les plans. Offre valable uniquement dans le compte à rebours.
           </p>
         </div>
 
         {/* CTA */}
-        <button onClick={onContinue} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}40` }}>
-          DEVERROUILLER MON PROGRAMME →
+        <button onClick={onContinue} style={{ width: "100%", height: 58, background: theme.accent, border: "none", borderRadius: DS.radius.full, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.08em", cursor: "pointer", marginBottom: 10, boxShadow: `0 8px 32px ${theme.accent}50` }}>
+          SAUVEGARDER MON PROGRAMME →
         </button>
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textDim, textAlign: "center", letterSpacing: "0.1em" }}>
-          INSCRIPTION GRATUITE · 30 SECONDES
+        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.2)", textAlign: "center", letterSpacing: "0.1em" }}>
+          INSCRIPTION GRATUITE · 30 SECONDES · SANS CB
         </p>
       </div>
     </div>
@@ -3116,6 +3162,9 @@ export default function VoltraApp() {
   const [appTheme, setAppTheme] = useState(() => localStorage.getItem("voltra_theme") || "light");
   const [themeChosen, setThemeChosen] = useState(() => !!localStorage.getItem("voltra_theme"));
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
+  const userRef = React.useRef(null);
+  const sessionCheckedRef = React.useRef(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
@@ -3161,8 +3210,12 @@ export default function VoltraApp() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) { setUser(session.user); }
+      if (session?.user) {
+        setUser(session.user);
+        userRef.current = session.user;
+      }
       setSessionChecked(true);
+      sessionCheckedRef.current = true;
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (_event === "SIGNED_OUT") {
@@ -3176,6 +3229,33 @@ export default function VoltraApp() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Router proprement quand splash + session sont prêts
+  useEffect(() => {
+    if (!splashDone) return;
+    const themeOk = !!localStorage.getItem("voltra_theme");
+    const doRoute = () => {
+      if (!themeOk) {
+        setScreen("theme-choice");
+      } else if (userRef.current) {
+        setScreen("app");
+      } else {
+        setScreen("onboarding");
+      }
+    };
+    if (sessionCheckedRef.current) {
+      doRoute();
+    } else {
+      const interval = setInterval(() => {
+        if (sessionCheckedRef.current) {
+          clearInterval(interval);
+          doRoute();
+        }
+      }, 50);
+      const fallback = setTimeout(() => { clearInterval(interval); doRoute(); }, 3000);
+      return () => { clearInterval(interval); clearTimeout(fallback); };
+    }
+  }, [splashDone]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -3244,30 +3324,7 @@ export default function VoltraApp() {
     setScreen("welcome");
   }} />;
   if (screen === "welcome") return <div key={appTheme}><WelcomeScreen onStart={() => setScreen("onboarding")} /></div>;
-  if (screen === "splash") return <SplashScreen onDone={() => {
-    // Attendre que la session soit verifiee
-    const route = () => {
-      if (!themeChosen) {
-        setScreen("theme-choice");
-      } else if (user) {
-        setScreen("app");
-      } else {
-        setScreen("onboarding");
-      }
-    };
-    if (sessionChecked) {
-      route();
-    } else {
-      // Attendre max 2s de plus puis router
-      const check = setInterval(() => {
-        if (sessionChecked) {
-          clearInterval(check);
-          route();
-        }
-      }, 100);
-      setTimeout(() => { clearInterval(check); route(); }, 2000);
-    }
-  }} />;
+  if (screen === "splash") return <SplashScreen onDone={() => setSplashDone(true)} />;
   if (screen === "cycle-complete") return <CycleCompleteScreen
     programme={programmeActif}
     sport={sportActif}
