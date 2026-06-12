@@ -28,7 +28,7 @@ async function generateProgramIA({ sport, objectif, niveau, frequence, cycle }) 
         "Authorization": `Bearer ${session.access_token}`,
         "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle }),
+      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle, startCycle }),
     }
   );
   const data = await res.json();
@@ -2196,16 +2196,19 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
             <div style={{ position: "absolute", top: 20, left: 20, height: 2, width: `${Math.min(100, (1 / 4) * 100)}%`, background: theme.accent, zIndex: 0, transition: "width 1s ease", boxShadow: `0 0 8px ${theme.accent}` }} />
             {(() => {
               const currentCycle = programme?.data_json?.cycle || 1;
+              const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
               const getLabel = (n) => n === 1 ? "FONDATIONS" : n === 2 ? "INTENSITE" : n === 3 ? "PUISSANCE" : n === 4 ? "ELITE" : `ELITE+${n-4}`;
               const start = Math.max(1, currentCycle - 1);
               return Array.from({ length: 4 }, (_, i) => ({ num: start + i, label: getLabel(start + i) })).map((c, i) => {
-              const isDone = currentCycle > c.num;
+              const isDone = currentCycle > c.num && c.num >= startCycle;
+              const isSkipped = c.num < startCycle;
               const isCurrent = currentCycle === c.num;
               return (
                 <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative", zIndex: 1 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: DS.radius.full, background: isDone ? theme.accent : isCurrent ? theme.accent + "25" : DS.colors.surfaceHigh, border: `2px solid ${isDone || isCurrent ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.4s", boxShadow: isCurrent ? `0 0 16px ${theme.accent}60` : "none" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: DS.radius.full, background: isDone ? theme.accent : isSkipped ? DS.colors.surfaceHigh : isCurrent ? theme.accent + "25" : DS.colors.surfaceHigh, border: `2px solid ${isDone ? theme.accent : isSkipped ? DS.colors.border : isCurrent ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.4s", boxShadow: isCurrent ? `0 0 16px ${theme.accent}60` : "none" }}>
                     {isDone
                       ? <span style={{ color: "#000", fontSize: 16 }}>✓</span>
+                      : isSkipped ? <span style={{ color: DS.colors.textDim, fontSize: 12 }}>—</span>
                       : <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: isCurrent ? theme.accent : DS.colors.textSec, fontWeight: 700 }}>{c.num}</span>
                     }
                   </div>
@@ -2218,6 +2221,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8 }}>
             {(() => {
               const currentCycle = programme?.data_json?.cycle || 1;
+              const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
               const getCycleInfo = (num) => {
                 if (num === 1) return { emoji: "🌱", title: "Fondations", desc: "Technique, bases solides. On construit l'athlete.", color: "#00FF87", tag: "DEBUT" };
                 if (num === 2) return { emoji: "⚡", title: "Intensification", desc: "Volume augmente, repos reduits. Adaptation rapide.", color: "#FF8C00", tag: "INTENSITE" };
@@ -2230,8 +2234,9 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
               const cycles = Array.from({ length: 5 }, (_, i) => start + i);
               return cycles.map((num, i) => {
               const c = { num, ...getCycleInfo(num) };
-              const isDone = currentCycle > num;
+              const isDone = currentCycle > num && num >= startCycle;
               const isCurrent = currentCycle === num;
+              const isSkipped = num < startCycle;
               const isLocked = currentCycle < num;
               return (
                 <div key={i} style={{ flexShrink: 0, width: 160, background: isCurrent ? c.color + "12" : DS.colors.surface, border: `1px solid ${isCurrent ? c.color + "40" : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "14px 12px", position: "relative", overflow: "hidden", opacity: isLocked ? 0.55 : 1, transition: "all 0.3s" }}>
@@ -2240,6 +2245,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                     <span style={{ fontSize: 22 }}>{c.emoji}</span>
                     {isLocked && <span style={{ fontSize: 14 }}>🔒</span>}
                     {isDone && <span style={{ fontSize: 14 }}>✅</span>}
+                    {isSkipped && <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, background: DS.colors.surfaceHigh, padding: "2px 6px", borderRadius: DS.radius.full }}>N/A</span>}
                     {isCurrent && <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.color, animation: "pulse 1.5s infinite", boxShadow: `0 0 6px ${c.color}` }} />}
                   </div>
                   <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: isCurrent ? c.color : DS.colors.textSec, letterSpacing: "0.12em", marginBottom: 4 }}>{c.tag}</div>
