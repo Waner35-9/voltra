@@ -2185,7 +2185,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <p style={{ color: "white", fontSize: 16, ...s.heading }}>Ton parcours</p>
             <div style={{ background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "3px 10px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.12em" }}>CYCLE {programme?.data_json?.cycle || 1}</p>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.12em" }}>CYCLE {programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1}</p>
             </div>
           </div>
 
@@ -2195,7 +2195,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
             <div style={{ position: "absolute", top: 20, left: 20, right: 20, height: 2, background: DS.colors.surfaceHigh, zIndex: 0 }} />
             <div style={{ position: "absolute", top: 20, left: 20, height: 2, width: `${Math.min(100, (1 / 4) * 100)}%`, background: theme.accent, zIndex: 0, transition: "width 1s ease", boxShadow: `0 0 8px ${theme.accent}` }} />
             {(() => {
-              const currentCycle = programme?.data_json?.cycle || 1;
+              const currentCycle = programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
               const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
               const getLabel = (n) => n === 1 ? "FONDATIONS" : n === 2 ? "INTENSITE" : n === 3 ? "PUISSANCE" : n === 4 ? "ELITE" : `ELITE+${n-4}`;
               const start = Math.max(1, currentCycle - 1);
@@ -2220,7 +2220,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           </div>
           <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8 }}>
             {(() => {
-              const currentCycle = programme?.data_json?.cycle || 1;
+              const currentCycle = programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
               const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
               const getCycleInfo = (num) => {
                 if (num === 1) return { emoji: "🌱", title: "Fondations", desc: "Technique, bases solides. On construit l'athlete.", color: "#00FF87", tag: "DEBUT" };
