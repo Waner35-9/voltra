@@ -140,7 +140,10 @@ const THEMES = {
   },
 };
 
-let DS = { colors: THEMES.light, radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 }, shadow: THEMES.light.shadow };
+let DS = (() => {
+  const saved = localStorage.getItem("voltra_theme") || "light";
+  return { colors: THEMES[saved], radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 }, shadow: THEMES[saved].shadow };
+})();
 
 function setAppTheme(theme) {
   DS = { colors: THEMES[theme], radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 }, shadow: THEMES[theme].shadow };
@@ -2807,7 +2810,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
               <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{DS.colors.isDark ? "THEME SOMBRE" : "THEME LUMINEUX"}</p>
             </div>
           </div>
-          <div onClick={() => { const next = DS.colors.isDark ? "light" : "dark"; DS.colors = THEMES[next]; DS.shadow = THEMES[next].shadow; onThemeChange && onThemeChange(next); }} style={{ width: 50, height: 28, background: DS.colors.isDark ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", border: `1px solid ${DS.colors.border}` }}>
+          <div onClick={() => { const next = DS.colors.isDark ? "light" : "dark"; DS.colors = THEMES[next]; DS.shadow = THEMES[next].shadow; localStorage.setItem("voltra_theme", next); onThemeChange && onThemeChange(next); }} style={{ width: 50, height: 28, background: DS.colors.isDark ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", border: `1px solid ${DS.colors.border}` }}>
             <div style={{ position: "absolute", top: 3, left: DS.colors.isDark ? 25 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>
               {DS.colors.isDark ? "🌙" : "☀️"}
             </div>
@@ -3110,8 +3113,8 @@ function BottomNav({ activeTab, setTab }) {
 // ─────────────────────────────────────────────
 export default function VoltraApp() {
   const [screen, setScreen] = useState("splash");
-  const [appTheme, setAppTheme] = useState("light");
-  const [themeChosen, setThemeChosen] = useState(false);
+  const [appTheme, setAppTheme] = useState(() => localStorage.getItem("voltra_theme") || "light");
+  const [themeChosen, setThemeChosen] = useState(() => !!localStorage.getItem("voltra_theme"));
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
@@ -3236,6 +3239,7 @@ export default function VoltraApp() {
     DS.shadow = THEMES[theme].shadow;
     setAppTheme(theme);
     setThemeChosen(true);
+    localStorage.setItem("voltra_theme", theme);
     setScreen("welcome");
   }} />;
   if (screen === "welcome") return <div key={appTheme}><WelcomeScreen onStart={() => setScreen("onboarding")} /></div>;
