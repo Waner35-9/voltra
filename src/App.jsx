@@ -145,7 +145,7 @@ let DS = (() => {
   return { colors: THEMES[saved], radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 }, shadow: THEMES[saved].shadow };
 })();
 
-function setAppTheme(theme) {
+function applyTheme(theme) {
   DS = { colors: THEMES[theme], radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 }, shadow: THEMES[theme].shadow };
 }
 
@@ -2867,7 +2867,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
   const nomProg = nomsProgramme[sport]?.[onboardingData?.objectif] || programme?.titre || "Performance Elite Program";
 
   // Social proof dynamique
-  const inscrits = Math.floor(Math.random() * 80 + 250);
+  const [inscrits] = useState(() => Math.floor(Math.random() * 80 + 250));
 
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", overflowY: "auto", paddingBottom: 40, position: "relative" }}>
@@ -3163,8 +3163,8 @@ export default function VoltraApp() {
   const [themeChosen, setThemeChosen] = useState(() => !!localStorage.getItem("voltra_theme"));
   const [sessionChecked, setSessionChecked] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
-  const userRef = React.useRef(null);
-  const sessionCheckedRef = React.useRef(false);
+  const userRef = useRef(null);
+  const sessionCheckedRef = useRef(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
@@ -3182,9 +3182,7 @@ export default function VoltraApp() {
   const [cycleComplete, setCycleComplete] = useState(false);
 
   useEffect(() => {
-    // Update global DS immediately
-    DS.colors = THEMES[appTheme];
-    DS.shadow = THEMES[appTheme].shadow;
+    applyTheme(appTheme);
     document.body.style.background = DS.colors.bg;
     document.body.style.color = DS.colors.textPrimary;
   }, [appTheme]);
