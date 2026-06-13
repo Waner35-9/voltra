@@ -1399,7 +1399,7 @@ function OnboardingScreen({ onComplete }) {
   const [animIn, setAnimIn] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
 
-  const hasPoste = data.sport && data.sport !== "natation" && data.sport !== "combat";
+  const hasPoste = data.sport && data.sport !== "natation";
   const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau"];
   const totalSteps = stepLabels.length;
 
