@@ -1687,8 +1687,8 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 3 - Poste (sauf natation) */}
         {contentStep === 2 && (
           <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Ton poste ?</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme cible les qualites de ton poste.</p>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>{data.sport === "combat" ? "Ta discipline ?" : "Ton poste ?"}</h1>
+            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>{data.sport === "combat" ? "Le programme est adapte a ta discipline de combat." : "Le programme cible les qualites de ton poste."}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(POSTES_PAR_SPORT[data.sport] || []).map(poste => (
                 <div key={poste.id} onClick={() => setData(d => ({ ...d, poste: poste.id }))} style={{ background: data.poste === poste.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.poste === poste.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
@@ -3215,6 +3215,16 @@ export default function VoltraApp() {
       setSessionChecked(true);
       sessionCheckedRef.current = true;
     });
+
+    // Detecter confirmation email via hash URL
+    if (window.location.hash.includes("access_token")) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          setUser(user);
+          userRef.current = user;
+        }
+      });
+    }
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (_event === "SIGNED_OUT") {
         setUser(null);
@@ -3233,10 +3243,16 @@ export default function VoltraApp() {
     if (!splashDone) return;
     const themeOk = !!localStorage.getItem("voltra_theme");
     const doRoute = () => {
+      const params = new URLSearchParams(window.location.search);
+      const isConfirmed = params.get("confirmed") === "true";
+      const hasToken = window.location.hash.includes("access_token");
       if (!themeOk) {
         setScreen("theme-choice");
       } else if (userRef.current) {
         setScreen("app");
+      } else if (isConfirmed || hasToken) {
+        // Vient de la confirmation email → aller à la connexion
+        setScreen("auth");
       } else {
         setScreen("onboarding");
       }
