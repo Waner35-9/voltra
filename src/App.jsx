@@ -3228,11 +3228,22 @@ export default function VoltraApp() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (_event === "SIGNED_OUT") {
         setUser(null);
+        userRef.current = null;
         setScreen("onboarding");
       } else if (_event === "TOKEN_REFRESHED" && session?.user) {
         setUser(session.user);
+        userRef.current = session.user;
       } else if (_event === "SIGNED_IN" && session?.user) {
         setUser(session.user);
+        userRef.current = session.user;
+        // Si on vient de la confirmation email (hash dans URL) → aller au dashboard
+        if (window.location.hash.includes("access_token") || window.location.search.includes("confirmed=true")) {
+          // Nettoyer l'URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setScreen("app");
+        }
+      } else if (_event === "PASSWORD_RECOVERY") {
+        setScreen("auth");
       }
     });
     return () => subscription.unsubscribe();
