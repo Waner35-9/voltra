@@ -3226,16 +3226,23 @@ export default function VoltraApp() {
       } else if (_event === "SIGNED_IN" && session?.user) {
         setUser(session.user);
         userRef.current = session.user;
-        // Vient de la confirmation email → aller directement au dashboard
         const fromEmail = window.location.hash.includes("access_token") || window.location.search.includes("confirmed=true");
         if (fromEmail) {
           window.history.replaceState({}, document.title, window.location.pathname);
-          setScreen("app");
+          // Si on a des données onboarding, générer le programme maintenant qu'on est connecté
+          if (onboardingData) {
+            setScreen("pricing");
+            setProgrammeLoading(true);
+            generateProgramIA(onboardingData).then(prog => {
+              if (prog) setProgrammeActif(prog);
+              setProgrammeLoading(false);
+            }).catch(() => setProgrammeLoading(false));
+          } else {
+            setScreen("app");
+          }
         } else if (splashDone) {
-          // Connexion normale après le splash → dashboard
           setScreen("app");
         }
-        // Si splash pas encore fini → le useEffect splashDone s'en chargera
       } else if (_event === "PASSWORD_RECOVERY") {
         setScreen("auth");
       }
@@ -3358,14 +3365,21 @@ export default function VoltraApp() {
   />;
   if (screen === "auth") return <AuthScreen onAuth={async (u) => {
     setUser(u);
-    // Sauvegarder le sport dans le profil si on vient de l'onboarding
+    userRef.current = u;
+    // Sauvegarder le sport dans le profil
     if (onboardingData?.sport) {
       await supabase.from("profiles").upsert({ id: u.id, sport: onboardingData.sport }, { onConflict: "id" });
     }
-    if (programmeActif || onboardingData) {
+    if (onboardingData) {
+      // Toujours regenerer apres auth — maintenant on a une session valide
       setScreen("pricing");
+      setProgrammeLoading(true);
+      generateProgramIA(onboardingData).then(prog => {
+        if (prog) setProgrammeActif(prog);
+        setProgrammeLoading(false);
+      }).catch(() => setProgrammeLoading(false));
     } else {
-      setScreen("onboarding");
+      setScreen("app");
     }
   }} />;
   if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => {
