@@ -3226,12 +3226,16 @@ export default function VoltraApp() {
       } else if (_event === "SIGNED_IN" && session?.user) {
         setUser(session.user);
         userRef.current = session.user;
-        // Si on vient de la confirmation email (hash dans URL) → aller au dashboard
-        if (window.location.hash.includes("access_token") || window.location.search.includes("confirmed=true")) {
-          // Nettoyer l'URL
+        // Vient de la confirmation email → aller directement au dashboard
+        const fromEmail = window.location.hash.includes("access_token") || window.location.search.includes("confirmed=true");
+        if (fromEmail) {
           window.history.replaceState({}, document.title, window.location.pathname);
           setScreen("app");
+        } else if (splashDone) {
+          // Connexion normale après le splash → dashboard
+          setScreen("app");
         }
+        // Si splash pas encore fini → le useEffect splashDone s'en chargera
       } else if (_event === "PASSWORD_RECOVERY") {
         setScreen("auth");
       }
