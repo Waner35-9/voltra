@@ -1265,17 +1265,21 @@ function AuthScreen({ onAuth }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // Detecter si on vient d'un lien reset password
+  const isPasswordRecovery = window.location.hash.includes("type=recovery");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const handleSubmit = async () => {
     setError(""); setSuccess("");
     if (!email || !password) { setError("Remplis tous les champs."); return; }
-    if (mode === "signup" && !name) { setError("Entre ton prenom."); return; }
-    if (password.length < 6) { setError("Mot de passe : 6 caracteres minimum."); return; }
+    if (mode === "signup" && !name) { setError("Entre ton prénom."); return; }
+    if (password.length < 6) { setError("Mot de passe : 6 caractères minimum."); return; }
     setLoading(true);
-
     if (mode === "signup") {
       const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
-      if (e) { setError(e.message === "User already registered" ? "Email deja utilise." : e.message); setLoading(false); return; }
-      if (data.user && !data.session) { setSuccess("Verifie ta boite mail !"); setLoading(false); return; }
+      if (e) { setError(e.message === "User already registered" ? "Email déjà utilisé." : e.message); setLoading(false); return; }
+      if (data.user && !data.session) { setSuccess("Vérifie ta boîte mail pour confirmer ton compte !"); setLoading(false); return; }
       onAuth(data.user);
     } else {
       const { data, error: e } = await supabase.auth.signInWithPassword({ email, password });
@@ -1286,43 +1290,134 @@ function AuthScreen({ onAuth }) {
   };
 
   const handleForgotPassword = async () => {
+    setError(""); setSuccess("");
     if (!email) { setError("Entre ton email d'abord."); return; }
-    const { error: e } = await supabase.auth.resetPasswordForEmail(email);
+    setLoading(true);
+    const redirectUrl = `${window.location.origin}${window.location.pathname}#type=recovery`;
+    const { error: e } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl });
+    setLoading(false);
     if (e) { setError(e.message); return; }
-    setSuccess("Email de reinitialisation envoye !");
+    setSuccess("Email envoyé ! Vérifie ta boîte mail et clique sur le lien.");
   };
+
+  const handleResetPassword = async () => {
+    setError(""); setSuccess("");
+    if (!newPassword || !confirmPassword) { setError("Remplis les deux champs."); return; }
+    if (newPassword.length < 6) { setError("Minimum 6 caractères."); return; }
+    if (newPassword !== confirmPassword) { setError("Les mots de passe ne correspondent pas."); return; }
+    setLoading(true);
+    const { error: e } = await supabase.auth.updateUser({ password: newPassword });
+    setLoading(false);
+    if (e) { setError(e.message); return; }
+    // Nettoyer le hash et rediriger
+    window.history.replaceState({}, document.title, window.location.pathname);
+    setSuccess("Mot de passe mis à jour !");
+    setTimeout(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) onAuth(session.user);
+      });
+    }, 1500);
+  };
+
+  // Ecran reset password (vient du lien email)
+  if (isPasswordRecovery) {
+    return (
+      <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+        <div style={{ paddingTop: 80, paddingBottom: 40, textAlign: "center" }}>
+          <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>🔑</div>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Nouveau mot de passe</h1>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec }}>Choisis un nouveau mot de passe sécurisé</p>
+        </div>
+        <div style={{ flex: 1 }}>
+          <Input label="Nouveau mot de passe" type="password" value={newPassword} onChange={setNewPassword} placeholder="Min. 6 caractères" />
+          <Input label="Confirmer le mot de passe" type="password" value={confirmPassword} onChange={setConfirmPassword} placeholder="Répète ton mot de passe" />
+          {error && <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.warning, fontSize: 13 }}>⚠ {error}</p></div>}
+          {success && <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(76,175,80,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.success, fontSize: 13 }}>✓ {success}</p></div>}
+          {loading ? (
+            <div style={{ height: 56, borderRadius: DS.radius.full, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: DS.colors.primary, fontSize: 15, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>
+              <div style={{ width: 16, height: 16, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite" }} />
+              Mise à jour...
+            </div>
+          ) : (
+            <PrimaryButton onClick={handleResetPassword}>Mettre à jour mon mot de passe</PrimaryButton>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Mode mot de passe oublié
+  if (mode === "forgot") {
+    return (
+      <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+        <div style={{ paddingTop: 80, paddingBottom: 40, textAlign: "center" }}>
+          <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>📧</div>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Mot de passe oublié ?</h1>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, lineHeight: 1.6 }}>Entre ton email et on t'envoie un lien pour réinitialiser ton mot de passe.</p>
+        </div>
+        <div style={{ flex: 1 }}>
+          <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="alex@email.com" />
+          {error && <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.warning, fontSize: 13 }}>⚠ {error}</p></div>}
+          {success && (
+            <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(76,175,80,0.3)`, borderRadius: DS.radius.md, padding: "16px", marginBottom: 16, textAlign: "center" }}>
+              <p style={{ fontSize: 24, marginBottom: 8 }}>📬</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, color: DS.colors.success, fontSize: 14, marginBottom: 4 }}>Email envoyé !</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textSec, fontSize: 13 }}>Vérifie ta boîte mail et clique sur le lien de réinitialisation.</p>
+            </div>
+          )}
+          {!success && (
+            loading ? (
+              <div style={{ height: 56, borderRadius: DS.radius.full, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: DS.colors.primary, fontSize: 15, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>
+                <div style={{ width: 16, height: 16, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite" }} />
+                Envoi en cours...
+              </div>
+            ) : (
+              <PrimaryButton onClick={handleForgotPassword}>Envoyer le lien</PrimaryButton>
+            )
+          )}
+          <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }} style={{ width: "100%", marginTop: 16, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+            ← Retour à la connexion
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
       <div style={{ paddingTop: 80, paddingBottom: 48, textAlign: "center" }}>
         <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>⚡</div>
-        <h1 style={{ ...s.display, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>Voltra</h1>
-        <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body }}>{mode === "login" ? "Content de te revoir" : "Commence ton parcours"}</p>
+        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>Voltra</h1>
+        <p style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textSec, fontSize: 15 }}>{mode === "login" ? "Content de te revoir 👋" : "Commence ton parcours"}</p>
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ display: "flex", background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, padding: 4, marginBottom: 32 }}>
           {["login", "signup"].map(m => (
-            <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{ flex: 1, height: 40, borderRadius: DS.radius.sm - 2, background: mode === m ? DS.colors.primary : "transparent", border: "none", color: mode === m ? "white" : DS.colors.textSec, fontSize: 14, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>
+            <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{ flex: 1, height: 40, borderRadius: DS.radius.full, background: mode === m ? DS.colors.primary : "transparent", border: "none", color: mode === m ? "#000" : DS.colors.textSec, fontSize: 14, fontWeight: mode === m ? 700 : 400, cursor: "pointer", transition: "all 0.2s", fontFamily: "'Inter',sans-serif" }}>
               {m === "login" ? "Connexion" : "Inscription"}
             </button>
           ))}
         </div>
-        {mode === "signup" && <Input label="Prenom" value={name} onChange={setName} placeholder="Alex" />}
+        {mode === "signup" && <Input label="Prénom" value={name} onChange={setName} placeholder="Alex" />}
         <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="alex@email.com" />
-        <Input label="Mot de passe" type="password" value={password} onChange={setPassword} placeholder="Min. 6 caracteres" />
+        <Input label="Mot de passe" type="password" value={password} onChange={setPassword} placeholder="Min. 6 caractères" />
         {error && <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.warning, fontSize: 13 }}>⚠ {error}</p></div>}
-        {success && <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(0,229,160,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.success, fontSize: 13 }}>✓ {success}</p></div>}
+        {success && <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(76,175,80,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.success, fontSize: 13 }}>✓ {success}</p></div>}
         {loading ? (
-          <div style={{ height: 56, borderRadius: DS.radius.md, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: DS.colors.primary, fontSize: 15, ...s.heading }}>
+          <div style={{ height: 56, borderRadius: DS.radius.full, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: DS.colors.primary, fontSize: 15, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>
             <div style={{ width: 16, height: 16, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite" }} />
-            {mode === "login" ? "Connexion..." : "Creation du compte..."}
+            {mode === "login" ? "Connexion..." : "Création du compte..."}
           </div>
         ) : (
-          <PrimaryButton onClick={handleSubmit}>{mode === "login" ? "Se connecter" : "Creer mon compte"}</PrimaryButton>
+          <PrimaryButton onClick={handleSubmit}>{mode === "login" ? "Se connecter" : "Créer mon compte"}</PrimaryButton>
         )}
-        {mode === "login" && <button onClick={handleForgotPassword} style={{ width: "100%", marginTop: 16, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Mot de passe oublie ?</button>}
+        {mode === "login" && (
+          <button onClick={() => { setMode("forgot"); setError(""); setSuccess(""); }} style={{ width: "100%", marginTop: 16, background: "none", border: "none", color: DS.colors.textSec, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+            Mot de passe oublié ?
+          </button>
+        )}
       </div>
-      <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", paddingBottom: 40, ...s.body }}>En continuant, tu acceptes nos CGU.</p>
+      <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", paddingBottom: 40, fontFamily: "'Inter',sans-serif" }}>En continuant, tu acceptes nos CGU.</p>
     </div>
   );
 }
@@ -3244,6 +3339,7 @@ export default function VoltraApp() {
           setScreen("app");
         }
       } else if (_event === "PASSWORD_RECOVERY") {
+        // Laisser AuthScreen gérer via isPasswordRecovery
         setScreen("auth");
       }
     });
