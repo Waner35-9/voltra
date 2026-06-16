@@ -540,9 +540,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
   const [animKey, setAnimKey] = useState(0);
   const [toast, setToast] = useState(null);
   const [showCoach, setShowCoach] = useState(false);
-  const [coachMessages, setCoachMessages] = useState([
-    { role: "assistant", text: "Coach IA pret ! Dis-moi si tu as du mal avec un exercice, une douleur ou si tu veux adapter la seance." }
-  ]);
+  const [coachMessages, setCoachMessages] = useState([]);
   const [coachInput, setCoachInput] = useState("");
   const [coachLoading, setCoachLoading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(null);
@@ -562,10 +560,17 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
   const exercices = seance.exercices;
   const currentEx = exercices[exIdx];
 
+  // Message coach proactif quand exercice change
   useEffect(() => {
     if (!currentEx) return;
     setPhotoUrl(null);
     getExercicePhoto(currentEx.nom).then(url => setPhotoUrl(url));
+    // Message proactif du coach selon l'exercice
+    const setsCompletes = Object.keys(completedSets).filter(k => k.startsWith(`${exIdx}-`)).length;
+    const intro = exIdx === 0
+      ? `Séance lancée ! On commence par **${currentEx.nom}** — ${currentEx.sets} séries de ${currentEx.reps} reps. ${currentEx.chargeKg > 0 ? `Charge : ${currentEx.chargeKg}kg.` : ""} Je suis là si tu as besoin d'adapter. 💪`
+      : `Exercice ${exIdx + 1}/${exercices.length} — **${currentEx.nom}**. ${currentEx.muscles ? `Muscles ciblés : ${currentEx.muscles}.` : ""} ${currentEx.chargeKg > 0 ? `${currentEx.chargeKg}kg, ${currentEx.sets}×${currentEx.reps}.` : `${currentEx.sets}×${currentEx.reps}.`}`;
+    setCoachMessages([{ role: "assistant", text: intro }]);
   }, [exIdx]);
 
   if (!currentEx && !showSummary) return null;
@@ -584,16 +589,48 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
       await supabase.auth.refreshSession();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Pas de session");
+
+      // Contexte complet de la séance
+      const setsCompletes = Object.keys(completedSets).filter(k => k.startsWith(`${exIdx}-`)).length;
+      const totalSetsEx = currentEx?.sets || 4;
+      const exercicesCompletes = exercices.slice(0, exIdx).map(ex => ex.nom);
+      const dureeMin = Math.floor(elapsed / 60);
+
+      const sessionContext = {
+        seance_titre: seance?.titre,
+        sport,
+        exercice_actuel: {
+          nom: currentEx?.nom,
+          muscles: currentEx?.muscles,
+          sets_total: totalSetsEx,
+          sets_completes: setsCompletes,
+          reps: currentEx?.reps,
+          charge_kg: currentEx?.chargeKg || 0,
+          index: exIdx + 1,
+          total: exercices.length,
+        },
+        progression_seance: {
+          exercices_completes: exercicesCompletes,
+          exercices_restants: exercices.slice(exIdx + 1).map(ex => ex.nom),
+          duree_ecoulee_min: dureeMin,
+          pourcentage: Math.round(((exIdx + setsCompletes / totalSetsEx) / exercices.length) * 100),
+        },
+      };
+
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({ message: userMsg, exercice: currentEx, seance: { titre: seance?.titre }, history: coachMessages.slice(-6) }),
+        body: JSON.stringify({
+          message: userMsg,
+          context: sessionContext,
+          history: coachMessages.slice(-8),
+        }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setCoachMessages(prev => [...prev, { role: "assistant", text: data.reply || "Desolé, erreur." }]);
+      setCoachMessages(prev => [...prev, { role: "assistant", text: data.reply || "Désolé, erreur." }]);
     } catch (err) {
-      setCoachMessages(prev => [...prev, { role: "assistant", text: "Erreur. Reessaie." }]);
+      setCoachMessages(prev => [...prev, { role: "assistant", text: "Erreur de connexion. Réessaie." }]);
     }
     setCoachLoading(false);
   };
@@ -841,33 +878,57 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
               </div>
               <button onClick={() => setShowCoach(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 30, height: 30, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
             </div>
+            {/* Contexte exercice actuel */}
             {currentEx && (
-              <div style={{ margin: "10px 20px 0", background: accentColor + "10", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.md, padding: "7px 12px" }}>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: accentColor }}>{currentEx.nom} — {currentEx.sets}x{currentEx.reps}{currentEx.chargeKg > 0 ? ` @ ${currentEx.chargeKg}kg` : ""}</p>
+              <div style={{ margin: "8px 16px 0", background: accentColor + "12", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.md, padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12, color: accentColor, marginBottom: 1 }}>{currentEx.nom}</p>
+                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.4)" }}>
+                    {Object.keys(completedSets).filter(k => k.startsWith(`${exIdx}-`)).length}/{currentEx.sets} séries · {currentEx.reps} reps{currentEx.chargeKg > 0 ? ` · ${currentEx.chargeKg}kg` : ""}
+                  </p>
+                </div>
+                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
+                  {exIdx + 1}/{exercices.length}
+                </div>
               </div>
             )}
-            <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Messages */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
               {coachMessages.map((msg, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
-                  <div style={{ maxWidth: "82%", padding: "10px 14px", borderRadius: DS.radius.lg, background: msg.role === "user" ? accentColor : DS.colors.surfaceHigh, color: msg.role === "user" ? "#000" : "white", fontSize: 14, lineHeight: 1.5, fontWeight: msg.role === "user" ? 600 : 400 }}>
-                    {msg.text}
+                <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8 }}>
+                  {msg.role === "assistant" && (
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0, marginBottom: 2 }}>🤖</div>
+                  )}
+                  <div style={{ maxWidth: "78%", padding: "10px 14px", borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: msg.role === "user" ? accentColor : "rgba(255,255,255,0.08)", color: msg.role === "user" ? "#000" : "white", fontSize: 13, lineHeight: 1.6, fontFamily: "'Inter',sans-serif", fontWeight: msg.role === "user" ? 600 : 400 }}>
+                    {msg.text.split("**").map((part, j) => j % 2 === 1 ? <strong key={j}>{part}</strong> : part)}
                   </div>
                 </div>
               ))}
               {coachLoading && (
-                <div style={{ display: "flex", gap: 4, padding: "10px 16px", background: DS.colors.surfaceHigh, borderRadius: DS.radius.lg, width: "fit-content" }}>
-                  {[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: DS.radius.full, background: DS.colors.textSec, animation: `pulse 1s ease ${i*0.2}s infinite` }} />)}
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>🤖</div>
+                  <div style={{ display: "flex", gap: 4, padding: "12px 16px", background: "rgba(255,255,255,0.08)", borderRadius: "18px 18px 18px 4px" }}>
+                    {[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: accentColor, animation: `pulse 1s ease ${i*0.2}s infinite` }} />)}
+                  </div>
                 </div>
               )}
             </div>
-            <div style={{ padding: "10px 20px 0", display: "flex", gap: 8 }}>
-              <input value={coachInput} onChange={e => setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder="J'arrive pas a finir les reps..." style={{ flex: 1, height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 14, outline: "none" }} />
-              <button onClick={sendCoachMessage} disabled={!coachInput.trim() || coachLoading} style={{ width: 44, height: 44, borderRadius: DS.radius.full, background: coachInput.trim() ? accentColor : DS.colors.surfaceHigh, border: "none", color: coachInput.trim() ? "#000" : DS.colors.textSec, cursor: "pointer", fontSize: 18, flexShrink: 0, fontWeight: 700 }}>→</button>
-            </div>
-            <div style={{ padding: "8px 20px 0", display: "flex", gap: 8, overflowX: "auto" }}>
-              {["J'arrive pas a finir", "J'ai mal", "Trop lourd", "Alternative ?"].map((sug, i) => (
-                <button key={i} onClick={() => setCoachInput(sug)} style={{ flexShrink: 0, padding: "5px 12px", background: accentColor + "12", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.full, color: accentColor, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'Space Mono',monospace" }}>{sug}</button>
+            {/* Suggestions rapides contextuelles */}
+            <div style={{ padding: "6px 16px 0", display: "flex", gap: 6, overflowX: "auto" }}>
+              {[
+                "Trop lourd 😓",
+                "Alternative ?",
+                "J'ai mal 🤕",
+                "Forme correcte ?",
+                "Prochain exo ?",
+              ].map((sug, i) => (
+                <button key={i} onClick={() => setCoachInput(sug)} style={{ flexShrink: 0, padding: "5px 12px", background: accentColor + "10", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.full, color: accentColor, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'Inter',sans-serif", fontWeight: 500 }}>{sug}</button>
               ))}
+            </div>
+            {/* Input */}
+            <div style={{ padding: "8px 16px 4px", display: "flex", gap: 8 }}>
+              <input value={coachInput} onChange={e => setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder="Parle à ton coach..." style={{ flex: 1, height: 44, padding: "0 16px", background: "rgba(255,255,255,0.08)", border: `1px solid rgba(255,255,255,0.1)`, borderRadius: DS.radius.full, color: "white", fontSize: 14, outline: "none", fontFamily: "'Inter',sans-serif" }} />
+              <button onClick={sendCoachMessage} disabled={!coachInput.trim() || coachLoading} style={{ width: 44, height: 44, borderRadius: DS.radius.full, background: coachInput.trim() ? accentColor : "rgba(255,255,255,0.08)", border: "none", color: coachInput.trim() ? "#000" : "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 18, flexShrink: 0, fontWeight: 700 }}>→</button>
             </div>
           </div>
         </div>
