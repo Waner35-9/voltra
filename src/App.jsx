@@ -1009,68 +1009,111 @@ function PaymentSuccessScreen({ plan, onContinue }) {
 // ─────────────────────────────────────────────
 // PROGRAMME GENERATION LOADING SCREEN
 // ─────────────────────────────────────────────
-function ProgrammeGeneratingScreen({ sport, onDone }) {
+function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
   const theme = getSportTheme(sport);
   const [step, setStep] = useState(0);
   const [dots, setDots] = useState("");
+  const [fact, setFact] = useState(0);
 
   const steps = [
-    { emoji: "🏋️", text: "Analyse de ton profil sportif..." },
-    { emoji: "🧠", text: "L'IA construit ton programme..." },
-    { emoji: "📈", text: "Calibration des progressions..." },
-    { emoji: "⚡", text: "Optimisation pour ton sport..." },
-    { emoji: "✅", text: "Programme prêt !" },
+    { emoji: "🔍", text: "Analyse de ton profil sportif", duration: 3000 },
+    { emoji: "🧠", text: "L'IA construit ta structure", duration: 4000 },
+    { emoji: "💪", text: "Sélection des exercices clés", duration: 3000 },
+    { emoji: "📈", text: "Calibration des progressions", duration: 4000 },
+    { emoji: "⚡", text: "Optimisation pour ton sport", duration: 3000 },
+    { emoji: "🎯", text: "Personnalisation finale", duration: 2000 },
+    { emoji: "✅", text: "Programme prêt !", duration: 1000 },
+  ];
+
+  const facts = [
+    "Les athlètes qui suivent un programme structuré progressent 3x plus vite.",
+    "La progression de charge hebdomadaire est la clé de la force à long terme.",
+    "Ton programme s'adapte à chaque cycle pour éviter les plateaux.",
+    "Le repos est aussi important que l'entraînement — il est intégré dans ton programme.",
+    "Chaque exercice est choisi pour ton sport et ton poste spécifique.",
   ];
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStep(s => Math.min(s + 1, steps.length - 1));
-    }, 2500);
-    const dotsInterval = setInterval(() => {
-      setDots(d => d.length >= 3 ? "" : d + ".");
-    }, 400);
-    return () => { clearInterval(interval); clearInterval(dotsInterval); };
+    let elapsed = 0;
+    const timers = [];
+    steps.forEach((s, i) => {
+      timers.push(setTimeout(() => setStep(i), elapsed));
+      elapsed += s.duration;
+    });
+    // Attendre que le programme soit prêt (max 20s) puis continuer
+    const done = setTimeout(() => onDone(), Math.max(elapsed, 20000));
+    timers.push(done);
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  // Si programme déjà prêt et on a dépassé les étapes visuelles
+  useEffect(() => {
+    if (programmeActif && step >= steps.length - 2) {
+      setTimeout(() => onDone(), 800);
+    }
+  }, [programmeActif, step]);
+
+  useEffect(() => {
+    const d = setInterval(() => setDots(p => p.length >= 3 ? "" : p + "."), 400);
+    return () => clearInterval(d);
   }, []);
 
   useEffect(() => {
-    if (step === steps.length - 1) {
-      setTimeout(() => onDone(), 1200);
-    }
-  }, [step]);
+    const f = setInterval(() => setFact(p => (p + 1) % facts.length), 4000);
+    return () => clearInterval(f);
+  }, []);
 
   const progress = Math.round((step / (steps.length - 1)) * 100);
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sport] || "⚡"}
       </div>
 
-      <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
-        {/* Logo animé */}
-        <div style={{ width: 80, height: 80, borderRadius: 22, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 32px", boxShadow: `0 0 60px ${theme.accent}50`, animation: "pulse 2s ease infinite" }}>⚡</div>
+      <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 390 }}>
 
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 16 }}>GÉNÉRATION EN COURS</p>
-        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: "white", lineHeight: 1, marginBottom: 32, letterSpacing: "0.02em" }}>
-          Ton programme<br />se construit{dots}
-        </h1>
-
-        {/* Barre de progression */}
-        <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 9999, height: 6, marginBottom: 32, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${progress}%`, background: theme.accent, borderRadius: 9999, transition: "width 0.8s ease", boxShadow: `0 0 12px ${theme.accent}` }} />
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ width: 72, height: 72, borderRadius: 20, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, margin: "0 auto 16px", boxShadow: `0 0 50px ${theme.accent}50`, animation: "pulse 2s ease infinite" }}>⚡</div>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 10 }}>GÉNÉRATION EN COURS</p>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: "white", lineHeight: 1.1, letterSpacing: "0.02em" }}>
+            Ton programme<br />se construit{dots}
+          </h1>
         </div>
 
-        {/* Steps */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Barre de progression */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.3)" }}>PROGRESSION</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>{progress}%</p>
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 9999, height: 6, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${progress}%`, background: theme.accent, borderRadius: 9999, transition: "width 0.8s ease", boxShadow: `0 0 12px ${theme.accent}80` }} />
+          </div>
+        </div>
+
+        {/* Étapes */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
           {steps.map((s, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", background: i <= step ? theme.accent + "10" : "rgba(255,255,255,0.03)", border: `1px solid ${i <= step ? theme.accent + "30" : "rgba(255,255,255,0.05)"}`, borderRadius: 14, transition: "all 0.4s ease", opacity: i > step ? 0.4 : 1 }}>
-              <span style={{ fontSize: 18, filter: i > step ? "grayscale(1)" : "none" }}>{s.emoji}</span>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: i <= step ? "white" : "rgba(255,255,255,0.4)", fontWeight: i === step ? 600 : 400, flex: 1, textAlign: "left" }}>{s.text}</p>
-              {i < step && <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round"/></svg>}
-              {i === step && <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${theme.accent}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />}
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: i < step ? theme.accent + "08" : i === step ? theme.accent + "15" : "rgba(255,255,255,0.02)", border: `1px solid ${i <= step ? theme.accent + "25" : "rgba(255,255,255,0.04)"}`, borderRadius: 14, transition: "all 0.4s ease", opacity: i > step ? 0.35 : 1 }}>
+              <span style={{ fontSize: 16, filter: i > step ? "grayscale(1)" : "none", transition: "filter 0.3s" }}>{s.emoji}</span>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: i <= step ? "white" : "rgba(255,255,255,0.35)", fontWeight: i === step ? 600 : 400, flex: 1 }}>{s.text}</p>
+              {i < step && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round"/></svg>
+              )}
+              {i === step && (
+                <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${theme.accent}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
+              )}
             </div>
           ))}
+        </div>
+
+        {/* Fait du jour */}
+        <div key={fact} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", animation: "fadeIn 0.5s ease" }}>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", letterSpacing: "0.2em", marginBottom: 6 }}>LE SAVIEZ-VOUS ?</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{facts[fact]}</p>
         </div>
       </div>
     </div>
@@ -3708,6 +3751,7 @@ export default function VoltraApp() {
 
   if (screen === "programme-generating") return <ProgrammeGeneratingScreen
     sport={sportActif}
+    programmeActif={programmeActif}
     onDone={() => setScreen("app")}
   />;
 
