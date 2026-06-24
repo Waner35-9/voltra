@@ -944,7 +944,138 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
 }
 
 // ─────────────────────────────────────────────
-// CYCLE COMPLETE SCREEN
+// PAYMENT SUCCESS SCREEN
+// ─────────────────────────────────────────────
+function PaymentSuccessScreen({ plan, onContinue }) {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase(1), 300);
+    const t2 = setTimeout(() => setPhase(2), 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  const planLabel = plan === "monthly" ? "Mensuel" : plan === "annual" ? "Annuel" : "Lifetime";
+  const planEmoji = plan === "lifetime" ? "💎" : plan === "annual" ? "⚡" : "🚀";
+
+  return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.1), transparent)", pointerEvents: "none" }} />
+
+      <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
+        {/* Icône animée */}
+        <div style={{ opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.3)", transition: "all 0.6s cubic-bezier(0.34,1.56,0.64,1)", marginBottom: 32 }}>
+          <div style={{ width: 100, height: 100, borderRadius: 28, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, margin: "0 auto", boxShadow: "0 0 60px rgba(155,232,79,0.5)" }}>
+            {planEmoji}
+          </div>
+        </div>
+
+        {/* Texte */}
+        <div style={{ opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "translateY(0)" : "translateY(20px)", transition: "all 0.5s ease" }}>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#9BE84F", letterSpacing: "0.3em", marginBottom: 14 }}>PAIEMENT CONFIRMÉ</p>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em" }}>
+            BIENVENUE DANS<br />L'ÉQUIPE PRO ⚡
+          </h1>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.45)", marginBottom: 8, lineHeight: 1.6 }}>
+            Plan <strong style={{ color: "white" }}>{planLabel}</strong> activé. Ton programme personnalisé est en cours de génération.
+          </p>
+
+          {/* Features débloquées */}
+          <div style={{ background: "rgba(155,232,79,0.06)", border: "1px solid rgba(155,232,79,0.2)", borderRadius: 20, padding: "20px 20px", marginTop: 28, marginBottom: 32, textAlign: "left" }}>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "#9BE84F", letterSpacing: "0.2em", marginBottom: 14 }}>CE QUE TU VIENS DE DÉBLOQUER</p>
+            {[
+              { emoji: "📈", text: "Séances illimitées" },
+              { emoji: "🤖", text: "Coach IA en temps réel" },
+              { emoji: "⚡", text: "Progression automatique des charges" },
+              { emoji: "🏆", text: "Cycles infinis de progression" },
+            ].map((f, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                <span style={{ fontSize: 16 }}>{f.emoji}</span>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>{f.text}</p>
+                <svg style={{ marginLeft: "auto" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#9BE84F" strokeWidth="2.5" strokeLinecap="round"/></svg>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={onContinue} style={{ width: "100%", height: 56, background: "#9BE84F", border: "none", borderRadius: 9999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 32px rgba(155,232,79,0.4)" }}>
+            Voir mon programme →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// PROGRAMME GENERATION LOADING SCREEN
+// ─────────────────────────────────────────────
+function ProgrammeGeneratingScreen({ sport, onDone }) {
+  const theme = getSportTheme(sport);
+  const [step, setStep] = useState(0);
+  const [dots, setDots] = useState("");
+
+  const steps = [
+    { emoji: "🏋️", text: "Analyse de ton profil sportif..." },
+    { emoji: "🧠", text: "L'IA construit ton programme..." },
+    { emoji: "📈", text: "Calibration des progressions..." },
+    { emoji: "⚡", text: "Optimisation pour ton sport..." },
+    { emoji: "✅", text: "Programme prêt !" },
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStep(s => Math.min(s + 1, steps.length - 1));
+    }, 2500);
+    const dotsInterval = setInterval(() => {
+      setDots(d => d.length >= 3 ? "" : d + ".");
+    }, 400);
+    return () => { clearInterval(interval); clearInterval(dotsInterval); };
+  }, []);
+
+  useEffect(() => {
+    if (step === steps.length - 1) {
+      setTimeout(() => onDone(), 1200);
+    }
+  }, [step]);
+
+  const progress = Math.round((step / (steps.length - 1)) * 100);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
+        {SPORT_EMOJIS[sport] || "⚡"}
+      </div>
+
+      <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
+        {/* Logo animé */}
+        <div style={{ width: 80, height: 80, borderRadius: 22, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 32px", boxShadow: `0 0 60px ${theme.accent}50`, animation: "pulse 2s ease infinite" }}>⚡</div>
+
+        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 16 }}>GÉNÉRATION EN COURS</p>
+        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: "white", lineHeight: 1, marginBottom: 32, letterSpacing: "0.02em" }}>
+          Ton programme<br />se construit{dots}
+        </h1>
+
+        {/* Barre de progression */}
+        <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 9999, height: 6, marginBottom: 32, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${progress}%`, background: theme.accent, borderRadius: 9999, transition: "width 0.8s ease", boxShadow: `0 0 12px ${theme.accent}` }} />
+        </div>
+
+        {/* Steps */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {steps.map((s, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", background: i <= step ? theme.accent + "10" : "rgba(255,255,255,0.03)", border: `1px solid ${i <= step ? theme.accent + "30" : "rgba(255,255,255,0.05)"}`, borderRadius: 14, transition: "all 0.4s ease", opacity: i > step ? 0.4 : 1 }}>
+              <span style={{ fontSize: 18, filter: i > step ? "grayscale(1)" : "none" }}>{s.emoji}</span>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: i <= step ? "white" : "rgba(255,255,255,0.4)", fontWeight: i === step ? 600 : 400, flex: 1, textAlign: "left" }}>{s.text}</p>
+              {i < step && <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round"/></svg>}
+              {i === step && <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${theme.accent}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 // ─────────────────────────────────────────────
 function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
   const theme = getSportTheme(sport);
@@ -2789,6 +2920,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
   const [saving, setSaving] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
+  const [paidPlan, setPaidPlan] = useState(null);
   const [lastSessionStats, setLastSessionStats] = useState(null);
   const [cycleComplete, setCycleComplete] = useState(false);
   const [streak, setStreak] = useState(0);
@@ -3370,6 +3502,7 @@ export default function VoltraApp() {
   const [showUpsell, setShowUpsell] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
+  const [paidPlan, setPaidPlan] = useState(null);
   const [lastSessionStats, setLastSessionStats] = useState(null);
   const [cycleComplete, setCycleComplete] = useState(false);
 
@@ -3388,7 +3521,7 @@ export default function VoltraApp() {
       ::-webkit-scrollbar { display: none; }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-      @keyframes fillCircle { from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } }
+      @keyframes fillCircle { from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
       @keyframes splashPulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(0,255,135,0.5)); } 50% { transform: scale(1.08); filter: drop-shadow(0 0 40px rgba(0,255,135,0.8)); } }
       @keyframes celebrate { 0% { transform: scale(0) rotate(-10deg); opacity: 0; } 50% { transform: scale(1.2) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
@@ -3460,11 +3593,13 @@ export default function VoltraApp() {
       const isConfirmed = params.get("confirmed") === "true";
       const hasToken = window.location.hash.includes("access_token");
       const isPaid = params.get("paid") === "true";
+      const paidPlanParam = params.get("plan") || "monthly";
       if (isPaid && userRef.current) {
         supabase.from("profiles").upsert({ id: userRef.current.id, is_pro: true }, { onConflict: "id" });
         window.history.replaceState({}, document.title, window.location.pathname);
         setIsPro(true);
-        setScreen("app");
+        setPaidPlan(paidPlanParam);
+        setScreen("payment-success");
         return;
       }
       if (!themeOk) {
@@ -3560,6 +3695,22 @@ export default function VoltraApp() {
   }} />;
   if (screen === "welcome") return <div key={appTheme}><WelcomeScreen onStart={() => setScreen("onboarding")} /></div>;
   if (screen === "splash") return <SplashScreen onDone={() => setSplashDone(true)} />;
+  if (screen === "payment-success") return <PaymentSuccessScreen
+    plan={paidPlan}
+    onContinue={() => {
+      if (programmeLoading || !programmeActif) {
+        setScreen("programme-generating");
+      } else {
+        setScreen("app");
+      }
+    }}
+  />;
+
+  if (screen === "programme-generating") return <ProgrammeGeneratingScreen
+    sport={sportActif}
+    onDone={() => setScreen("app")}
+  />;
+
   if (screen === "cycle-complete") return <CycleCompleteScreen
     programme={programmeActif}
     sport={sportActif}
