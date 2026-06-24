@@ -3431,7 +3431,6 @@ export default function VoltraApp() {
         const fromEmail = window.location.hash.includes("access_token") || window.location.search.includes("confirmed=true");
         if (fromEmail) {
           window.history.replaceState({}, document.title, window.location.pathname);
-          // Si on a des données onboarding, générer le programme maintenant qu'on est connecté
           if (onboardingData) {
             setScreen("pricing");
             setProgrammeLoading(true);
@@ -3442,9 +3441,8 @@ export default function VoltraApp() {
           } else {
             setScreen("app");
           }
-        } else if (splashDone) {
-          setScreen("app");
         }
+        // Ne pas rediriger vers app ici — onAuth ou splashDone s'en charge
       } else if (_event === "PASSWORD_RECOVERY") {
         // Laisser AuthScreen gérer via isPasswordRecovery
         setScreen("auth");
