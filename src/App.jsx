@@ -320,6 +320,12 @@ const OBJECTIFS_PAR_SPORT = {
 };
 const OBJECTIFS = [];
 const NIVEAUX = ["Debutant", "Intermediaire", "Avance"];
+const STRIPE_PLANS = {
+  monthly: { priceId: "price_1Tkhvu8P7FaKivct2II0H82c", mode: "subscription" },
+  annual:  { priceId: "price_1Tki3X8P7FaKivctbeVPHjpj", mode: "subscription" },
+  lifetime:{ priceId: "price_1TkiCx8P7FaKivctSOaKjLWO", mode: "payment" },
+};
+
 const PLANS = [
   { id: "monthly", label: "Mensuel", price: 12.99, unit: "/ mois", priceDetail: "Resiliable a tout moment", savings: null, color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: null, highlight: false },
   { id: "annual", label: "Annuel", price: 69.99, unit: "/ an", priceDetail: "soit 5,83 / mois", savings: "Economise 58%", color: DS.colors.success, colorSoft: DS.colors.successSoft, colorBorder: "rgba(0,229,160,0.35)", badge: "Le plus populaire", highlight: true },
@@ -1948,10 +1954,48 @@ function OnboardingScreen({ onComplete }) {
 // ─────────────────────────────────────────────
 // ECRAN PRICING
 // ─────────────────────────────────────────────
-function PricingScreen({ onSelectPlan, programme, frequence }) {
+function PricingScreen({ onSelectPlan, programme, frequence, user }) {
   const [selected, setSelected] = useState("annual");
   const [timeLeft, setTimeLeft] = useState({ h: 23, m: 47, s: 12 });
   const [showFeatures, setShowFeatures] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [stripeError, setStripeError] = useState("");
+
+  const handleStripeCheckout = async (planId) => {
+    if (planId === "free") { onSelectPlan("free"); return; }
+    setLoading(true);
+    setStripeError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`,
+            "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            plan: planId,
+            user_id: session?.user?.id,
+            email: session?.user?.email,
+            success_url: window.location.origin + window.location.pathname,
+            cancel_url: window.location.origin + window.location.pathname,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setStripeError("Erreur lors de la redirection. Réessaie.");
+      }
+    } catch (err) {
+      setStripeError("Erreur de connexion. Réessaie.");
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -2029,11 +2073,12 @@ function PricingScreen({ onSelectPlan, programme, frequence }) {
             </div>
           ))}
         </div>
-        <button onClick={() => onSelectPlan(selected)} style={{ width: "100%", height: 58, background: currentPlan.highlight ? `linear-gradient(135deg, ${DS.colors.success}, #00C896)` : currentPlan.urgency ? `linear-gradient(135deg, ${DS.colors.gold}, #F0B800)` : `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, border: "1px solid rgba(255,255,255,0.1)", borderRadius: DS.radius.md, color: currentPlan.urgency ? DS.colors.bg : "white", fontSize: 16, cursor: "pointer", boxShadow: DS.shadow.primary, ...s.heading, marginBottom: 12 }}>
-          Commencer avec {currentPlan.label}
+        {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>⚠ {stripeError}</p>}
+        <button onClick={() => handleStripeCheckout(selected)} disabled={loading} style={{ width: "100%", height: 58, background: loading ? DS.colors.surfaceHigh : currentPlan.highlight ? `linear-gradient(135deg, ${DS.colors.primary}, ${DS.colors.primaryDark})` : `linear-gradient(135deg, ${DS.colors.primary}, ${DS.colors.primaryDark})`, border: "none", borderRadius: DS.radius.full, color: "#000", fontSize: 16, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", boxShadow: DS.shadow.primary, fontFamily: "'Inter',sans-serif", marginBottom: 12 }}>
+          {loading ? "Redirection vers Stripe..." : `Commencer avec ${currentPlan.label} →`}
         </button>
-        <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", marginBottom: 24 }}>Paiement securise · Annulation en 1 clic · Remboursement 7 jours</p>
-        <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 20px", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", ...s.heading, marginBottom: 8 }}>
+        <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", marginBottom: 24, fontFamily: "'Inter',sans-serif" }}>🔒 Paiement sécurisé Stripe · Remboursement 7 jours</p>
+        <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 20px", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "'Inter',sans-serif", marginBottom: 8 }}>
           <span>Voir ce qui est inclus</span>
           <span style={{ transform: showFeatures ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>↓</span>
         </button>
@@ -2047,7 +2092,7 @@ function PricingScreen({ onSelectPlan, programme, frequence }) {
             ))}
           </div>
         )}
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", textDecoration: "underline", ...s.body }}>Continuer avec le plan gratuit</button>
+        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", textDecoration: "underline", fontFamily: "'Inter',sans-serif" }}>Continuer avec le plan gratuit</button>
       </div>
     </div>
   );
@@ -3264,9 +3309,10 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
         </div>
 
         <button onClick={() => onSelectPlan(selected)} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}40` }}>
-          CONTINUER MA PROGRESSION →
+          {loading ? "Redirection..." : "CONTINUER MA PROGRESSION →"}
         </button>
-        <p style={{ color: DS.colors.textDim, fontSize: 11, textAlign: "center", marginBottom: 16, fontFamily: "'Space Mono',monospace", letterSpacing: "0.06em" }}>Paiement securise · Annulation en 1 clic</p>
+        {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>{stripeError}</p>}
+        <p style={{ color: DS.colors.textDim, fontSize: 11, textAlign: "center", marginBottom: 16, fontFamily: "'Space Mono',monospace", letterSpacing: "0.06em" }}>🔒 Paiement sécurisé Stripe · Annulation en 1 clic</p>
         <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 10, cursor: "pointer", fontFamily: "'Space Mono',monospace", letterSpacing: "0.1em" }}>
           ABANDONNER MA PROGRESSION
         </button>
@@ -3415,6 +3461,14 @@ export default function VoltraApp() {
       const params = new URLSearchParams(window.location.search);
       const isConfirmed = params.get("confirmed") === "true";
       const hasToken = window.location.hash.includes("access_token");
+      const isPaid = params.get("paid") === "true";
+      if (isPaid && userRef.current) {
+        supabase.from("profiles").upsert({ id: userRef.current.id, is_pro: true }, { onConflict: "id" });
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setIsPro(true);
+        setScreen("app");
+        return;
+      }
       if (!themeOk) {
         setScreen("theme-choice");
       } else if (userRef.current) {
@@ -3562,7 +3616,7 @@ export default function VoltraApp() {
       setScreen("app");
     }}
   />;
-if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} onSelectPlan={async (plan) => {
+if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} user={user} onSelectPlan={async (plan) => {
     if (plan !== "free") {
       setIsPro(true);
       const { data: { session } } = await supabase.auth.getSession();
