@@ -1,5 +1,4 @@
 // @ts-nocheck
-
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -112,42 +111,48 @@ const s = {
 
 const THEMES = {
   light: {
-    bg: "#ECEEF0", surface: "#FFFFFF", surfaceUp: "#F4F5F6", surfaceHigh: "#E4E6E8",
-    primary: "#5FAE2E", primarySoft: "rgba(95,174,46,0.12)", primaryGlow: "rgba(95,174,46,0.3)",
-    primaryDark: "#4A8A23",
-    success: "#3D9B35", successSoft: "rgba(61,155,53,0.12)",
-    warning: "#E07800", warningSoft: "rgba(224,120,0,0.10)",
-    gold: "#C9A000", goldSoft: "rgba(201,160,0,0.12)",
-    textPrimary: "#0D0F10", textSec: "#555B63", textDim: "#9DA3AA",
-    border: "rgba(0,0,0,0.10)", borderAccent: "rgba(95,174,46,0.4)",
-    shadow: { primary: "0 4px 24px rgba(95,174,46,0.3)", card: "0 2px 16px rgba(0,0,0,0.08)", glow: "0 0 40px rgba(95,174,46,0.2)" },
-    navBg: "rgba(255,255,255,0.97)",
-    stickyBg: "rgba(236,238,240,0.97)",
+    // Style B — Apple aesthetic, light
+    bg: "#F5F5F7", surface: "#FFFFFF", surfaceUp: "#F5F5F7", surfaceHigh: "#E8E8ED",
+    surfaceDark: "#1D1D1F", // card sombre pour la séance principale
+    primary: "#9BE84F", primarySoft: "rgba(155,232,79,0.15)", primaryGlow: "rgba(155,232,79,0.3)",
+    primaryDark: "#5FAE2E",
+    success: "#34C759", successSoft: "rgba(52,199,89,0.12)",
+    warning: "#FF9500", warningSoft: "rgba(255,149,0,0.10)",
+    gold: "#FFD60A", goldSoft: "rgba(255,214,10,0.12)",
+    textPrimary: "#1D1D1F", textSec: "#86868B", textDim: "#C7C7CC",
+    border: "rgba(0,0,0,0.06)", borderAccent: "rgba(155,232,79,0.4)",
+    shadow: { primary: "0 4px 24px rgba(155,232,79,0.3)", card: "0 2px 12px rgba(0,0,0,0.06)", glow: "0 0 40px rgba(155,232,79,0.2)" },
+    navBg: "rgba(255,255,255,0.92)",
+    stickyBg: "rgba(245,245,247,0.95)",
+    heroText: "#FFFFFF",
     isDark: false,
   },
   dark: {
-    bg: "#06060E", surface: "#0D0D18", surfaceUp: "#141420", surfaceHigh: "#1A1A28",
+    // Style B — Apple aesthetic, dark
+    bg: "#000000", surface: "#1C1C1E", surfaceUp: "#2C2C2E", surfaceHigh: "#3A3A3C",
+    surfaceDark: "#1C1C1E",
     primary: "#9BE84F", primarySoft: "rgba(155,232,79,0.15)", primaryGlow: "rgba(155,232,79,0.3)",
     primaryDark: "#9BE84F",
-    success: "#00FF87", successSoft: "rgba(0,255,135,0.12)",
-    warning: "#FF8C00", warningSoft: "rgba(255,140,0,0.12)",
-    gold: "#FFE500", goldSoft: "rgba(255,229,0,0.12)",
-    textPrimary: "#FFFFFF", textSec: "#6B6B8A", textDim: "#2A2A3A",
-    border: "rgba(255,255,255,0.06)", borderAccent: "rgba(155,232,79,0.3)",
-    shadow: { primary: "0 8px 32px rgba(155,232,79,0.2)", card: "0 4px 24px rgba(0,0,0,0.6)", glow: "0 0 40px rgba(155,232,79,0.15)" },
-    navBg: "rgba(6,6,14,0.95)",
-    stickyBg: "rgba(6,6,14,0.92)",
+    success: "#30D158", successSoft: "rgba(48,209,88,0.12)",
+    warning: "#FF9F0A", warningSoft: "rgba(255,159,10,0.12)",
+    gold: "#FFD60A", goldSoft: "rgba(255,214,10,0.12)",
+    textPrimary: "#FFFFFF", textSec: "rgba(255,255,255,0.5)", textDim: "rgba(255,255,255,0.2)",
+    border: "rgba(255,255,255,0.08)", borderAccent: "rgba(155,232,79,0.3)",
+    shadow: { primary: "0 8px 32px rgba(155,232,79,0.2)", card: "none", glow: "0 0 40px rgba(155,232,79,0.15)" },
+    navBg: "rgba(0,0,0,0.92)",
+    stickyBg: "rgba(0,0,0,0.92)",
+    heroText: "#FFFFFF",
     isDark: true,
   },
 };
 
 let DS = (() => {
   const saved = localStorage.getItem("voltra_theme") || "light";
-  return { colors: THEMES[saved], radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 }, shadow: THEMES[saved].shadow };
+  return { colors: THEMES[saved], radius: { sm: 10, md: 14, lg: 20, xl: 24, full: 9999 }, shadow: THEMES[saved].shadow };
 })();
 
 function applyTheme(theme) {
-  DS = { colors: THEMES[theme], radius: { sm: 10, md: 16, lg: 20, xl: 28, full: 9999 }, shadow: THEMES[theme].shadow };
+  DS = { colors: THEMES[theme], radius: { sm: 10, md: 14, lg: 20, xl: 24, full: 9999 }, shadow: THEMES[theme].shadow };
 }
 
 function PrimaryButton({ children, onClick, disabled, style = {} }) {
@@ -2421,254 +2426,186 @@ function MatchsScreen({ user, onBack }) {
 // ─────────────────────────────────────────────
 // DASHBOARD
 function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs }) {
+  const sport = sportProp || "default";
+  const theme = getSportTheme(sport);
   const progData = programme?.data_json;
   const seance = progData?.semaines?.[0]?.seances?.[0] || null;
-  const sport = sportProp || progData?.sport || user?.user_metadata?.sport || "default";
-  const theme = getSportTheme(sport);
+  const exercices = seance?.exercices || [];
+
   const prog = {
     titre: programme?.titre || null,
     semaineCourante: programme?.semaine_courante || 1,
     totalSemaines: programme?.total_semaines || 8,
     progression: Math.round(((programme?.semaine_courante || 1) / (programme?.total_semaines || 8)) * 100),
   };
-  const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
 
-  // Salutation selon heure
+  const userName = user?.user_metadata?.name?.split(" ")[0] || user?.email?.split("@")[0] || "Athlète";
   const hour = new Date().getHours();
-  const greeting = hour < 6 ? "Bonne nuit" : hour < 12 ? "Bonne matinee" : hour < 18 ? "Bon apres-midi" : "Bonne soiree";
+  const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
+  const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
-  // Match le plus proche
-  const prochainMatch = matchs?.length > 0 ? matchs[0] : null;
-  const daysUntilMatch = prochainMatch ? Math.ceil((new Date(prochainMatch.date_match) - new Date()) / (1000 * 60 * 60 * 24)) : null;
-  const matchAlert = daysUntilMatch !== null ? (
-    daysUntilMatch <= 0 ? { color: theme.accent, text: "Match aujourd'hui - repos ou activation legere", emoji: "⚡" } :
-    daysUntilMatch === 1 ? { color: theme.accent, text: "Match demain - seance tres legere", emoji: "⚠️" } :
-    daysUntilMatch <= 3 ? { color: theme.accent, text: `Match dans ${daysUntilMatch} jours - charges reduites`, emoji: "📅" } :
-    null
-  ) : null;
+  const currentCycle = programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
+  const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100, position: "relative" }}>
-      {/* Sport background glow */}
-      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none", opacity: 0.5 }} />
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
 
-      {/* Sport illustration en fond */}
-      <div style={{ position: "absolute", top: 20, right: -10, fontSize: 180, opacity: 0.06, pointerEvents: "none", lineHeight: 1, userSelect: "none", zIndex: 0, transform: "rotate(-15deg)" }}>
-        {SPORT_EMOJIS[sport] || SPORT_EMOJIS[progData?.programme?.sport] || SPORT_EMOJIS[user?.user_metadata?.sport] || "⚡"}
-      </div>
-
+      {/* Badge programme loading */}
       {programmeLoading && (
-        <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", zIndex: 200, background: DS.colors.surface, border: `1px solid ${theme.accent}40`, borderRadius: DS.radius.full, padding: "10px 20px", display: "flex", alignItems: "center", gap: 10, boxShadow: `0 8px 32px rgba(0,0,0,0.6)`, whiteSpace: "nowrap" }}>
-          <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: theme.accent, animation: "pulse 1s infinite", boxShadow: `0 0 8px ${theme.accent}` }} />
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, letterSpacing: "0.1em" }}>Generation du programme en cours...</p>
+        <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", zIndex: 200, background: DS.colors.surface, border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "10px 20px", display: "flex", alignItems: "center", gap: 10, boxShadow: DS.shadow.card, whiteSpace: "nowrap" }}>
+          <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: theme.accent, animation: "pulse 1s infinite" }} />
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>Génération du programme...</p>
         </div>
       )}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 0 rgba(0,0,0,0.05)" }}>
-        <div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "2px 8px", marginBottom: 4 }}>
-            <span style={{ fontSize: 11 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
-            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>{sport || "SPORT"}</span>
+
+      {/* Header */}
+      <div style={{ background: DS.colors.surface, padding: "56px 24px 20px", borderBottom: `1px solid ${DS.colors.border}` }}>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, marginBottom: 4, fontWeight: 500 }}>
+          {today.charAt(0).toUpperCase() + today.slice(1)}
+        </p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 32, color: DS.colors.textPrimary, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+            {greeting},<br />{userName} 👋
+          </h1>
+          <div style={{ width: 44, height: 44, borderRadius: 22, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, boxShadow: `0 4px 12px ${theme.accent}40` }}>
+            {SPORT_EMOJIS[sport] || "⚡"}
           </div>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.2em", marginBottom: 2 }}>{greeting.toUpperCase()},</p>
-          <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 22, color: DS.colors.textPrimary, letterSpacing: "0.06em" }}>{userName.toUpperCase()}</p>
-        </div>
-        <div style={{ width: 42, height: 42, background: theme.accent + "20", borderRadius: DS.radius.md, border: `1px solid ${theme.accent}40`, display: "flex", alignItems: "center", justifyContent: "center", color: theme.accent, fontSize: 18, fontWeight: 800, fontFamily: "'Rajdhani', sans-serif" }}>
-          {userName[0].toUpperCase()}
         </div>
       </div>
-      <div style={{ padding: "24px 20px 0" }}>
 
-        {/* Alerte match */}
-        {matchAlert && (
-          <div onClick={onOpenMatchs} style={{ background: matchAlert.color + "15", border: `1px solid ${matchAlert.color}40`, borderRadius: DS.radius.lg, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-            <span style={{ fontSize: 22 }}>{matchAlert.emoji}</span>
-            <div style={{ flex: 1 }}>
-              <p style={{ color: matchAlert.color, fontSize: 13, ...s.heading }}>{prochainMatch.titre}</p>
-              <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>{matchAlert.text}</p>
-            </div>
-            <span style={{ color: DS.colors.textSec, fontSize: 18 }}>→</span>
-          </div>
-        )}
+      <div style={{ padding: "20px 16px 0" }}>
 
-        {/* Bouton mes matchs */}
-        <div onClick={onOpenMatchs} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-          <span style={{ fontSize: 20 }}>📅</span>
-          <div style={{ flex: 1 }}>
-            <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>Mes matchs</p>
-            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>
-              {matchs?.length > 0 ? `${matchs.length} match${matchs.length > 1 ? "s" : ""} a venir` : "Synchronise ton calendrier"}
-            </p>
-          </div>
-          {Icons.arrow()}
-        </div>
-
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.2em", textTransform: "uppercase" }}>SEMAINE {prog.semaineCourante} / {prog.totalSemaines}</div>
-            <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${theme.accent}40, transparent)` }} />
-          </div>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 42, color: "white", lineHeight: 0.92, marginBottom: 16, letterSpacing: "0.02em" }}>{(prog.titre || seance?.titre || "PROGRAMME EN COURS").toUpperCase()}</h1>
-          <ProgressBar value={prog.progression} />
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, marginTop: 6, letterSpacing: "0.15em" }}>CYCLE {prog.semaineCourante} · {prog.progression}% · PROGRESSION CONTINUE</p>
-        </div>
+        {/* Séance du jour — card sombre */}
         {!seance ? (
-          <Card style={{ marginBottom: 24, padding: 28, textAlign: "center" }}>
-            <div style={{ fontSize: 40, marginBottom: 14 }}>⚡</div>
-            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 20, color: "white", marginBottom: 8, letterSpacing: "0.05em" }}>Programme en preparation</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em", lineHeight: 1.8 }}>Ton programme IA est en cours de generation. Reviens dans quelques instants.</p>
-          </Card>
+          <div style={{ background: DS.colors.surfaceDark || DS.colors.surface, borderRadius: DS.radius.xl, padding: 24, marginBottom: 16, position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", right: -20, top: -20, fontSize: 120, opacity: 0.06 }}>{SPORT_EMOJIS[sport] || "⚡"}</div>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: theme.accent, fontWeight: 600, marginBottom: 8, letterSpacing: "0.04em" }}>PROGRAMME EN PRÉPARATION</p>
+            <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 24, color: "#fff", margin: "0 0 8px", letterSpacing: "-0.01em" }}>Ton programme arrive...</h2>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.45)", margin: 0 }}>L'IA construit ton programme personnalisé. Reviens dans quelques instants.</p>
+          </div>
         ) : (
-        <Card style={{ marginBottom: 24, overflow: "hidden", position: "relative", background: DS.colors.surface, border: `1px solid ${theme.accent}20` }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <div style={{ display: "inline-flex", padding: "3px 10px", background: theme.accent + "15", border: `1px solid ${theme.accent}35`, borderRadius: DS.radius.full, color: theme.accent, fontSize: 11, fontWeight: 700, fontFamily: "'Space Mono',monospace", letterSpacing: "0.1em" }}>AUJOURD'HUI</div>
-            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: DS.colors.textSec }}>{seance.dureeMin} MIN</div>
-          </div>
-          <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
-            {[
-              { val: `${seance.dureeMin || 45}`, label: "minutes", color: DS.colors.textPrimary },
-              { val: `${seance.exercices?.length || 0}`, label: "exercices", color: DS.colors.success },
-              { val: seance.type === "force_basse" ? "Bas" : seance.type === "force_haute" ? "Haut" : seance.type === "explosivite" ? "Explo" : "Core", label: "du corps", color: DS.colors.warning },
-            ].map((stat, i) => (
-              <div key={i} style={{ textAlign: "center", flex: 1 }}>
-                <div style={{ ...s.mono, fontSize: 24, color: stat.color, fontWeight: 700 }}>{stat.val}</div>
-                <div style={{ color: DS.colors.textSec, fontSize: 12 }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-          <PrimaryButton onClick={onStartSession} style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, boxShadow: `0 8px 24px rgba(${theme.accentRgb},0.3)`, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.1em" }}>▶ DEMARRER LA SEANCE</PrimaryButton>
-        </Card>
-        )}
-        {seance && (
-        <div style={{ marginBottom: 28 }}>
-          <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Au programme</p>
-          <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
-            {(seance.exercices || []).map((ex, i) => {
-              const colors = [DS.colors.primary, DS.colors.success, DS.colors.warning, DS.colors.primary, DS.colors.success];
-              const color = colors[i % colors.length];
-              return (
-                <div key={ex.id} style={{ minWidth: 130, flexShrink: 0, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 14 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: DS.radius.sm, background: color + "20", border: `1px solid ${color}40`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10, color, fontSize: 14, ...s.heading }}>{i + 1}</div>
-                  <p style={{ color: DS.colors.textPrimary, fontSize: 13, ...s.heading, marginBottom: 4 }}>{ex.nom}</p>
-                  <p style={{ color: DS.colors.textSec, fontSize: 11, ...s.body, marginBottom: 8 }}>{ex.muscles.split(" ")[0]}</p>
-                  <div style={{ ...s.mono, fontSize: 13, color }}>{ex.sets}x{ex.reps}</div>
-                  {ex.chargeKg > 0 && <div style={{ ...s.mono, fontSize: 11, color: DS.colors.textSec, marginTop: 2 }}>{ex.chargeKg} kg</div>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        )}
-        {/* Parcours des cycles */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <p style={{ color: "white", fontSize: 16, ...s.heading }}>Ton parcours</p>
-            <div style={{ background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "3px 10px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.12em" }}>CYCLE {programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1}</p>
-            </div>
-          </div>
-
-          {/* Barre de progression des cycles */}
-          <div style={{ display: "flex", gap: 0, marginBottom: 14, position: "relative" }}>
-            {/* Ligne de connexion */}
-            <div style={{ position: "absolute", top: 20, left: 20, right: 20, height: 2, background: DS.colors.surfaceHigh, zIndex: 0 }} />
-            <div style={{ position: "absolute", top: 20, left: 20, height: 2, width: `${Math.min(100, (1 / 4) * 100)}%`, background: theme.accent, zIndex: 0, transition: "width 1s ease", boxShadow: `0 0 8px ${theme.accent}` }} />
-            {(() => {
-              const currentCycle = programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
-              const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
-              const getLabel = (n) => n === 1 ? "FONDATIONS" : n === 2 ? "INTENSITE" : n === 3 ? "PUISSANCE" : n === 4 ? "ELITE" : `ELITE+${n-4}`;
-              const start = Math.max(1, currentCycle - 1);
-              return Array.from({ length: 4 }, (_, i) => ({ num: start + i, label: getLabel(start + i) })).map((c, i) => {
-              const isDone = currentCycle > c.num && c.num >= startCycle;
-              const isSkipped = c.num < startCycle;
-              const isCurrent = currentCycle === c.num;
-              return (
-                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative", zIndex: 1 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: DS.radius.full, background: isDone ? theme.accent : isSkipped ? DS.colors.surfaceHigh : isCurrent ? theme.accent + "25" : DS.colors.surfaceHigh, border: `2px solid ${isDone ? theme.accent : isSkipped ? DS.colors.border : isCurrent ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.4s", boxShadow: isCurrent ? `0 0 16px ${theme.accent}60` : "none" }}>
-                    {isDone
-                      ? <span style={{ color: "#000", fontSize: 16 }}>✓</span>
-                      : isSkipped ? <span style={{ color: DS.colors.textDim, fontSize: 12 }}>—</span>
-                      : <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: isCurrent ? theme.accent : DS.colors.textSec, fontWeight: 700 }}>{c.num}</span>
-                    }
-                  </div>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: isDone || isCurrent ? theme.accent : DS.colors.textSec, letterSpacing: "0.08em", textAlign: "center" }}>{c.label}</p>
-                </div>
-              );
-            });
-            })()}
-          </div>
-          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8 }}>
-            {(() => {
-              const currentCycle = programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
-              const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
-              const getCycleInfo = (num) => {
-                if (num === 1) return { emoji: "🌱", title: "Fondations", desc: "Technique, bases solides. On construit l'athlete.", color: "#00FF87", tag: "DEBUT" };
-                if (num === 2) return { emoji: "⚡", title: "Intensification", desc: "Volume augmente, repos reduits. Adaptation rapide.", color: "#FF8C00", tag: "INTENSITE" };
-                if (num === 3) return { emoji: "🔥", title: "Puissance max", desc: "Charges lourdes, explosivite maximale.", color: "#FF2D55", tag: "AVANCE" };
-                if (num === 4) return { emoji: "💎", title: "Elite", desc: "Protocole athlete professionnel. Peu arrivent ici.", color: "#CC00FF", tag: "ELITE" };
-                return { emoji: "🚀", title: `Elite+ ${num - 4}`, desc: `Niveau extreme. Cycle ${num} sur mesure pour toi.`, color: "#00C8FF", tag: `ELITE+ ${num - 4}` };
-              };
-              // Affiche depuis max(1, currentCycle-1) jusqu'a currentCycle+3
-              const start = Math.max(1, currentCycle - 1);
-              const cycles = Array.from({ length: 5 }, (_, i) => start + i);
-              return cycles.map((num, i) => {
-              const c = { num, ...getCycleInfo(num) };
-              const isDone = currentCycle > num && num >= startCycle;
-              const isCurrent = currentCycle === num;
-              const isSkipped = num < startCycle;
-              const isLocked = currentCycle < num;
-              return (
-                <div key={i} style={{ flexShrink: 0, width: 160, background: isCurrent ? c.color + "12" : DS.colors.surface, border: `1px solid ${isCurrent ? c.color + "40" : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "14px 12px", position: "relative", overflow: "hidden", opacity: isLocked ? 0.55 : 1, transition: "all 0.3s" }}>
-                  {isCurrent && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: c.color }} />}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 22 }}>{c.emoji}</span>
-                    {isLocked && <span style={{ fontSize: 14 }}>🔒</span>}
-                    {isDone && <span style={{ fontSize: 14 }}>✅</span>}
-                    {isSkipped && <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, background: DS.colors.surfaceHigh, padding: "2px 6px", borderRadius: DS.radius.full }}>N/A</span>}
-                    {isCurrent && <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.color, animation: "pulse 1.5s infinite", boxShadow: `0 0 6px ${c.color}` }} />}
-                  </div>
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: isCurrent ? c.color : DS.colors.textSec, letterSpacing: "0.12em", marginBottom: 4 }}>{c.tag}</div>
-                  <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 15, color: isCurrent ? "white" : DS.colors.textSec, marginBottom: 4 }}>{c.title}</p>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, lineHeight: 1.6, letterSpacing: "0.04em" }}>{c.desc}</p>
-                </div>
-              );
-            });
-            })()}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 28 }}>
-          <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 14 }}>Derniere seance</p>
-          {derniereSeance ? (
-            <Card>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ background: DS.colors.surfaceDark || "#1D1D1F", borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16, position: "relative" }}>
+            <div style={{ position: "absolute", right: -20, top: -20, fontSize: 140, opacity: 0.06 }}>{SPORT_EMOJIS[sport] || "⚡"}</div>
+            <div style={{ padding: "20px 20px 16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                 <div>
-                  <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body, marginBottom: 4 }}>
-                    {new Date(derniereSeance.date_realisee).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: theme.accent, fontWeight: 700, marginBottom: 6, letterSpacing: "0.04em" }}>
+                    {seance.type?.toUpperCase() || "SÉANCE DU JOUR"}
                   </p>
-                  <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading }}>{derniereSeance.titre}</p>
+                  <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 24, color: "#fff", margin: 0, letterSpacing: "-0.01em" }}>
+                    {seance.titre || "Séance"}
+                  </h2>
                 </div>
-                <Badge color="success">Faite</Badge>
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 28, fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1 }}>{seance.dureeMin || 45}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0 }}>min</p>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                {[`${derniereSeance.exercices?.length || 0} exercices`, `${derniereSeance.duree_min || 0} min`].map((stat, i) => (
-                  <div key={i} style={{ flex: 1, padding: "8px 4px", textAlign: "center", background: DS.colors.surfaceHigh, borderRadius: DS.radius.sm, color: DS.colors.textSec, fontSize: 12 }}>{stat}</div>
+
+              {/* Progress dots */}
+              <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+                {exercices.slice(0, 6).map((_, i) => (
+                  <div key={i} style={{ height: 3, flex: 1, background: "rgba(255,255,255,0.15)", borderRadius: 2 }} />
                 ))}
               </div>
-            </Card>
+
+              {/* Exercices preview */}
+              {exercices.slice(0, 4).map((ex, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: theme.accent, opacity: 0.7 }} />
+                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>{ex.nom}</span>
+                  </div>
+                  <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>{ex.sets}×{ex.reps}</span>
+                </div>
+              ))}
+              {exercices.length > 4 && (
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 8, marginBottom: 0 }}>+{exercices.length - 4} exercices</p>
+              )}
+            </div>
+
+            <div style={{ padding: "0 16px 16px" }}>
+              <button onClick={onStartSession} style={{ width: "100%", height: 50, background: theme.accent, border: "none", borderRadius: DS.radius.lg, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.01em" }}>
+                Démarrer la séance →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Progression cycle */}
+        <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 16, boxShadow: DS.shadow.card }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, margin: "0 0 2px" }}>
+                {currentCycle === 1 ? "🌱 Fondations" : currentCycle === 2 ? "⚡ Intensification" : currentCycle === 3 ? "🔥 Puissance" : currentCycle === 4 ? "💎 Elite" : `🚀 Elite+${currentCycle - 4}`}
+              </p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, margin: 0 }}>
+                Cycle {currentCycle} · Semaine {prog.semaineCourante} sur {prog.totalSemaines}
+              </p>
+            </div>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, color: theme.accent, margin: 0 }}>{prog.progression}%</p>
+          </div>
+          <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, height: 6, overflow: "hidden" }}>
+            <div style={{ width: `${prog.progression}%`, height: "100%", background: theme.accent, borderRadius: DS.radius.full, transition: "width 1s ease" }} />
+          </div>
+        </div>
+
+        {/* Parcours cycles */}
+        <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16, boxShadow: DS.shadow.card }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, marginBottom: 14 }}>Ton parcours</p>
+          <div style={{ display: "flex", gap: 0, position: "relative" }}>
+            <div style={{ position: "absolute", top: 20, left: 20, right: 20, height: 2, background: DS.colors.surfaceHigh, zIndex: 0 }} />
+            <div style={{ position: "absolute", top: 20, left: 20, height: 2, width: `${Math.min(100, (1/4)*100)}%`, background: theme.accent, zIndex: 0 }} />
+            {(() => {
+              const getLabel = (n) => n === 1 ? "BASES" : n === 2 ? "INTENSITÉ" : n === 3 ? "PUISSANCE" : n === 4 ? "ELITE" : `E+${n-4}`;
+              const start = Math.max(1, currentCycle - 1);
+              return Array.from({ length: 4 }, (_, i) => ({ num: start + i, label: getLabel(start + i) })).map((c, i) => {
+                const isDone = currentCycle > c.num && c.num >= startCycle;
+                const isSkipped = c.num < startCycle;
+                const isCurrent = currentCycle === c.num;
+                return (
+                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative", zIndex: 1 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: DS.radius.full, background: isDone ? theme.accent : isCurrent ? theme.accent + "20" : DS.colors.surfaceHigh, border: `2px solid ${isDone || isCurrent ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isCurrent ? `0 0 12px ${theme.accent}50` : "none" }}>
+                      {isDone ? <span style={{ color: "#000", fontSize: 14, fontWeight: 700 }}>✓</span>
+                        : isSkipped ? <span style={{ color: DS.colors.textDim, fontSize: 12 }}>—</span>
+                        : <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: isCurrent ? theme.accent : DS.colors.textSec, fontWeight: 700 }}>{c.num}</span>}
+                    </div>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, color: isCurrent ? theme.accent : DS.colors.textSec, fontWeight: isCurrent ? 700 : 400, letterSpacing: "0.05em", textAlign: "center" }}>{c.label}</p>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+
+        {/* Dernière séance */}
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, marginBottom: 12 }}>Dernière séance</p>
+          {derniereSeance ? (
+            <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14, boxShadow: DS.shadow.card }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: theme.accent + "15", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+                {derniereSeance.feedback === "good" ? "💪" : derniereSeance.feedback === "easy" ? "😤" : "🔥"}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 15, color: DS.colors.textPrimary, marginBottom: 3 }}>{derniereSeance.titre}</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, margin: 0 }}>
+                  {new Date(derniereSeance.date_realisee).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} · {derniereSeance.duree_min || 0} min
+                </p>
+              </div>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: theme.accent, fontWeight: 700 }}>
+                {derniereSeance.exercices?.length || 0} exo
+              </p>
+            </div>
           ) : (
-            <Card>
-              <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, textAlign: "center" }}>Aucune seance encore — demarre ta premiere !</p>
-            </Card>
+            <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "20px", textAlign: "center", boxShadow: DS.shadow.card }}>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec }}>Aucune séance encore. C'est l'heure de commencer ! 💪</p>
+            </div>
           )}
         </div>
       </div>
     </div>
   );
 }
-
-// ─────────────────────────────────────────────
-// HISTORIQUE
 // ─────────────────────────────────────────────
 function HistoriqueScreen() {
   const [seancesReelles, setSeancesReelles] = useState([]);
