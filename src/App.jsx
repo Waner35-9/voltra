@@ -1832,7 +1832,7 @@ function OnboardingScreen({ onComplete }) {
   const isLastStep = step === totalSteps - 1;
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 20px" }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px" }}>
 
       {loading && (() => {
         const sportTheme = getSportTheme(data.sport);
@@ -1866,7 +1866,7 @@ function OnboardingScreen({ onComplete }) {
             visual: (
               <div style={{ background: DS.colors.surface, border: `1px solid ${sportTheme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", width: "100%" }}>
                 <div style={{ height: 90, background: DS.colors.surfaceHigh, position: "relative", display: "flex", alignItems: "flex-end", padding: "10px 14px" }}>
-                  <div style={{ position: "absolute", top: 8, left: 10, background: "rgba(6,6,14,0.8)", borderRadius: 6, padding: "2px 8px" }}>
+                  <div style={{ position: "absolute", top: 8, left: 10, background: DS.colors.isDark ? "rgba(6,6,14,0.8)" : "rgba(0,0,0,0.6)", borderRadius: 6, padding: "2px 8px" }}>
                     <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent }}>EX 1/5</p>
                   </div>
                   <div style={{ position: "absolute", top: 8, right: 10, background: sportTheme.accent + "20", border: `1px solid ${sportTheme.accent}40`, borderRadius: 6, padding: "2px 8px" }}>
@@ -2009,7 +2009,7 @@ function OnboardingScreen({ onComplete }) {
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera entierement adapte.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
-                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primary : DS.colors.surface, borderRadius: DS.radius.full, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.05)" : "scale(1)", boxShadow: data.sport === sport.id ? DS.shadow.primary : "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)" }}>
+                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primary : DS.colors.surface, borderRadius: DS.radius.full, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.05)" : "scale(1)", boxShadow: data.sport === sport.id ? DS.shadow.primary : DS.colors.isDark ? "0 2px 12px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)" }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{sport.emoji}</div>
                   <div style={{ color: data.sport === sport.id ? "#16181A" : DS.colors.textPrimary, fontSize: 12, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>{sport.label}</div>
                 </div>
@@ -2025,7 +2025,7 @@ function OnboardingScreen({ onComplete }) {
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Les exercices et charges s'adapteront.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
-                <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
+                <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
                   <span style={{ fontSize: 26 }}>{obj.emoji}</span>
                   <div>
                     <div style={{ color: data.objectif === obj.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{obj.label}</div>
@@ -2045,7 +2045,7 @@ function OnboardingScreen({ onComplete }) {
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>{data.sport === "combat" ? "Le programme est adapte a ta discipline de combat." : "Le programme cible les qualites de ton poste."}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(POSTES_PAR_SPORT[data.sport] || []).map(poste => (
-                <div key={poste.id} onClick={() => setData(d => ({ ...d, poste: poste.id }))} style={{ background: data.poste === poste.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.poste === poste.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
+                <div key={poste.id} onClick={() => setData(d => ({ ...d, poste: poste.id }))} style={{ background: data.poste === poste.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.poste === poste.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
                   <span style={{ fontSize: 26 }}>{poste.emoji}</span>
                   <div>
                     <div style={{ color: data.poste === poste.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{poste.label}</div>
@@ -2089,7 +2089,7 @@ function OnboardingScreen({ onComplete }) {
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 32 }}>Les exercices seront adaptes a ce que tu as.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {EQUIPEMENTS.map(eq => (
-                <div key={eq.id} onClick={() => setData(d => ({ ...d, equipement: eq.id }))} style={{ background: data.equipement === eq.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.equipement === eq.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease" }}>
+                <div key={eq.id} onClick={() => setData(d => ({ ...d, equipement: eq.id }))} style={{ background: data.equipement === eq.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.equipement === eq.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
                   <span style={{ fontSize: 26 }}>{eq.emoji}</span>
                   <div>
                     <div style={{ color: data.equipement === eq.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{eq.label}</div>
@@ -2121,7 +2121,7 @@ function OnboardingScreen({ onComplete }) {
                 <div style={{ ...s.display, fontSize: 48, color: DS.colors.primary, textAlign: "center", marginBottom: 16 }}>{data.frequence}</div>
                 <div style={{ display: "flex", gap: 10 }}>
                   {[2, 3, 4, 5].map(n => (
-                    <div key={n} onClick={() => setData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "10px 0", textAlign: "center", background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: data.frequence === n ? "white" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>
+                    <div key={n} onClick={() => setData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "10px 0", textAlign: "center", background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: data.frequence === n ? "#000" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>
                   ))}
                 </div>
                 <p style={{ color: DS.colors.textSec, fontSize: 13, textAlign: "center", marginTop: 12, ...s.body }}>jours / semaine</p>
