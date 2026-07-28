@@ -552,6 +552,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
   const [animKey, setAnimKey] = useState(0);
   const [toast, setToast] = useState(null);
   const [showCoach, setShowCoach] = useState(false);
+  const [showUpsell, setShowUpsell] = useState(false);
   const [coachMessages, setCoachMessages] = useState([]);
   const [coachInput, setCoachInput] = useState("");
   const [coachLoading, setCoachLoading] = useState(false);
@@ -591,8 +592,11 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
   const progressPct = currentEx ? Math.round(((exIdx + setIdx / totalSets) / exercices.length) * 100) : 100;
   const accentColor = theme.accent;
 
+  const freeCoachMessages = coachMessages.filter(m => m.role === "user").length;
+  const coachBlocked = !isPro && freeCoachMessages >= 2;
+
   const sendCoachMessage = async () => {
-    if (!coachInput.trim() || coachLoading) return;
+    if (!coachInput.trim() || coachLoading || coachBlocked) return;
     const userMsg = coachInput.trim();
     setCoachInput("");
     setCoachMessages(prev => [...prev, { role: "user", text: userMsg }]);
@@ -925,8 +929,16 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
                 </div>
               )}
             </div>
+            {/* Message bloqué si limite atteinte */}
+            {coachBlocked && (
+              <div style={{ margin: "8px 16px", background: "rgba(155,232,79,0.08)", border: "1px solid rgba(155,232,79,0.2)", borderRadius: DS.radius.lg, padding: "12px 14px", textAlign: "center" }}>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: accentColor, fontWeight: 600, marginBottom: 4 }}>⚡ Limite gratuite atteinte</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 8 }}>2 messages gratuits par séance. Passe en Pro pour un coach illimité.</p>
+                <button onClick={() => setShowUpsell(true)} style={{ background: accentColor, border: "none", borderRadius: DS.radius.full, padding: "6px 16px", color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Débloquer le coach →</button>
+              </div>
+            )}
             {/* Suggestions rapides contextuelles */}
-            <div style={{ padding: "6px 16px 0", display: "flex", gap: 6, overflowX: "auto" }}>
+            <div style={{ padding: "6px 16px 0", display: "flex", gap: 6, overflowX: "auto", opacity: coachBlocked ? 0.3 : 1, pointerEvents: coachBlocked ? "none" : "auto" }}>
               {[
                 "Trop lourd 😓",
                 "Alternative ?",
@@ -939,7 +951,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
             </div>
             {/* Input */}
             <div style={{ padding: "8px 16px 4px", display: "flex", gap: 8 }}>
-              <input value={coachInput} onChange={e => setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder="Parle à ton coach..." style={{ flex: 1, height: 44, padding: "0 16px", background: "rgba(255,255,255,0.08)", border: `1px solid rgba(255,255,255,0.1)`, borderRadius: DS.radius.full, color: "white", fontSize: 14, outline: "none", fontFamily: "'Inter',sans-serif" }} />
+              <input value={coachInput} onChange={e => !coachBlocked && setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder={coachBlocked ? "Limite atteinte — Passe en Pro" : "Parle à ton coach..."} style={{ flex: 1, height: 44, padding: "0 16px", background: "rgba(255,255,255,0.08)", border: `1px solid rgba(255,255,255,0.1)`, borderRadius: DS.radius.full, color: "white", fontSize: 14, outline: "none", fontFamily: "'Inter',sans-serif" }} />
               <button onClick={sendCoachMessage} disabled={!coachInput.trim() || coachLoading} style={{ width: 44, height: 44, borderRadius: DS.radius.full, background: coachInput.trim() ? accentColor : "rgba(255,255,255,0.08)", border: "none", color: coachInput.trim() ? "#000" : "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 18, flexShrink: 0, fontWeight: 700 }}>→</button>
             </div>
           </div>
@@ -3371,7 +3383,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
             Ta progression vient de commencer.
           </p>
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
-            Tu viens de terminer ta premiere seance. La vraie transformation commence maintenant — chaque semaine ton programme s'adapte et devient plus intense.
+            {stats?.totalKg > 0 ? `Tu viens de soulever ${stats.totalKg}kg. ` : ""}La vraie transformation commence maintenant — continue avec Pro pour débloquer toutes tes séances.
           </p>
         </div>
 
@@ -3769,6 +3781,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
         }} />
       ) : seanceActive ? (
         <SeanceScreen
+          isPro={isPro}
           seance={seanceActive}
           sport={sportActif}
           onBack={() => setSeanceActive(null)}
@@ -3811,10 +3824,11 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                 return;
               }
 
-              // Si gratuit et premiere seance terminee → paywall personnalise
+              // Si gratuit → paywall après la 1ère séance avec vraies stats
               if (!isPro) {
                 const totalKg = (seanceActive?.exercices || []).reduce((acc, ex) => {
-                  return acc + (ex.chargeKg || 0) * (ex.sets || 3) * (parseInt(ex.reps) || 8);
+                  const charge = ex.chargeKg > 0 ? ex.chargeKg : 20;
+                  return acc + charge * (ex.sets || 3) * (parseInt(ex.reps) || 8);
                 }, 0);
                 setLastSessionStats({
                   titre: seanceActive?.titre || "Seance",
