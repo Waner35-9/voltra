@@ -3786,12 +3786,24 @@ export default function VoltraApp() {
     }}
   />;
 if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} user={user} onSelectPlan={async (plan) => {
-    if (plan !== "free") {
+    if (plan === "free") {
+      // Plan gratuit → écran de génération si programme pas encore prêt
+      if (!programmeActif && onboardingData) {
+        setScreen("programme-generating");
+        setProgrammeLoading(true);
+        generateProgramIA(onboardingData).then(prog => {
+          if (prog) setProgrammeActif(prog);
+          setProgrammeLoading(false);
+        }).catch(() => setProgrammeLoading(false));
+      } else {
+        setScreen("app");
+      }
+    } else {
       setIsPro(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (session) await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true }, { onConflict: "id" });
+      setScreen("app");
     }
-    setScreen("app");
   }} />;
 
   return (
