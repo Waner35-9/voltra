@@ -3259,18 +3259,18 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
             { val: frequence * 8, label: "Séances", color: "#00FF87" },
             { val: "∞", label: "Progression", color: "#FF8C00" },
           ].map((stat, i) => (
-            <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+            <div key={i} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
               <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 28, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 5 }}>{stat.val}</p>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>{stat.label}</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>{stat.label}</p>
             </div>
           ))}
         </div>
 
         {/* Aperçu séance */}
-        <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16, position: "relative" }}>
+        <div style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16, position: "relative" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
-          <div style={{ padding: "14px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ padding: "14px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
             <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 13, color: "white" }}>Aperçu — Séance 1</p>
             <div style={{ background: "rgba(255,45,85,0.15)", border: "1px solid rgba(255,45,85,0.3)", borderRadius: DS.radius.full, padding: "3px 10px" }}>
               <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 600, color: "#FF2D55" }}>🔒 Accès restreint</p>
@@ -3278,13 +3278,13 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
           </div>
           <div style={{ padding: "8px 16px 14px" }}>
             {exercices.slice(0, 2).map((ex, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
                 <div style={{ width: 30, height: 30, borderRadius: 9, background: theme.accent + "15", border: `1px solid ${theme.accent}25`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: theme.accent, fontWeight: 700 }}>{i + 1}</p>
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: "white", marginBottom: 2 }}>{ex.nom}</p>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{(ex.muscles || "").split(" ")[0]}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{(ex.muscles || "").split(" ")[0]}</p>
                 </div>
                 <p style={{ fontFamily: "'Space Mono',monospace", color: theme.accent, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}</p>
               </div>
@@ -3292,18 +3292,18 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
             {(exercices.length > 2 || exercices.length === 0) && (
               <div style={{ position: "relative", marginTop: 4 }}>
                 {[...Array(Math.max(exercices.length - 2, 3))].map((_, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 9, background: DS.colors.surfaceHigh, flexShrink: 0 }} />
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.07)" : "none", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ height: 12, background: "rgba(255,255,255,0.07)", borderRadius: 4, width: "65%", marginBottom: 4 }} />
-                      <div style={{ height: 8, background: DS.colors.surfaceHigh, borderRadius: 4, width: "40%" }} />
+                      <div style={{ height: 12, background: "rgba(255,255,255,0.08)", borderRadius: 4, width: "65%", marginBottom: 4 }} />
+                      <div style={{ height: 8, background: "rgba(255,255,255,0.05)", borderRadius: 4, width: "40%" }} />
                     </div>
-                    <div style={{ width: 36, height: 10, background: DS.colors.surfaceHigh, borderRadius: 4 }} />
+                    <div style={{ width: 36, height: 10, background: "rgba(255,255,255,0.06)", borderRadius: 4 }} />
                   </div>
                 ))}
                 <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(6,6,14,0.65)", backdropFilter: "blur(2px)", borderRadius: DS.radius.md }}>
                   <span style={{ fontSize: 22, marginBottom: 6 }}>🔒</span>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 12, color: "rgba(255,255,255,0.55)", textAlign: "center" }}>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 12, color: "rgba(255,255,255,0.6)", textAlign: "center" }}>
                     {Math.max(exercices.length - 2, 3)} exercices bloqués
                   </p>
                 </div>
@@ -3313,13 +3313,13 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         </div>
 
         {/* Social proof */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, border: "1px solid rgba(255,255,255,0.07)", borderRadius: DS.radius.lg, padding: "11px 14px", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: DS.radius.lg, padding: "11px 14px", marginBottom: 16 }}>
           <div style={{ display: "flex" }}>
             {["🏀","⚽","🥊","🏊"].map((e, i) => (
-              <div key={i} style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1.5px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, marginLeft: i > 0 ? -7 : 0 }}>{e}</div>
+              <div key={i} style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, marginLeft: i > 0 ? -7 : 0 }}>{e}</div>
             ))}
           </div>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.45)", flex: 1 }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.5)", flex: 1 }}>
             <span style={{ color: "white", fontWeight: 700 }}>{inscrits} athlètes</span> ont rejoint Voltra cette semaine
           </p>
         </div>
@@ -3332,7 +3332,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
               <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: "#000", fontWeight: 700 }}>-30%</p>
             </div>
           </div>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
             Inscris-toi maintenant et obtiens <span style={{ color: "white", fontWeight: 600 }}>-30% sur ton premier mois</span>. Offre valable uniquement pendant le compte à rebours.
           </p>
         </div>
