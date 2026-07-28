@@ -1084,7 +1084,7 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
   const progress = Math.round((step / (steps.length - 1)) * 100);
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sport] || "⚡"}
@@ -1160,7 +1160,7 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
   const msg = getCycleMsg(cycle);
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sport] || "⚡"}
@@ -1272,7 +1272,7 @@ function ThemeChoiceScreen({ onChoose }) {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
 
       {/* Background glow */}
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.06), transparent)", pointerEvents: "none" }} />
@@ -1282,8 +1282,8 @@ function ThemeChoiceScreen({ onChoose }) {
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ width: 64, height: 64, borderRadius: 18, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 16px", boxShadow: "0 0 40px rgba(155,232,79,0.4)" }}>⚡</div>
-          <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 32, color: DS.colors.textPrimary, letterSpacing: "0.15em", marginBottom: 8 }}>VOLTRA</div>
-          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.2em" }}>CHOISIS TON STYLE</div>
+          <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 32, color: "white", letterSpacing: "0.15em", marginBottom: 8 }}>VOLTRA</div>
+          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.5)", letterSpacing: "0.2em" }}>CHOISIS TON STYLE</div>
         </div>
 
         {/* Theme cards */}
@@ -1332,7 +1332,7 @@ function ThemeChoiceScreen({ onChoose }) {
         </div>
 
         {/* Note */}
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, textAlign: "center", letterSpacing: "0.1em", marginBottom: 24 }}>TU POURRAS CHANGER CA DANS TON PROFIL</p>
+        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.5)", textAlign: "center", letterSpacing: "0.1em", marginBottom: 24 }}>TU POURRAS CHANGER CA DANS TON PROFIL</p>
 
         {/* CTA */}
         <button onClick={() => selected && onChoose(selected)} disabled={!selected} style={{ width: "100%", height: 56, background: selected ? "#9BE84F" : "rgba(255,255,255,0.1)", border: "none", borderRadius: 9999, color: selected ? "#16181A" : "rgba(255,255,255,0.3)", fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.1em", cursor: selected ? "pointer" : "not-allowed", transition: "all 0.3s", boxShadow: selected ? "0 8px 32px rgba(155,232,79,0.4)" : "none" }}>
@@ -1410,14 +1410,14 @@ function WelcomeScreen({ onStart }) {
           <div style={{ width: "100%", maxWidth: 390, padding: "0 24px", animation: "slideUp 0.6s ease" }}>
 
             {/* Feature card principale */}
-            <div key={featureIdx} style={{ background: DS.colors.surface, border: `1px solid ${features[featureIdx].color}20`, borderRadius: DS.radius.xl, padding: "28px 24px", marginBottom: 20, position: "relative", overflow: "hidden", animation: "fadeIn 0.4s ease" }}>
+            <div key={featureIdx} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${features[featureIdx].color}20`, borderRadius: DS.radius.xl, padding: "28px 24px", marginBottom: 20, position: "relative", overflow: "hidden", animation: "fadeIn 0.4s ease" }}>
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: features[featureIdx].color }} />
               <div style={{ position: "absolute", top: -30, right: -20, fontSize: 100, opacity: 0.05, lineHeight: 1 }}>{features[featureIdx].emoji}</div>
               <div style={{ fontSize: 42, marginBottom: 16 }}>{features[featureIdx].emoji}</div>
               <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 24, color: "white", marginBottom: 10, lineHeight: 1.1, letterSpacing: "0.02em" }}>
                 {features[featureIdx].title}
               </h2>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, letterSpacing: "0.08em" }}>
                 {features[featureIdx].desc}
               </p>
             </div>
@@ -1432,7 +1432,7 @@ function WelcomeScreen({ onStart }) {
             {/* 4 icones features rapides */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
               {features.map((f, i) => (
-                <div key={i} onClick={() => setFeatureIdx(i)} style={{ background: i === featureIdx ? f.color + "15" : DS.colors.surfaceHigh, border: `1px solid ${i === featureIdx ? f.color + "40" : DS.colors.border}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
+                <div key={i} onClick={() => setFeatureIdx(i)} style={{ background: i === featureIdx ? f.color + "15" : "rgba(255,255,255,0.06)", border: `1px solid ${i === featureIdx ? f.color + "40" : "rgba(255,255,255,0.1)"}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
                   <div style={{ fontSize: 20, marginBottom: 4 }}>{f.emoji}</div>
                   <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: i === featureIdx ? f.color : DS.colors.textSec, letterSpacing: "0.06em", lineHeight: 1.3 }}>{f.title.split(" ")[0]}</div>
                 </div>
@@ -1449,7 +1449,7 @@ function WelcomeScreen({ onStart }) {
           <div style={{ marginBottom: 16, animation: "slideUp 0.5s ease" }}>
             <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20 }}>
               {["🏀 Basketball", "⚽ Football", "🥊 Combat", "🏃 Sprint"].map((s, i) => (
-                <div key={i} style={{ background: DS.colors.surfaceHigh, border: "1px solid rgba(255,255,255,0.08)", borderRadius: DS.radius.full, padding: "4px 10px", fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{s}</div>
+                <div key={i} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: DS.radius.full, padding: "4px 10px", fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{s}</div>
               ))}
             </div>
           </div>
