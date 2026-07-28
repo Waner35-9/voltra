@@ -163,7 +163,7 @@ function PrimaryButton({ children, onClick, disabled, style = {} }) {
       style={{
         width: "100%", height: 56,
         background: disabled ? DS.colors.surfaceHigh : `linear-gradient(135deg, ${DS.colors.primary}, #00C896)`,
-        border: "1px solid rgba(255,255,255,0.1)", borderRadius: DS.radius.md,
+        border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md,
         color: disabled ? DS.colors.textDim : "white", fontSize: 16,
         cursor: disabled ? "not-allowed" : "pointer",
         transform: p ? "scale(0.96)" : "scale(1)", transition: "all 0.15s ease",
@@ -747,7 +747,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
       )}
 
       {/* Header sticky */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "12px 20px 0" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(10px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "12px 20px 0" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
           <div style={{ textAlign: "center" }}>
@@ -1129,7 +1129,7 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
         </div>
 
         {/* Fait du jour */}
-        <div key={fact} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", animation: "fadeIn 0.5s ease" }}>
+        <div key={fact} style={{ background: DS.colors.surfaceHigh, border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", animation: "fadeIn 0.5s ease" }}>
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", letterSpacing: "0.2em", marginBottom: 6 }}>LE SAVIEZ-VOUS ?</p>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{facts[fact]}</p>
         </div>
@@ -1449,7 +1449,7 @@ function WelcomeScreen({ onStart }) {
           <div style={{ marginBottom: 16, animation: "slideUp 0.5s ease" }}>
             <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20 }}>
               {["🏀 Basketball", "⚽ Football", "🥊 Combat", "🏃 Sprint"].map((s, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: DS.radius.full, padding: "4px 10px", fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{s}</div>
+                <div key={i} style={{ background: DS.colors.surfaceHigh, border: "1px solid rgba(255,255,255,0.08)", borderRadius: DS.radius.full, padding: "4px 10px", fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{s}</div>
               ))}
             </div>
           </div>
@@ -1874,7 +1874,7 @@ function OnboardingScreen({ onComplete }) {
                   </div>
                   <div>
                     <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent, marginBottom: 2 }}>QUADRICEPS</p>
-                    <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 20, color: "white" }}>SQUAT BARRE</p>
+                    <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 20, color: DS.colors.textPrimary }}>SQUAT BARRE</p>
                   </div>
                 </div>
                 <div style={{ padding: "10px 14px" }}>
@@ -1947,7 +1947,7 @@ function OnboardingScreen({ onComplete }) {
             {genError ? (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", position: "relative", zIndex: 2 }}>
                 <div style={{ fontSize: 56, marginBottom: 20 }}>⚠️</div>
-                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: "white", marginBottom: 12, letterSpacing: "0.05em" }}>Generation lente...</h2>
+                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 12, letterSpacing: "0.05em" }}>Generation lente...</h2>
                 <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, marginBottom: 32, lineHeight: 1.8, letterSpacing: "0.1em" }}>Le serveur prend du temps. Tu peux reessayer ou continuer — le programme se generera en arriere-plan.</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
                   <button onClick={retryGeneration} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer" }}>REESSAYER</button>
@@ -1963,7 +1963,7 @@ function OnboardingScreen({ onComplete }) {
                 </div>
 
                 {/* Title */}
-                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 36, color: "white", lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em", whiteSpace: "pre-line" }}>
+                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em", whiteSpace: "pre-line" }}>
                   {currentSlide.title}
                 </h2>
 
@@ -2005,7 +2005,7 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 1 - Sport */}
         {contentStep === 0 && (
           <div>
-            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>{data.sport === "combat" ? "Choisis ta discipline" : "Quel est ton sport ?"}</h1>
+            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: DS.colors.textPrimary, marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>{data.sport === "combat" ? "Choisis ta discipline" : "Quel est ton sport ?"}</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera entierement adapte.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
@@ -2021,7 +2021,7 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 2 - Objectif */}
         {contentStep === 1 && (
           <div>
-            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>{data.sport === "combat" ? "Ton objectif de combat ?" : "Quel est ton objectif ?"}</h1>
+            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: DS.colors.textPrimary, marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>{data.sport === "combat" ? "Ton objectif de combat ?" : "Quel est ton objectif ?"}</h1>
             <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Les exercices et charges s'adapteront.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
@@ -2061,7 +2061,7 @@ function OnboardingScreen({ onComplete }) {
         {/* ETAPE 4 - Douleurs */}
         {contentStep === 3 && (
           <div>
-            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Des douleurs ?</h1>
+            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: DS.colors.textPrimary, marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Des douleurs ?</h1>
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 12 }}>Les exercices s'adapteront automatiquement.</p>
             <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,107,53,0.2)", borderRadius: DS.radius.md, padding: "10px 14px", marginBottom: 24, display: "flex", gap: 10, alignItems: "center" }}>
               <span style={{ fontSize: 16 }}>⚠️</span>
@@ -2373,8 +2373,8 @@ function MatchsScreen({ user, onBack }) {
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "14px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 26, color: "white", letterSpacing: "0.1em" }}>MES MATCHS</h1>
-          <button onClick={() => setShowForm(v => !v)} style={{ background: DS.colors.primary, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: "white", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: DS.shadow.primary }}>+</button>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 26, color: DS.colors.textPrimary, letterSpacing: "0.1em" }}>MES MATCHS</h1>
+          <button onClick={() => setShowForm(v => !v)} style={{ background: DS.colors.primary, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: DS.shadow.primary }}>+</button>
         </div>
       </div>
 
@@ -2401,7 +2401,7 @@ function MatchsScreen({ user, onBack }) {
                 <input value={form.lieu} onChange={e => setForm(f => ({ ...f, lieu: e.target.value }))} placeholder="Optionnel" style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", ...s.body }} />
               </div>
             </div>
-            <button onClick={saveMatch} disabled={saving || !form.titre || !form.date_match} style={{ width: "100%", height: 48, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, border: "none", borderRadius: DS.radius.md, color: "white", fontSize: 15, cursor: "pointer", ...s.heading, boxShadow: DS.shadow.primary }}>
+            <button onClick={saveMatch} disabled={saving || !form.titre || !form.date_match} style={{ width: "100%", height: 48, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, border: "none", borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, cursor: "pointer", ...s.heading, boxShadow: DS.shadow.primary }}>
               {saving ? "Enregistrement..." : "Ajouter le match"}
             </button>
           </div>
@@ -2515,7 +2515,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
             <div style={{ position: "absolute", right: -20, top: -20, fontSize: 120, opacity: 0.06 }}>{SPORT_EMOJIS[sport] || "⚡"}</div>
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: theme.accent, fontWeight: 600, marginBottom: 8, letterSpacing: "0.04em" }}>PROGRAMME EN PRÉPARATION</p>
             <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 24, color: "#fff", margin: "0 0 8px", letterSpacing: "-0.01em" }}>Ton programme arrive...</h2>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.45)", margin: 0 }}>L'IA construit ton programme personnalisé. Reviens dans quelques instants.</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, margin: 0 }}>L'IA construit ton programme personnalisé. Reviens dans quelques instants.</p>
           </div>
         ) : (
           <div style={{ background: DS.colors.surfaceDark || "#1D1D1F", borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16, position: "relative" }}>
@@ -2532,7 +2532,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 28, fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1 }}>{seance.dureeMin || 45}</p>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0 }}>min</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, margin: 0 }}>min</p>
                 </div>
               </div>
 
@@ -2548,13 +2548,13 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: theme.accent, opacity: 0.7 }} />
-                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>{ex.nom}</span>
+                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textPrimary, fontWeight: 500 }}>{ex.nom}</span>
                   </div>
-                  <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>{ex.sets}×{ex.reps}</span>
+                  <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec }}>{ex.sets}×{ex.reps}</span>
                 </div>
               ))}
               {exercices.length > 4 && (
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 8, marginBottom: 0 }}>+{exercices.length - 4} exercices</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginTop: 8, marginBottom: 0 }}>+{exercices.length - 4} exercices</p>
               )}
             </div>
 
@@ -2739,7 +2739,7 @@ function HistoriqueScreen() {
                 <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 4 }}>
                   {new Date(selectedSeance.date_realisee).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }).toUpperCase()}
                 </p>
-                <h3 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 22, color: "white" }}>{selectedSeance.titre}</h3>
+                <h3 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 22, color: DS.colors.textPrimary }}>{selectedSeance.titre}</h3>
               </div>
               <button onClick={() => setSelectedSeance(null)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
             </div>
@@ -2765,7 +2765,7 @@ function HistoriqueScreen() {
               {(selectedSeance.exercices || []).map((ex, i) => (
                 <div key={i} style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
-                    <p style={{ color: "white", fontSize: 14, ...s.heading }}>{ex.nom}</p>
+                    <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{ex.nom}</p>
                     <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{ex.muscles?.split(" ")[0]}</p>
                   </div>
                   <p style={{ fontFamily: "'Space Mono',monospace", color: accentColor, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}{ex.charge_kg > 0 ? ` @ ${ex.charge_kg}kg` : ""}</p>
@@ -2777,7 +2777,7 @@ function HistoriqueScreen() {
       )}
 
       {/* Header */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(10px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, color: DS.colors.textPrimary, letterSpacing: "0.1em" }}>PROGRESSION</h1>
         <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 6, padding: "5px 10px" }}>CE MOIS</div>
       </div>
@@ -2794,8 +2794,8 @@ function HistoriqueScreen() {
           <div style={{ background: `linear-gradient(135deg, rgba(255,45,85,0.1), rgba(255,45,85,0.03))`, border: `1px solid rgba(255,45,85,0.2)`, borderRadius: DS.radius.xl, padding: "24px 20px", marginBottom: 16, position: "relative", overflow: "hidden" }}>
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: accentColor }} />
             <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: accentColor, letterSpacing: "0.25em", marginBottom: 8 }}>VOLUME TOTAL</div>
-            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 72, color: "white", lineHeight: 0.9, letterSpacing: "-0.02em" }}>{totalSeances}</div>
-            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", marginTop: 8 }}>SEANCES COMPLETEES</div>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 72, color: DS.colors.textPrimary, lineHeight: 0.9, letterSpacing: "-0.02em" }}>{totalSeances}</div>
+            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em", marginTop: 8 }}>SEANCES COMPLETEES</div>
             {streak > 0 && (
               <div style={{ position: "absolute", top: 20, right: 20, background: "rgba(0,255,135,0.15)", border: "1px solid rgba(0,255,135,0.3)", borderRadius: 8, padding: "6px 12px", fontFamily: "'Space Mono',monospace", fontSize: 11, color: "#00FF87", fontWeight: 700 }}>
                 🔥 {streak} JOURS
@@ -2811,17 +2811,17 @@ function HistoriqueScreen() {
               { val: topRecords[0] ? `${topRecords[0][1]}kg` : "—", label: `RECORD ${(topRecords[0]?.[0] || "").split(" ")[0].toUpperCase()}`, color: "#FFE500" },
               { val: seancesReelles.filter(s => s.feedback === "good" || s.feedback === "easy").length, label: "SEANCES REUSSIES", color: "#00C8FF" },
             ].map((stat, i) => (
-              <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "16px 14px", position: "relative", overflow: "hidden" }}>
+              <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 16, padding: "16px 14px", position: "relative", overflow: "hidden" }}>
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
                 <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: stat.color, lineHeight: 1, marginBottom: 6 }}>{stat.val}</div>
-                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.12em" }}>{stat.label}</div>
+                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.12em" }}>{stat.label}</div>
               </div>
             ))}
           </div>
 
           {/* Graphique séances par semaine — cliquable */}
-          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16 }}>
-            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.25)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 14 }}>SEANCES SUR 8 SEMAINES · APPUIE POUR DETAIL</div>
+          <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16 }}>
+            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 14 }}>SEANCES SUR 8 SEMAINES · APPUIE POUR DETAIL</div>
             <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 100 }}>
               {seancesParSemaine.map((count, i) => {
                 const isLast = i === 7;
@@ -2843,14 +2843,14 @@ function HistoriqueScreen() {
           </div>
 
           {/* Calendrier du mois */}
-          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: DS.radius.xl, padding: "16px", marginBottom: 16 }}>
+          <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "16px", marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: "white", letterSpacing: "0.08em" }}>{now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }).toUpperCase()}</div>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: DS.colors.textPrimary, letterSpacing: "0.08em" }}>{now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }).toUpperCase()}</div>
               {streak > 0 && <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.1em" }}>🔥 {streak} JOURS</div>}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, marginBottom: 4 }}>
               {["L","M","M","J","V","S","D"].map((d, i) => (
-                <div key={i} style={{ textAlign: "center", fontFamily: "'Space Mono',monospace", fontSize: 7, color: "rgba(255,255,255,0.2)", paddingBottom: 4 }}>{d}</div>
+                <div key={i} style={{ textAlign: "center", fontFamily: "'Space Mono',monospace", fontSize: 7, color: DS.colors.textSec, paddingBottom: 4 }}>{d}</div>
               ))}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
@@ -2871,14 +2871,14 @@ function HistoriqueScreen() {
           {/* Records personnels */}
           {topRecords.length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 12 }}>RECORDS PERSONNELS</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 0, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: DS.radius.xl, overflow: "hidden" }}>
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 12 }}>RECORDS PERSONNELS</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 0, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, overflow: "hidden" }}>
                 {topRecords.map(([nom, charge], i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderBottom: i < topRecords.length - 1 ? `1px solid rgba(255,255,255,0.04)` : "none" }}>
                     <div style={{ width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: i === 0 ? "rgba(255,229,0,0.1)" : "rgba(255,255,255,0.04)", border: `1px solid ${i === 0 ? "rgba(255,229,0,0.3)" : "rgba(255,255,255,0.06)"}`, flexShrink: 0 }}>
                       {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
                     </div>
-                    <div style={{ flex: 1, fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>{nom}</div>
+                    <div style={{ flex: 1, fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: DS.colors.textPrimary, fontWeight: 500 }}>{nom}</div>
                     <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 14, color: "#00FF87", fontWeight: 700 }}>{charge} kg</div>
                   </div>
                 ))}
@@ -2889,15 +2889,15 @@ function HistoriqueScreen() {
           {/* Historique séances récentes */}
           {seancesReelles.length > 0 && (
             <div>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.2)", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 12 }}>DERNIERES SEANCES</div>
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 12 }}>DERNIERES SEANCES</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {seancesReelles.slice(0, 6).map((sc, i) => (
-                  <div key={i} onClick={() => setSelectedSeance(sc)} style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: DS.radius.lg, padding: "14px 16px", cursor: "pointer" }}>
+                  <div key={i} onClick={() => setSelectedSeance(sc)} style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "14px 16px", cursor: "pointer" }}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: sc.feedback ? feedbackColor(sc.feedback) + "15" : "rgba(255,255,255,0.05)", border: `1px solid ${sc.feedback ? feedbackColor(sc.feedback) + "30" : "rgba(255,255,255,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
                       {feedbackEmoji(sc.feedback) || "🏋️"}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <p style={{ color: "white", fontSize: 14, ...s.heading, marginBottom: 2 }}>{sc.titre}</p>
+                      <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading, marginBottom: 2 }}>{sc.titre}</p>
                       <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.08em" }}>
                         {new Date(sc.date_realisee).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }).toUpperCase()} · {sc.duree_min || 0}min
                       </p>
@@ -2915,7 +2915,7 @@ function HistoriqueScreen() {
           {seancesReelles.length === 0 && (
             <div style={{ textAlign: "center", padding: "40px 20px" }}>
               <p style={{ fontSize: 48, marginBottom: 16 }}>🏋️</p>
-              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: "white", letterSpacing: "0.08em", marginBottom: 8 }}>AUCUNE SEANCE ENCORE</p>
+              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: DS.colors.textPrimary, letterSpacing: "0.08em", marginBottom: 8 }}>AUCUNE SEANCE ENCORE</p>
               <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em" }}>Complete ta premiere seance pour voir ta progression ici.</p>
             </div>
           )}
@@ -3066,7 +3066,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
               <span style={{ fontSize: 12 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
               <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>{sport !== "default" ? sport : "Sport"}</span>
             </div>
-            <p style={{ ...s.display, fontSize: 24, color: "white", letterSpacing: "0.05em", lineHeight: 1, marginBottom: 4 }}>{userName.toUpperCase()}</p>
+            <p style={{ ...s.display, fontSize: 24, color: DS.colors.textPrimary, letterSpacing: "0.05em", lineHeight: 1, marginBottom: 4 }}>{userName.toUpperCase()}</p>
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec }}>{user?.email}</p>
           </div>
         </div>
@@ -3095,7 +3095,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <div>
               <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 6 }}>Programme actif</p>
-              <p style={{ color: "white", fontSize: 16, ...s.heading }}>{programme?.titre || "Aucun programme"}</p>
+              <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading }}>{programme?.titre || "Aucun programme"}</p>
             </div>
             <div style={{ background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "4px 10px" }}>
               <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent }}>CYCLE {semaineCourante}</p>
@@ -3113,7 +3113,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ width: 40, height: 40, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>✏️</div>
             <div>
-              <p style={{ color: "white", fontSize: 15, ...s.heading, marginBottom: 2 }}>Modifier mon profil</p>
+              <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Modifier mon profil</p>
               <p style={{ color: DS.colors.textSec, fontSize: 12, fontFamily: "'Space Mono',monospace" }}>{sport !== "default" ? sport : "?"} · {objectif !== "Non defini" ? objectif : "?"} · {frequence}x/sem</p>
             </div>
           </div>
@@ -3126,7 +3126,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 40, height: 40, background: "rgba(255,229,0,0.1)", border: "1px solid rgba(255,229,0,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔔</div>
               <div>
-                <p style={{ color: "white", fontSize: 15, ...s.heading, marginBottom: 2 }}>Rappels seance</p>
+                <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Rappels seance</p>
                 <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{notifOn ? `TOUS LES JOURS A ${notifHeure}` : "DESACTIVE"}</p>
               </div>
             </div>
@@ -3259,7 +3259,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
             { val: frequence * 8, label: "Séances", color: "#00FF87" },
             { val: "∞", label: "Progression", color: "#FF8C00" },
           ].map((stat, i) => (
-            <div key={i} style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+            <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
               <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 28, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 5 }}>{stat.val}</p>
               <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>{stat.label}</p>
@@ -3268,7 +3268,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         </div>
 
         {/* Aperçu séance */}
-        <div style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16, position: "relative" }}>
+        <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16, position: "relative" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
           <div style={{ padding: "14px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
             <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 13, color: "white" }}>Aperçu — Séance 1</p>
@@ -3293,12 +3293,12 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
               <div style={{ position: "relative", marginTop: 4 }}>
                 {[...Array(Math.max(exercices.length - 2, 3))].map((_, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(255,255,255,0.05)", flexShrink: 0 }} />
+                    <div style={{ width: 30, height: 30, borderRadius: 9, background: DS.colors.surfaceHigh, flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ height: 12, background: "rgba(255,255,255,0.07)", borderRadius: 4, width: "65%", marginBottom: 4 }} />
-                      <div style={{ height: 8, background: "rgba(255,255,255,0.04)", borderRadius: 4, width: "40%" }} />
+                      <div style={{ height: 8, background: DS.colors.surfaceHigh, borderRadius: 4, width: "40%" }} />
                     </div>
-                    <div style={{ width: 36, height: 10, background: "rgba(255,255,255,0.05)", borderRadius: 4 }} />
+                    <div style={{ width: 36, height: 10, background: DS.colors.surfaceHigh, borderRadius: 4 }} />
                   </div>
                 ))}
                 <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(6,6,14,0.65)", backdropFilter: "blur(2px)", borderRadius: DS.radius.md }}>
@@ -3313,7 +3313,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         </div>
 
         {/* Social proof */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: DS.radius.lg, padding: "11px 14px", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, border: "1px solid rgba(255,255,255,0.07)", borderRadius: DS.radius.lg, padding: "11px 14px", marginBottom: 16 }}>
           <div style={{ display: "flex" }}>
             {["🏀","⚽","🥊","🏊"].map((e, i) => (
               <div key={i} style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1.5px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, marginLeft: i > 0 ? -7 : 0 }}>{e}</div>
