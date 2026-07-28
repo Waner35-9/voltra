@@ -3888,9 +3888,27 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
               sport={sportActif}
               onOpenMatchs={() => setShowMatchs(true)}
               onStartSession={() => {
-
                 const prog = programmeActif?.data_json;
-                const seance = prog?.semaines?.[0]?.seances?.[0] || MOCK_PROGRAM.seancesDuJour[0];
+                const rawSeance = prog?.semaines?.[0]?.seances?.[0];
+                if (!rawSeance) {
+                  console.warn("Pas de séance disponible");
+                  return;
+                }
+                // Normaliser les données de la séance
+                const seance = {
+                  ...rawSeance,
+                  exercices: (rawSeance.exercices || []).map((ex, i) => ({
+                    id: ex.id || `ex_${i}`,
+                    nom: ex.nom || "Exercice",
+                    muscles: ex.muscles || "",
+                    sets: ex.sets || 3,
+                    reps: ex.reps || "8",
+                    chargeKg: ex.chargeKg || ex.charge_kg || 0,
+                    reposSec: ex.reposSec || ex.repos_sec || 90,
+                    conseil: ex.conseil || "",
+                    ordre: ex.ordre || i + 1,
+                  }))
+                };
                 setSeanceActive(seance);
               }}
             />
