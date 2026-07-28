@@ -2153,6 +2153,25 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
   const [loading, setLoading] = useState(false);
   const [stripeError, setStripeError] = useState("");
 
+  // Bouton "Plus tard" visible en haut à gauche
+  const SkipButton = () => (
+    <button onClick={() => onSelectPlan("free")} style={{
+      position: "fixed", top: 52, left: 16, zIndex: 200,
+      display: "flex", alignItems: "center", gap: 6,
+      background: DS.colors.surface,
+      border: `1px solid ${DS.colors.border}`,
+      borderRadius: DS.radius.full,
+      padding: "8px 14px",
+      color: DS.colors.textSec,
+      fontFamily: "'Inter',sans-serif",
+      fontSize: 13, fontWeight: 600,
+      cursor: "pointer",
+      boxShadow: DS.shadow.card,
+    }}>
+      ✕ <span>Plus tard</span>
+    </button>
+  );
+
   const handleStripeCheckout = async (planId) => {
     if (planId === "free") { onSelectPlan("free"); return; }
     setLoading(true);
@@ -2284,8 +2303,11 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
             ))}
           </div>
         )}
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", textDecoration: "underline", fontFamily: "'Inter',sans-serif" }}>Continuer avec le plan gratuit</button>
+        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", textDecoration: "none" }}>
+          Non merci, je veux juste essayer gratuitement
+        </button>
       </div>
+      <SkipButton />
     </div>
   );
 }
@@ -3438,8 +3460,12 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
         </button>
         {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>{stripeError}</p>}
         <p style={{ color: DS.colors.textDim, fontSize: 11, textAlign: "center", marginBottom: 16, fontFamily: "'Space Mono',monospace", letterSpacing: "0.06em" }}>🔒 Paiement sécurisé Stripe · Annulation en 1 clic</p>
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 10, cursor: "pointer", fontFamily: "'Space Mono',monospace", letterSpacing: "0.1em" }}>
-          ABANDONNER MA PROGRESSION
+        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", marginTop: 4 }}>
+          Non merci, je reste sur le plan gratuit
+        </button>
+        {/* Bouton plus tard visible */}
+        <button onClick={() => onSelectPlan("free")} style={{ position: "fixed", top: 52, left: 16, zIndex: 200, display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: DS.radius.full, padding: "8px 14px", color: "rgba(255,255,255,0.6)", fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          ✕ <span>Plus tard</span>
         </button>
       </div>
     </div>
