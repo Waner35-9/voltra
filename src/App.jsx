@@ -3277,38 +3277,47 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
             </div>
           </div>
           <div style={{ padding: "8px 16px 14px" }}>
-            {exercices.slice(0, 2).map((ex, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: `1px solid ${DS.colors.border}` }}>
-                <div style={{ width: 30, height: 30, borderRadius: 9, background: theme.accent + "15", border: `1px solid ${theme.accent}25`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            {/* 2 exercices visibles */}
+            {(exercices.length > 0 ? exercices.slice(0, 2) : [{nom: "Squat Barre", muscles: "Quadriceps", sets: 4, reps: "8"}, {nom: "Deadlift Roumain", muscles: "Ischios", sets: 3, reps: "10"}]).map((ex, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ width: 30, height: 30, borderRadius: 9, background: theme.accent + "20", border: `1px solid ${theme.accent}30`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: theme.accent, fontWeight: 700 }}>{i + 1}</p>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: DS.colors.textPrimary, marginBottom: 2 }}>{ex.nom}</p>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec }}>{(ex.muscles || "").split(" ")[0]}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: "white", marginBottom: 2 }}>{ex.nom}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{(ex.muscles || "").split(" ")[0]}</p>
                 </div>
                 <p style={{ fontFamily: "'Space Mono',monospace", color: theme.accent, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}</p>
               </div>
             ))}
-            {(exercices.length > 2 || exercices.length === 0) && (
-              <div style={{ position: "relative", marginTop: 4 }}>
-                {[...Array(Math.max(exercices.length - 2, 3))].map((_, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.07)" : "none", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 9, background: DS.colors.surfaceHigh, flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ height: 12, background: DS.colors.surfaceHigh, borderRadius: 4, width: "65%", marginBottom: 4 }} />
-                      <div style={{ height: 8, background: DS.colors.surfaceHigh, borderRadius: 4, width: "40%" }} />
-                    </div>
-                    <div style={{ width: 36, height: 10, background: DS.colors.surfaceHigh, borderRadius: 4 }} />
+
+            {/* Exercices floutés avec vrai contenu */}
+            <div style={{ position: "relative", marginTop: 4 }}>
+              {[
+                {nom: exercices[2]?.nom || "Box Jump Explosif", muscles: exercices[2]?.muscles || "Mollets", sets: exercices[2]?.sets || 4, reps: exercices[2]?.reps || "6"},
+                {nom: exercices[3]?.nom || "Hip Thrust Barre", muscles: exercices[3]?.muscles || "Fessiers", sets: exercices[3]?.sets || 3, reps: exercices[3]?.reps || "12"},
+                {nom: exercices[4]?.nom || "Fentes Bulgares", muscles: exercices[4]?.muscles || "Quadriceps", sets: exercices[4]?.sets || 3, reps: exercices[4]?.reps || "10"},
+              ].map((ex, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.08)" : "none", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 700 }}>{i + 3}</p>
                   </div>
-                ))}
-                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: DS.colors.surfaceHigh, backdropFilter: "blur(2px)", borderRadius: DS.radius.md }}>
-                  <span style={{ fontSize: 22, marginBottom: 6 }}>🔒</span>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 12, color: DS.colors.textPrimary, textAlign: "center" }}>
-                    {Math.max(exercices.length - 2, 3)} exercices bloqués
-                  </p>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: "white", marginBottom: 2 }}>{ex.nom}</p>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{ex.muscles}</p>
+                  </div>
+                  <p style={{ fontFamily: "'Space Mono',monospace", color: "rgba(255,255,255,0.5)", fontSize: 12 }}>{ex.sets}×{ex.reps}</p>
                 </div>
+              ))}
+              {/* Overlay cadenas */}
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(6,6,14,0.6)", backdropFilter: "blur(3px)", borderRadius: DS.radius.md }}>
+                <span style={{ fontSize: 28, marginBottom: 8 }}>🔒</span>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 13, color: "white", marginBottom: 4 }}>
+                  {Math.max(exercices.length > 2 ? exercices.length - 2 : 3, 3)} exercices bloqués
+                </p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Inscris-toi pour tout débloquer</p>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
