@@ -568,6 +568,25 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
     return () => clearInterval(timer);
   }, [startTime]);
 
+  // Compte à rebours repos plein écran
+  const [restLeft, setRestLeft] = useState(0);
+  useEffect(() => {
+    if (!resting) return;
+    setRestLeft(currentEx?.reposSec || 90);
+    const t = setInterval(() => {
+      setRestLeft(p => {
+        if (p <= 1) {
+          clearInterval(t);
+          setResting(false);
+          setSetIdx(i => i + 1);
+          return 0;
+        }
+        return p - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [resting]);
+
   const formatElapsed = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   const exercices = seance?.exercices || [];
@@ -667,7 +686,8 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
     setToast(msg);
     setTimeout(() => setToast(null), 1400);
     if (setIdx < totalSets - 1) {
-      setWaitingRest(true);
+      // Repos plein écran directement
+      setResting(true);
     } else {
       if (exIdx < exercices.length - 1) {
         setCelebrate(true);
@@ -735,9 +755,51 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
     );
   }
 
-  // ── ECRAN SEANCE LIVE ──
+  // ── ÉCRAN REPOS PLEIN ÉCRAN ──
+  if (resting) {
+    const restTotal = currentEx?.reposSec || 90;
+    const restPct = (restLeft / restTotal) * 100;
+    const nextSetNum = setIdx + 2; // série suivante (1-indexed)
+    return (
+      <div style={{ fontFamily: "'Inter',sans-serif", background: "linear-gradient(180deg, #0A2540 0%, #051426 100%)", minHeight: "100vh", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", color: "white", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "25%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(10,132,255,0.25), transparent 70%)", pointerEvents: "none" }} />
+
+        <div style={{ padding: "52px 24px 0", display: "flex", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontVariantNumeric: "tabular-nums" }}>{formatElapsed(elapsed)}</p>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>EX {exIdx + 1}/{exercices.length}</p>
+        </div>
+
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
+          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.35em", color: "#5AC8FA", marginBottom: 12 }}>💨 RÉCUPÉRATION</p>
+          <p style={{ fontSize: 140, fontWeight: 800, lineHeight: 0.9, letterSpacing: "-0.05em", fontVariantNumeric: "tabular-nums", textShadow: "0 0 60px rgba(90,200,250,0.4)" }}>{restLeft}</p>
+          <div style={{ width: 200, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 4, marginTop: 24, overflow: "hidden" }}>
+            <div style={{ width: `${restPct}%`, height: "100%", background: "#5AC8FA", borderRadius: 4, transition: "width 1s linear" }} />
+          </div>
+        </div>
+
+        <div style={{ padding: "0 20px 32px", position: "relative", zIndex: 1 }}>
+          <div style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "16px 18px", marginBottom: 14 }}>
+            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.2em", marginBottom: 6 }}>ENSUITE</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <p style={{ fontSize: 17, fontWeight: 800 }}>{currentEx.nom} — Série {nextSetNum}/{totalSets}</p>
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{currentEx.reps} reps{currentEx.chargeKg > 0 ? ` · ${currentEx.chargeKg} kg` : ""}</p>
+              </div>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(90,200,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎯</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => setRestLeft(r => r + 30)} style={{ flex: 1, height: 52, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 16, color: "white", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>+30 sec</button>
+            <button onClick={() => { setResting(false); setSetIdx(i => i + 1); }} style={{ flex: 2, height: 52, background: "#5AC8FA", border: "none", borderRadius: 16, color: "#000", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>Reprendre →</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── ÉCRAN EFFORT — photo + zone focus ──
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, maxWidth: 430, margin: "0 auto", position: "relative" }}>
+    <div style={{ fontFamily: "'Inter',sans-serif", minHeight: "100vh", background: "#000", maxWidth: 430, margin: "0 auto", position: "relative", display: "flex", flexDirection: "column", color: "white" }}>
 
       {/* Celebration */}
       {celebrate && (
@@ -750,138 +812,76 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
 
       {/* Toast */}
       {toast && (
-        <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: accentColor, color: "#000", padding: "8px 20px", borderRadius: DS.radius.full, fontFamily: "'Rajdhani',sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: "0.08em", zIndex: 200, boxShadow: `0 4px 20px ${accentColor}60`, whiteSpace: "nowrap" }}>
+        <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: accentColor, color: "#000", padding: "8px 20px", borderRadius: 999, fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 800, zIndex: 200, boxShadow: `0 4px 20px ${accentColor}60`, whiteSpace: "nowrap" }}>
           {toast}
         </div>
       )}
 
-      {/* Header sticky */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(10px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "12px 20px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <button onClick={onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
-          <div style={{ textAlign: "center" }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase" }}>{exIdx + 1} / {exercices.length} EXERCICES</p>
-            <p style={{ ...s.display, color: DS.colors.textPrimary, fontSize: 16, letterSpacing: "0.05em" }}>{(seance.titre || "").toUpperCase()}</p>
+      {/* ── Photo immersive ── */}
+      <div key={animKey} style={{ position: "relative", height: "36vh", minHeight: 260, overflow: "hidden", flexShrink: 0 }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: photoUrl ? `url(${photoUrl})` : "none", backgroundSize: "cover", backgroundPosition: "center", backgroundColor: "#101418" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 35%, transparent 55%, #000 100%)" }} />
+
+        {/* Header sur la photo */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "50px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
+          <button onClick={onBack} style={{ width: 36, height: 36, borderRadius: 18, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", color: "white", fontSize: 15, cursor: "pointer" }}>✕</button>
+          <div style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", borderRadius: 20, padding: "6px 14px", border: "1px solid rgba(255,255,255,0.15)" }}>
+            <p style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{formatElapsed(elapsed)}</p>
           </div>
-          <div style={{ background: `${accentColor}15`, border: `1px solid ${accentColor}40`, borderRadius: DS.radius.full, padding: "5px 12px" }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 13, color: accentColor, fontWeight: 700 }}>{formatElapsed(elapsed)}</p>
-          </div>
+          <button onClick={() => setShowCoach(true)} style={{ width: 36, height: 36, borderRadius: 18, background: `${accentColor}30`, backdropFilter: "blur(10px)", border: `1px solid ${accentColor}60`, fontSize: 15, cursor: "pointer" }}>🤖</button>
         </div>
-        {/* Barre progression */}
-        <div style={{ height: 2, background: DS.colors.surfaceHigh, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${progressPct}%`, background: accentColor, transition: "width 0.6s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: `0 0 8px ${accentColor}` }} />
+
+        {/* Progression exercices — segments */}
+        <div style={{ position: "absolute", bottom: 12, left: 20, right: 20, zIndex: 2, display: "flex", gap: 4 }}>
+          {exercices.map((_, i) => {
+            const fill = i < exIdx ? 1 : i === exIdx ? setIdx / totalSets : 0;
+            return (
+              <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", overflow: "hidden" }}>
+                <div style={{ width: `${fill * 100}%`, height: "100%", background: accentColor, borderRadius: 2, transition: "width 0.4s ease" }} />
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div style={{ padding: "16px 20px 140px" }}>
+      {/* ── Zone Focus ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "18px 20px 36px" }}>
 
-        {/* Card exercice */}
-        <div key={animKey} style={{ borderRadius: DS.radius.xl, marginBottom: 14, overflow: "hidden" }}>
-
-          {/* Photo */}
-          <div style={{ height: 220, backgroundImage: photoUrl ? `url(${photoUrl})` : "none", backgroundSize: "cover", backgroundPosition: "center", position: "relative", backgroundColor: DS.colors.surfaceHigh }}>
-            <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to bottom, rgba(6,6,14,0.1) 0%, rgba(6,6,14,0.9) 100%)` }} />
-
-            {/* Numero exercice */}
-            <div style={{ position: "absolute", top: 14, left: 14, background: DS.colors.surfaceHigh, backdropFilter: "blur(10px)", border: `1px solid ${accentColor}50`, borderRadius: 8, padding: "3px 10px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.15em" }}>EX {exIdx + 1}/{exercices.length}</p>
-            </div>
-
-            {/* Icone muscle */}
-            <div style={{ position: "absolute", top: 12, right: 12, background: DS.colors.surfaceHigh, backdropFilter: "blur(10px)", border: `1px solid ${accentColor}30`, borderRadius: DS.radius.md, padding: 8 }}>
-              {getMuscleIcon(currentEx.muscles, accentColor)}
-            </div>
-
-            {/* Nom exercice */}
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "16px 18px 18px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 4 }}>{currentEx.muscles}</p>
-              <h2 style={{ ...s.display, fontSize: 30, color: "#FFFFFF", lineHeight: 0.95, textShadow: "0 2px 12px rgba(0,0,0,0.8)", letterSpacing: "0.01em" }}>
-                {(currentEx.nom || "").toUpperCase()}
-              </h2>
-            </div>
-          </div>
-
-          {/* Stats exercice */}
-          <div style={{ background: DS.colors.surface, borderTop: "none", padding: "14px 16px" }}>
-            <div style={{ display: "flex", gap: 8, marginBottom: currentEx.conseil ? 12 : 0 }}>
-              {[
-                { val: currentEx.sets, label: "SERIES", hi: true },
-                { val: currentEx.reps, label: "REPS", hi: false },
-                ...(currentEx.chargeKg > 0 ? [{ val: `${currentEx.chargeKg}kg`, label: "CHARGE", hi: false }] : []),
-                { val: `${currentEx.reposSec || 90}s`, label: "REPOS", hi: false },
-              ].map((stat, i) => (
-                <div key={i} style={{ flex: 1, background: stat.hi ? accentColor + "12" : DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 4px", textAlign: "center", border: stat.hi ? `1px solid ${accentColor}25` : "none" }}>
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 16, color: stat.hi ? accentColor : "white", fontWeight: 700 }}>{stat.val}</div>
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, marginTop: 2, letterSpacing: "0.08em" }}>{stat.label}</div>
-                </div>
-              ))}
-            </div>
-            {currentEx.conseil && (
-              <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 12px", display: "flex", alignItems: "flex-start", gap: 8 }}>
-                <span style={{ fontSize: 13, flexShrink: 0 }}>💡</span>
-                <p style={{ color: DS.colors.textSec, fontSize: 12, lineHeight: 1.5 }}>{currentEx.conseil}</p>
-              </div>
-            )}
-          </div>
+        {/* Nom */}
+        <div style={{ textAlign: "center", marginBottom: 14 }}>
+          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.25em", color: accentColor, marginBottom: 6 }}>EXERCICE {exIdx + 1}/{exercices.length}{currentEx.muscles ? ` · ${(currentEx.muscles || "").split(" ")[0].toUpperCase()}` : ""}</p>
+          <h1 style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, letterSpacing: "-0.02em", textTransform: "uppercase", color: "white" }}>{currentEx.nom}</h1>
+          {currentEx.conseil && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8, fontStyle: "italic" }}>💡 {currentEx.conseil}</p>}
         </div>
 
-        {/* Zone repos / sets */}
-        {waitingRest ? (
-          <button onClick={() => { setWaitingRest(false); setResting(true); }} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${accentColor}, ${accentColor}AA)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontSize: 15, cursor: "pointer", fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 14, boxShadow: `0 8px 24px ${accentColor}40` }}>
-            DEMARRER LE REPOS
-          </button>
-        ) : resting ? (
-          <RestTimer seconds={currentEx.reposSec || 90} onComplete={() => { setResting(false); setWaitingRest(false); setSetIdx(i => i + 1); }} />
-        ) : (
-          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 14 }}>
-            {/* Header sets */}
-            <div style={{ background: DS.colors.surfaceHigh, padding: "10px 18px", display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${DS.colors.border}` }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", flex: 1 }}>SERIE</p>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase" }}>OBJECTIF</p>
-            </div>
+        {/* Chiffre géant */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.3em", color: "rgba(255,255,255,0.4)", marginBottom: 2 }}>SÉRIE {setIdx + 1} SUR {totalSets}</p>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <span style={{ fontSize: 88, fontWeight: 900, lineHeight: 1, color: accentColor, letterSpacing: "-0.04em", textShadow: `0 0 50px ${accentColor}40` }}>{currentEx.reps}</span>
+            <span style={{ fontSize: 20, color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>{currentEx.chargeKg > 0 ? `× ${currentEx.chargeKg}kg` : "reps"}</span>
+          </div>
+
+          {/* Séries cercles */}
+          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
             {Array.from({ length: totalSets }).map((_, i) => {
-              const done = completedSets[`${exIdx}-${i}`];
-              const isActive = i === setIdx && !done;
+              const done = !!completedSets[`${exIdx}-${i}`];
+              const current = i === setIdx && !done;
               return (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderBottom: i < totalSets - 1 ? `1px solid ${DS.colors.border}` : "none", background: isActive ? accentColor + "06" : "transparent", opacity: done ? 0.4 : 1, transition: "all 0.2s" }}>
-                  <div style={{ width: 30, height: 30, borderRadius: DS.radius.full, background: done ? DS.colors.success + "20" : isActive ? accentColor + "20" : DS.colors.surfaceHigh, border: `2px solid ${done ? DS.colors.success : isActive ? accentColor : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {done ? <span style={{ color: DS.colors.success, fontSize: 14 }}>✓</span> : <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: isActive ? accentColor : DS.colors.textSec }}>{i + 1}</span>}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 13, color: isActive ? "white" : DS.colors.textSec, fontWeight: isActive ? 700 : 400 }}>
-                      {currentEx.sets} x {currentEx.reps}
-                      {currentEx.chargeKg > 0 && <span style={{ color: accentColor }}> @ {currentEx.chargeKg}kg</span>}
-                    </p>
-                    {isActive && <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, marginTop: 2, letterSpacing: "0.1em" }}>SERIE ACTIVE</p>}
-                  </div>
-                  <button onClick={() => isActive && handleSetComplete()} disabled={!isActive || done} style={{ width: 44, height: 44, borderRadius: DS.radius.md, background: done ? DS.colors.success + "15" : isActive ? accentColor : DS.colors.surfaceHigh, border: `1px solid ${done ? DS.colors.success : isActive ? accentColor : DS.colors.border}`, cursor: isActive && !done ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, transition: "all 0.2s", boxShadow: isActive && !done ? `0 4px 16px ${accentColor}50` : "none", flexShrink: 0 }}>
-                    {done ? <span style={{ color: DS.colors.success }}>✓</span> : <span style={{ color: isActive ? "#000" : DS.colors.textSec, fontWeight: 700 }}>→</span>}
-                  </button>
+                <div key={i} style={{ width: 38, height: 38, borderRadius: 19, background: done ? accentColor : current ? `${accentColor}20` : "rgba(255,255,255,0.06)", border: `2px solid ${done || current ? accentColor : "rgba(255,255,255,0.15)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: done ? "#000" : current ? accentColor : "rgba(255,255,255,0.3)", boxShadow: current ? `0 0 16px ${accentColor}50` : "none", transition: "all 0.3s" }}>
+                  {done ? "✓" : i + 1}
                 </div>
               );
             })}
           </div>
-        )}
+        </div>
 
-        {/* Exercices suivants */}
-        {exIdx < exercices.length - 1 && !resting && (
-          <div>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10 }}>ENSUITE</p>
-            {exercices.slice(exIdx + 1, exIdx + 3).map((ex, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 14px", marginBottom: 8, opacity: i === 0 ? 0.85 : 0.45 }}>
-                <div style={{ width: 32, height: 32, borderRadius: DS.radius.sm, background: `${accentColor}15`, border: `1px solid ${accentColor}25`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: accentColor }}>{exIdx + 2 + i}</p>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ color: DS.colors.textPrimary, fontSize: 13, ...s.heading }}>{ex.nom}</p>
-                  <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{(ex.muscles || "").split(" ")[0]}</p>
-                </div>
-                <p style={{ fontFamily: "'Space Mono',monospace", color: accentColor, fontSize: 12, fontWeight: 700 }}>{ex.sets}x{ex.reps}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Bouton massif */}
+        <button onClick={handleSetComplete} style={{ width: "100%", height: 64, background: accentColor, border: "none", borderRadius: 20, color: "#000", fontSize: 18, fontWeight: 900, letterSpacing: "-0.01em", cursor: "pointer", boxShadow: `0 8px 40px ${accentColor}40`, fontFamily: "'Inter',sans-serif" }}>
+          SÉRIE VALIDÉE ✓
+        </button>
       </div>
+
 
       {/* Bouton Coach IA flottant */}
       <button onClick={() => setShowCoach(true)} style={{ position: "fixed", bottom: 32, right: 20, width: 54, height: 54, borderRadius: DS.radius.full, background: accentColor, border: "none", color: "#000", fontSize: 22, cursor: "pointer", boxShadow: `0 0 24px ${accentColor}60`, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150 }}>
