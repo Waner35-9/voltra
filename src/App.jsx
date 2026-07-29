@@ -15,7 +15,7 @@ function getNiveauCycle(niveau) {
   return 1;
 }
 
-async function generateProgramIA({ sport, objectif, niveau, frequence, cycle }) {
+async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Pas de session");
   const startCycle = cycle || getNiveauCycle(niveau);
@@ -28,7 +28,7 @@ async function generateProgramIA({ sport, objectif, niveau, frequence, cycle }) 
         "Authorization": `Bearer ${session.access_token}`,
         "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle, startCycle }),
+      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle, startCycle, equipement, douleurs, poste }),
     }
   );
   const data = await res.json();
