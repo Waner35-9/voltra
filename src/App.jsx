@@ -541,12 +541,13 @@ async function getExercicePhoto(nom) {
 // ─────────────────────────────────────────────
 // ECRAN SEANCE LIVE
 // ─────────────────────────────────────────────
-function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
-  const [exIdx, setExIdx] = useState(0);
-  const [setIdx, setSetIdx] = useState(0);
+function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
+  const [exIdx, setExIdx] = useState(resumeState?.exIdx || 0);
+  const [setIdx, setSetIdx] = useState(resumeState?.setIdx || 0);
   const [resting, setResting] = useState(false);
   const [waitingRest, setWaitingRest] = useState(false);
-  const [completedSets, setCompletedSets] = useState({});
+  const [completedSets, setCompletedSets] = useState(resumeState?.completedSets || {});
+  const [showExitModal, setShowExitModal] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [animKey, setAnimKey] = useState(0);
@@ -557,7 +558,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
   const [coachInput, setCoachInput] = useState("");
   const [coachLoading, setCoachLoading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(null);
-  const [startTime] = useState(() => Date.now());
+  const [startTime] = useState(() => resumeState?.elapsed ? Date.now() - resumeState.elapsed * 1000 : Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [celebrate, setCelebrate] = useState(false);
 
@@ -699,6 +700,16 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
     }
   };
 
+  const handlePause = () => {
+    try {
+      localStorage.setItem("voltra_paused_session", JSON.stringify({
+        seance, exIdx, setIdx, completedSets, elapsed, sport, savedAt: Date.now()
+      }));
+    } catch (e) {}
+    setShowExitModal(false);
+    onBack();
+  };
+
   // ── ECRAN RECAPITULATIF ──
   if (showSummary) {
     const totalSetsCount = exercices.reduce((acc, ex) => acc + (ex.sets || 3), 0);
@@ -817,6 +828,39 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
         </div>
       )}
 
+      {/* Modal de sortie — stats + pause */}
+      {showExitModal && (() => {
+        const doneSets = Object.keys(completedSets).length;
+        const kgTotal = Math.round(Object.values(completedSets).reduce((a, s) => a + ((s.kg || 20) * (s.reps || 8)), 0));
+        const exosRestants = exercices.length - exIdx;
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+            <div style={{ width: "100%", maxWidth: 360, background: "#101418", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 24, padding: "28px 24px", textAlign: "center" }}>
+              <p style={{ fontSize: 40, marginBottom: 12 }}>😳</p>
+              <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 22, color: "white", marginBottom: 8, lineHeight: 1.15 }}>Tu abandonnes maintenant ?</h2>
+              {doneSets > 0 ? (
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.6, marginBottom: 20 }}>
+                  Tu as déjà validé <strong style={{ color: accentColor }}>{doneSets} série{doneSets > 1 ? "s" : ""}</strong>{kgTotal > 0 ? <> et soulevé <strong style={{ color: accentColor }}>{kgTotal} kg</strong></> : null}. Il ne reste que <strong style={{ color: "white" }}>{exosRestants} exercice{exosRestants > 1 ? "s" : ""}</strong>.
+                </p>
+              ) : (
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.6, marginBottom: 20 }}>
+                  La séance vient de commencer — c'est maintenant que tout se joue.
+                </p>
+              )}
+              <button onClick={() => setShowExitModal(false)} style={{ width: "100%", height: 56, background: accentColor, border: "none", borderRadius: 999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 17, fontWeight: 900, cursor: "pointer", marginBottom: 10, boxShadow: `0 8px 32px ${accentColor}40` }}>
+                JE CONTINUE 💪
+              </button>
+              <button onClick={handlePause} style={{ width: "100%", height: 48, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, color: "white", fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}>
+                ⏸ Mettre en pause — je reviens
+              </button>
+              <button onClick={() => { setShowExitModal(false); onBack(); }} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontFamily: "'Inter',sans-serif", fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
+                Quitter sans sauvegarder
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Photo immersive ── */}
       <div key={animKey} style={{ position: "relative", height: "36vh", minHeight: 260, overflow: "hidden", flexShrink: 0 }}>
         <div style={{ position: "absolute", inset: 0, backgroundImage: photoUrl ? `url(${photoUrl})` : "none", backgroundSize: "cover", backgroundPosition: "center", backgroundColor: "#101418" }} />
@@ -824,7 +868,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
 
         {/* Header sur la photo */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "50px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
-          <button onClick={onBack} style={{ width: 36, height: 36, borderRadius: 18, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", color: "white", fontSize: 15, cursor: "pointer" }}>✕</button>
+          <button onClick={() => setShowExitModal(true)} style={{ width: 36, height: 36, borderRadius: 18, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", color: "white", fontSize: 15, cursor: "pointer" }}>✕</button>
           <div style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", borderRadius: 20, padding: "6px 14px", border: "1px solid rgba(255,255,255,0.15)" }}>
             <p style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{formatElapsed(elapsed)}</p>
           </div>
@@ -2468,7 +2512,20 @@ function MatchsScreen({ user, onBack }) {
 
 // ─────────────────────────────────────────────
 // DASHBOARD
-function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs }) {
+function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs, onResumeSession }) {
+  // Séance en pause récupérable (< 2h)
+  const [pausedSession] = useState(() => {
+    try {
+      const raw = localStorage.getItem("voltra_paused_session");
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (Date.now() - data.savedAt > 2 * 60 * 60 * 1000) {
+        localStorage.removeItem("voltra_paused_session");
+        return null;
+      }
+      return data;
+    } catch { return null; }
+  });
   const sport = sportProp || "default";
   const theme = getSportTheme(sport);
   const progData = programme?.data_json;
@@ -2517,6 +2574,20 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
       </div>
 
       <div style={{ padding: "20px 16px 0" }}>
+
+        {/* Bannière reprise séance en pause */}
+        {pausedSession && (
+          <div onClick={() => onResumeSession && onResumeSession(pausedSession)} style={{ background: `linear-gradient(135deg, ${theme.accent}18, ${theme.accent}06)`, border: `1.5px solid ${theme.accent}50`, borderRadius: DS.radius.xl, padding: "16px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", boxShadow: `0 4px 20px ${theme.accent}20` }}>
+            <div style={{ width: 46, height: 46, borderRadius: 14, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, animation: "pulse 2s infinite" }}>⏸</div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 15, color: DS.colors.textPrimary, marginBottom: 2 }}>Séance en pause</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>
+                Tu en étais à l'exercice {(pausedSession.exIdx || 0) + 1}, série {(pausedSession.setIdx || 0) + 1} · {Object.keys(pausedSession.completedSets || {}).length} séries validées
+              </p>
+            </div>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 800, color: theme.accent, whiteSpace: "nowrap" }}>Reprendre →</p>
+          </div>
+        )}
 
         {/* Séance du jour — card sombre */}
         {!seance ? (
@@ -3529,6 +3600,7 @@ export default function VoltraApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
   const [seanceActive, setSeanceActive] = useState(null);
+  const [resumeState, setResumeState] = useState(null);
   const [programmeActif, setProgrammeActif] = useState(null);
   const [sportActif, setSportActif] = useState(null);
   const [onboardingData, setOnboardingData] = useState(null);
@@ -3838,6 +3910,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
       ) : seanceActive ? (
         <SeanceScreen
           isPro={isPro}
+          resumeState={resumeState}
           seance={seanceActive}
           sport={sportActif}
           onBack={() => setSeanceActive(null)}
@@ -3917,6 +3990,11 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
               derniereSeance={derniereSeance}
               sport={sportActif}
               onOpenMatchs={() => setShowMatchs(true)}
+              onResumeSession={(paused) => {
+                setResumeState({ exIdx: paused.exIdx, setIdx: paused.setIdx, completedSets: paused.completedSets, elapsed: paused.elapsed });
+                localStorage.removeItem("voltra_paused_session");
+                setSeanceActive(paused.seance);
+              }}
               onStartSession={() => {
                 const prog = programmeActif?.data_json;
                 const rawSeance = prog?.semaines?.[0]?.seances?.[0];
@@ -3939,6 +4017,8 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                     ordre: ex.ordre || i + 1,
                   }))
                 };
+                setResumeState(null);
+                localStorage.removeItem("voltra_paused_session");
                 setSeanceActive(seance);
               }}
             />
