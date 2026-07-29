@@ -570,21 +570,30 @@ function SeanceScreen({ seance, onFinish, onBack, sport }) {
 
   const formatElapsed = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
-  const exercices = seance.exercices;
-  const currentEx = exercices[exIdx];
+  const exercices = seance?.exercices || [];
+  const currentEx = exercices[exIdx] || null;
 
   // Message coach proactif quand exercice change
   useEffect(() => {
     if (!currentEx) return;
     setPhotoUrl(null);
     getExercicePhoto(currentEx.nom).then(url => setPhotoUrl(url));
-    // Message proactif du coach selon l'exercice
-    const setsCompletes = Object.keys(completedSets).filter(k => k.startsWith(`${exIdx}-`)).length;
     const intro = exIdx === 0
       ? `Séance lancée ! On commence par **${currentEx.nom}** — ${currentEx.sets} séries de ${currentEx.reps} reps. ${currentEx.chargeKg > 0 ? `Charge : ${currentEx.chargeKg}kg.` : ""} Je suis là si tu as besoin d'adapter. 💪`
       : `Exercice ${exIdx + 1}/${exercices.length} — **${currentEx.nom}**. ${currentEx.muscles ? `Muscles ciblés : ${currentEx.muscles}.` : ""} ${currentEx.chargeKg > 0 ? `${currentEx.chargeKg}kg, ${currentEx.sets}×${currentEx.reps}.` : `${currentEx.sets}×${currentEx.reps}.`}`;
     setCoachMessages([{ role: "assistant", text: intro }]);
-  }, [exIdx]);
+  }, [exIdx, currentEx?.nom]);
+
+  if (exercices.length === 0 && !showSummary) {
+    return (
+      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", textAlign: "center" }}>
+        <p style={{ fontSize: 48, marginBottom: 16 }}>⚠️</p>
+        <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 24, color: DS.colors.textPrimary, marginBottom: 8 }}>Séance introuvable</h2>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, marginBottom: 24 }}>Le programme n'a pas encore d'exercices. Attends que la génération soit terminée.</p>
+        <button onClick={() => onFinish && onFinish("skip", {}, 0)} style={{ padding: "12px 24px", background: DS.colors.primary, border: "none", borderRadius: DS.radius.full, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Retour au dashboard</button>
+      </div>
+    );
+  }
 
   if (!currentEx && !showSummary) return null;
 
