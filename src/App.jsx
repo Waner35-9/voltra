@@ -468,6 +468,33 @@ function RestTimer({ seconds, onComplete }) {
   );
 }
 
+// Cache local + Edge Function pour les GIFs animés ExerciseDB
+const gifCache = {};
+async function getExerciseGif(nomFr, nomEn) {
+  const key = (nomEn || nomFr || "").toLowerCase().trim();
+  if (!key) return null;
+  if (gifCache[key]) return gifCache[key];
+  try {
+    const stored = localStorage.getItem(`voltra_gif_${key}`);
+    if (stored) { gifCache[key] = stored; return stored; }
+  } catch (e) {}
+  try {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/exercise-gif`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
+      body: JSON.stringify({ nom: nomFr, nomEn: nomEn }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.gifUrl) {
+      gifCache[key] = data.gifUrl;
+      try { localStorage.setItem(`voltra_gif_${key}`, data.gifUrl); } catch (e) {}
+      return data.gifUrl;
+    }
+  } catch (e) {}
+  return null;
+}
+
 async function getExercicePhoto(nom) {
   const n = (nom || "").toLowerCase();
 
@@ -558,6 +585,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
   const [coachInput, setCoachInput] = useState("");
   const [coachLoading, setCoachLoading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(null);
+  const [gifUrl, setGifUrl] = useState(null);
   const [startTime] = useState(() => resumeState?.elapsed ? Date.now() - resumeState.elapsed * 1000 : Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [celebrate, setCelebrate] = useState(false);
@@ -597,7 +625,9 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
   useEffect(() => {
     if (!currentEx) return;
     setPhotoUrl(null);
+    setGifUrl(null);
     getExercicePhoto(currentEx.nom).then(url => setPhotoUrl(url));
+    getExerciseGif(currentEx.nom, currentEx.nomEn).then(url => setGifUrl(url));
     const intro = exIdx === 0
       ? `Séance lancée ! On commence par **${currentEx.nom}** — ${currentEx.sets} séries de ${currentEx.reps} reps. ${currentEx.chargeKg > 0 ? `Charge : ${currentEx.chargeKg}kg.` : ""} Je suis là si tu as besoin d'adapter. 💪`
       : `Exercice ${exIdx + 1}/${exercices.length} — **${currentEx.nom}**. ${currentEx.muscles ? `Muscles ciblés : ${currentEx.muscles}.` : ""} ${currentEx.chargeKg > 0 ? `${currentEx.chargeKg}kg, ${currentEx.sets}×${currentEx.reps}.` : `${currentEx.sets}×${currentEx.reps}.`}`;
@@ -863,8 +893,8 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
       {/* ── Photo immersive ── */}
       <div key={animKey} style={{ position: "relative", height: "36vh", minHeight: 260, overflow: "hidden", flexShrink: 0 }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: photoUrl ? `url(${photoUrl})` : "none", backgroundSize: "cover", backgroundPosition: "center", backgroundColor: "#101418" }} />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 35%, transparent 55%, #000 100%)" }} />
+        <div style={{ position: "absolute", inset: 0, backgroundImage: gifUrl ? `url(${gifUrl})` : photoUrl ? `url(${photoUrl})` : "none", backgroundSize: gifUrl ? "contain" : "cover", backgroundRepeat: "no-repeat", backgroundPosition: "center", backgroundColor: gifUrl ? "#FFFFFF" : "#101418" }} />
+        <div style={{ position: "absolute", inset: 0, background: gifUrl ? "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 70%, #000 100%)" : "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 35%, transparent 55%, #000 100%)" }} />
 
         {/* Header sur la photo */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "50px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
@@ -4008,6 +4038,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                   exercices: (rawSeance.exercices || []).map((ex, i) => ({
                     id: ex.id || `ex_${i}`,
                     nom: ex.nom || "Exercice",
+                    nomEn: ex.nomEn || ex.nom_en || "",
                     muscles: ex.muscles || "",
                     sets: ex.sets || 3,
                     reps: ex.reps || "8",
