@@ -795,7 +795,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
             {/* Nom exercice */}
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "16px 18px 18px" }}>
               <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 4 }}>{currentEx.muscles}</p>
-              <h2 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, lineHeight: 0.95, textShadow: "0 2px 12px rgba(0,0,0,0.8)", letterSpacing: "0.01em" }}>
+              <h2 style={{ ...s.display, fontSize: 30, color: "#FFFFFF", lineHeight: 0.95, textShadow: "0 2px 12px rgba(0,0,0,0.8)", letterSpacing: "0.01em" }}>
                 {(currentEx.nom || "").toUpperCase()}
               </h2>
             </div>
