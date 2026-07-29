@@ -333,9 +333,9 @@ const STRIPE_PLANS = {
 };
 
 const PLANS = [
-  { id: "monthly", label: "Mensuel", price: 12.99, unit: "/ mois", priceDetail: "Resiliable a tout moment", savings: null, color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: null, highlight: false },
-  { id: "annual", label: "Annuel", price: 69.99, unit: "/ an", priceDetail: "soit 5,83 / mois", savings: "Economise 58%", color: DS.colors.success, colorSoft: DS.colors.successSoft, colorBorder: "rgba(0,229,160,0.35)", badge: "Le plus populaire", highlight: true },
-  { id: "lifetime", label: "A vie", price: 149, unit: "une fois", priceDetail: "Acces permanent", savings: "Offre de lancement", color: DS.colors.gold, colorSoft: DS.colors.goldSoft, colorBorder: "rgba(255,209,102,0.35)", badge: "Limite", highlight: false, urgency: true },
+  { id: "annual", label: "Annuel", price: 119.99, displayPrice: "9,99€", unit: "/ mois", priceDetail: "Facturé 119,99€ par an", savings: "2 mois offerts", color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: "LE PLUS POPULAIRE", highlight: true },
+  { id: "monthly", label: "Mensuel", price: 14.99, displayPrice: "14,99€", unit: "/ mois", priceDetail: "-30% le 1er mois : 10,49€", savings: null, color: DS.colors.success, colorSoft: DS.colors.successSoft, colorBorder: "rgba(0,229,160,0.35)", badge: null, highlight: false },
+  { id: "lifetime", label: "À vie", price: 249, displayPrice: "249€", unit: "une fois", priceDetail: "Paiement unique · Accès à vie", savings: null, color: DS.colors.gold, colorSoft: DS.colors.goldSoft, colorBorder: "rgba(255,209,102,0.35)", badge: null, highlight: false },
 ];
 
 // ─────────────────────────────────────────────
@@ -2278,7 +2278,7 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
                 <div>
                   <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 4 }}>{plan.label}</p>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span style={{ ...s.display, fontSize: 32, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.price}€</span>
+                    <span style={{ ...s.display, fontSize: 32, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
                     <span style={{ color: DS.colors.textSec, fontSize: 14 }}>{plan.unit}</span>
                   </div>
                 </div>
@@ -3456,7 +3456,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
                 <div>
                   <p style={{ color: DS.colors.textSec, fontSize: 12, marginBottom: 4 }}>{plan.label}</p>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.price}€</span>
+                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
                     <span style={{ color: DS.colors.textSec, fontSize: 13 }}>{plan.unit}</span>
                   </div>
                 </div>
