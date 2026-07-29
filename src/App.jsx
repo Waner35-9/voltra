@@ -986,7 +986,7 @@ function PaymentSuccessScreen({ plan, onContinue }) {
   const planEmoji = plan === "lifetime" ? "💎" : plan === "annual" ? "⚡" : "🚀";
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.1), transparent)", pointerEvents: "none" }} />
 
       <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
@@ -1000,11 +1000,11 @@ function PaymentSuccessScreen({ plan, onContinue }) {
         {/* Texte */}
         <div style={{ opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "translateY(0)" : "translateY(20px)", transition: "all 0.5s ease" }}>
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#9BE84F", letterSpacing: "0.3em", marginBottom: 14 }}>PAIEMENT CONFIRMÉ</p>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em" }}>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em" }}>
             BIENVENUE DANS<br />L'ÉQUIPE PRO ⚡
           </h1>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, marginBottom: 8, lineHeight: 1.6 }}>
-            Plan <strong style={{ color: DS.colors.textPrimary }}>{planLabel}</strong> activé. Ton programme personnalisé est en cours de génération.
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 8, lineHeight: 1.6 }}>
+            Plan <strong style={{ color: "white" }}>{planLabel}</strong> activé. Ton programme personnalisé est en cours de génération.
           </p>
 
           {/* Features débloquées */}
@@ -1018,7 +1018,7 @@ function PaymentSuccessScreen({ plan, onContinue }) {
             ].map((f, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
                 <span style={{ fontSize: 16 }}>{f.emoji}</span>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textPrimary, fontWeight: 500 }}>{f.text}</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "white", fontWeight: 500 }}>{f.text}</p>
                 <svg style={{ marginLeft: "auto" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#9BE84F" strokeWidth="2.5" strokeLinecap="round"/></svg>
               </div>
             ))}
@@ -1105,7 +1105,7 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ width: 72, height: 72, borderRadius: 20, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, margin: "0 auto 16px", boxShadow: `0 0 50px ${theme.accent}50`, animation: "pulse 2s ease infinite" }}>⚡</div>
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 10 }}>GÉNÉRATION EN COURS</p>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, lineHeight: 1.1, letterSpacing: "0.02em" }}>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: "white", lineHeight: 1.1, letterSpacing: "0.02em" }}>
             Ton programme<br />se construit{dots}
           </h1>
         </div>
@@ -1113,10 +1113,10 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
         {/* Barre de progression */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>PROGRESSION</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.5)" }}>PROGRESSION</p>
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>{progress}%</p>
           </div>
-          <div style={{ background: DS.colors.surfaceHigh, borderRadius: 9999, height: 6, overflow: "hidden" }}>
+          <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 9999, height: 6, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${progress}%`, background: theme.accent, borderRadius: 9999, transition: "width 0.8s ease", boxShadow: `0 0 12px ${theme.accent}80` }} />
           </div>
         </div>
@@ -1138,9 +1138,9 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
         </div>
 
         {/* Fait du jour */}
-        <div key={fact} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 14, padding: "14px 16px", animation: "fadeIn 0.5s ease" }}>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.2em", marginBottom: 6 }}>LE SAVIEZ-VOUS ?</p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, lineHeight: 1.6 }}>{facts[fact]}</p>
+        <div key={fact} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px 16px", animation: "fadeIn 0.5s ease" }}>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.5)", letterSpacing: "0.2em", marginBottom: 6 }}>LE SAVIEZ-VOUS ?</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{facts[fact]}</p>
         </div>
       </div>
     </div>
