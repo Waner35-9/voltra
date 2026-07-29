@@ -541,7 +541,7 @@ async function getExercicePhoto(nom) {
 // ─────────────────────────────────────────────
 // ECRAN SEANCE LIVE
 // ─────────────────────────────────────────────
-function SeanceScreen({ seance, onFinish, onBack, sport }) {
+function SeanceScreen({ seance, onFinish, onBack, sport, isPro }) {
   const [exIdx, setExIdx] = useState(0);
   const [setIdx, setSetIdx] = useState(0);
   const [resting, setResting] = useState(false);
