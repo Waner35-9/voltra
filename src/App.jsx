@@ -1835,6 +1835,7 @@ function OnboardingScreen({ onComplete }) {
   const [genError, setGenError] = useState(false);
   const [animIn, setAnimIn] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [reaction, setReaction] = useState(null);
 
   const hasPoste = data.sport && data.sport !== "natation";
   const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau"];
@@ -1850,8 +1851,60 @@ function OnboardingScreen({ onComplete }) {
   const contentStep = getStepContent();
 
   const goNext = () => {
-    setAnimIn(false);
-    setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200);
+    // Génère un message de réaction personnalisé selon l'étape
+    const msg = getReactionMessage();
+    if (msg) {
+      setReaction(msg);
+      setAnimIn(false);
+      setTimeout(() => {
+        setReaction(null);
+        setStep(s => s + 1);
+        setAnimIn(true);
+      }, 1100);
+    } else {
+      setAnimIn(false);
+      setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200);
+    }
+  };
+
+  const getReactionMessage = () => {
+    const sportLabel = SPORTS.find(s => s.id === data.sport)?.label || data.sport;
+    if (contentStep === 0) {
+      const reactions = {
+        basketball: "On va cibler ta détente verticale 🚀",
+        football: "Programme calibré pour la vitesse et l'endurance ⚡",
+        tennis: "On travaille explosivité et réactivité 🎾",
+        rugby: "Préparation physique impact et puissance 🏉",
+        natation: "Endurance et puissance de nage en approche 🏊",
+        sprint: "On va chercher chaque dixième de seconde ⏱️",
+        combat: "Puissance et cardio de combattant en approche 🥊",
+      };
+      return reactions[data.sport] || `Programme ${sportLabel} en préparation 🎯`;
+    }
+    if (contentStep === 1) {
+      const reactions = {
+        explosivite: "Objectif explosivité noté — on va bosser le fast-twitch 💥",
+        force: "Objectif force noté — charges progressives à venir 🏋️",
+        endurance: "Objectif endurance noté — cardio et volume adaptés 🔥",
+        masse: "Objectif prise de masse noté — volume et surcharge calibrés 📈",
+        detente: "Objectif détente noté — pliométrie au programme 🚀",
+      };
+      return reactions[data.objectif] || "Objectif noté, programme ajusté 🎯";
+    }
+    if (contentStep === 2) {
+      return `Parfait, on cible les qualités clés de ton poste 🎯`;
+    }
+    if (contentStep === 3) {
+      if (data.douleurs.includes("aucune") || data.douleurs.length === 0) {
+        return "Aucune contrainte — on peut pousser fort 💪";
+      }
+      return "On adapte tes exercices pour te protéger 🛡️";
+    }
+    if (contentStep === 4) {
+      const eqLabel = EQUIPEMENTS.find(e => e.id === data.equipement)?.label || "";
+      return `Exercices sélectionnés pour "${eqLabel}" ✅`;
+    }
+    return null;
   };
 
   const handleFinish = () => {
@@ -1915,7 +1968,19 @@ function OnboardingScreen({ onComplete }) {
   const isLastStep = step === totalSteps - 1;
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px" }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
+
+      {/* Overlay micro-réaction */}
+      {reaction && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", animation: "fadeIn 0.3s ease" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 20, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 20, boxShadow: DS.shadow.primary, animation: "pop 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
+            ✓
+          </div>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 19, color: DS.colors.textPrimary, textAlign: "center", lineHeight: 1.4 }}>
+            {reaction}
+          </p>
+        </div>
+      )}
 
       {loading && (() => {
         const sportTheme = getSportTheme(data.sport);
@@ -3661,6 +3726,7 @@ export default function VoltraApp() {
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       @keyframes fillCircle { from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      @keyframes pop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
       @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
       @keyframes splashPulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(0,255,135,0.5)); } 50% { transform: scale(1.08); filter: drop-shadow(0 0 40px rgba(0,255,135,0.8)); } }
       @keyframes celebrate { 0% { transform: scale(0) rotate(-10deg); opacity: 0; } 50% { transform: scale(1.2) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
