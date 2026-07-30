@@ -2316,11 +2316,26 @@ function OnboardingScreen({ onComplete }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {DOULEURS.map(d => {
                 const selected = data.douleurs.includes(d.id);
+                const solutions = {
+                  epaule: "On évite le développé militaire et privilégie les mouvements en amplitude contrôlée",
+                  genou: "On adapte les squats en amplitude partielle et priorise les mouvements à faible impact",
+                  dos: "On remplace le soulevé de terre par des variantes protégées, gainage renforcé",
+                  cheville: "On évite les sauts à fort impact, on privilégie les mouvements au sol",
+                  poignet: "On remplace les appuis directs par des prises neutres ou sangles",
+                };
                 return (
-                  <div key={d.id} onClick={() => toggleDouleur(d.id)} style={{ background: selected ? (d.id === "aucune" ? DS.colors.successSoft : DS.colors.warningSoft) : DS.colors.surface, border: `1px solid ${selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "all 0.2s ease" }}>
-                    <span style={{ fontSize: 22 }}>{d.emoji}</span>
-                    <p style={{ color: selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.textPrimary, fontSize: 15, ...s.heading, flex: 1 }}>{d.label}</p>
-                    {selected && <div style={{ width: 20, height: 20, background: d.id === "aucune" ? DS.colors.success : DS.colors.warning, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
+                  <div key={d.id}>
+                    <div onClick={() => toggleDouleur(d.id)} style={{ background: selected ? (d.id === "aucune" ? DS.colors.successSoft : DS.colors.warningSoft) : DS.colors.surface, border: `1px solid ${selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "all 0.2s ease" }}>
+                      <span style={{ fontSize: 22 }}>{d.emoji}</span>
+                      <p style={{ color: selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.textPrimary, fontSize: 15, ...s.heading, flex: 1 }}>{d.label}</p>
+                      {selected && <div style={{ width: 20, height: 20, background: d.id === "aucune" ? DS.colors.success : DS.colors.warning, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
+                    </div>
+                    {selected && solutions[d.id] && (
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 14px 4px 18px", animation: "fadeIn 0.3s ease" }}>
+                        <span style={{ fontSize: 13, marginTop: 1 }}>🛡️</span>
+                        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, lineHeight: 1.5 }}>{solutions[d.id]}</p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
