@@ -861,7 +861,9 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
       {/* Modal de sortie — stats + pause */}
       {showExitModal && (() => {
         const doneSets = Object.keys(completedSets).length;
-        const kgTotal = Math.round(Object.values(completedSets).reduce((a, s) => a + ((s.kg || 20) * (s.reps || 8)), 0));
+        const setsWithWeight = Object.values(completedSets).filter(s => s.kg > 0);
+        const kgTotal = Math.round(setsWithWeight.reduce((a, s) => a + (s.kg * (s.reps || 8)), 0));
+        const totalReps = Object.values(completedSets).reduce((a, s) => a + (s.reps || 8), 0);
         const exosRestants = exercices.length - exIdx;
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
@@ -870,7 +872,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
               <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 22, color: "white", marginBottom: 8, lineHeight: 1.15 }}>Tu abandonnes maintenant ?</h2>
               {doneSets > 0 ? (
                 <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.6, marginBottom: 20 }}>
-                  Tu as déjà validé <strong style={{ color: accentColor }}>{doneSets} série{doneSets > 1 ? "s" : ""}</strong>{kgTotal > 0 ? <> et soulevé <strong style={{ color: accentColor }}>{kgTotal} kg</strong></> : null}. Il ne reste que <strong style={{ color: "white" }}>{exosRestants} exercice{exosRestants > 1 ? "s" : ""}</strong>.
+                  Tu as déjà validé <strong style={{ color: accentColor }}>{doneSets} série{doneSets > 1 ? "s" : ""}</strong>{kgTotal > 0 ? <> et soulevé <strong style={{ color: accentColor }}>{kgTotal} kg</strong></> : totalReps > 0 ? <> et fait <strong style={{ color: accentColor }}>{totalReps} répétitions</strong></> : null}. Il ne reste que <strong style={{ color: "white" }}>{exosRestants} exercice{exosRestants > 1 ? "s" : ""}</strong>.
                 </p>
               ) : (
                 <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.6, marginBottom: 20 }}>
@@ -3494,7 +3496,9 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
 
   const frequence = onboardingData?.frequence || 3;
   const totalSeances = frequence * 8; // 8 semaines
-  const kgTotal = Math.round(totalSeances * (18 + Math.random() * 6)); // estimation tonnage
+  const isBodyweight = onboardingData?.equipement === "maison" || onboardingData?.equipement === "terrain";
+  const kgTotal = Math.round(totalSeances * (18 + Math.random() * 6)); // estimation tonnage (materiel avec charges)
+  const totalReps = Math.round(totalSeances * (85 + Math.random() * 25)); // estimation repetitions (poids du corps)
 
   // Projection spécifique par objectif
   const projections = {
@@ -3508,7 +3512,9 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
 
   const stats = [
     { val: totalSeances, label: "SÉANCES", sub: "en 8 semaines", icon: "📅" },
-    { val: `${(kgTotal/1000).toFixed(1)}T`, label: "SOULEVÉES", sub: "au total estimé", icon: "💪" },
+    isBodyweight
+      ? { val: `${totalReps}`, label: "RÉPÉTITIONS", sub: "au total estimé", icon: "💪" }
+      : { val: `${(kgTotal/1000).toFixed(1)}T`, label: "SOULEVÉES", sub: "au total estimé", icon: "💪" },
     { val: proj.metric, label: proj.label.toUpperCase(), sub: "à ce rythme", icon: proj.icon },
   ];
 
@@ -3778,7 +3784,9 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
           {[
             { val: stats?.exercices || 0, label: "EXERCICES", color: theme.accent },
             { val: `${stats?.duree || 0}min`, label: "DUREE", color: "#00FF87" },
-            { val: stats?.totalKg > 0 ? `${stats.totalKg}kg` : "💪", label: stats?.totalKg > 0 ? "SOULEVE" : "EFFORT", color: "#FF8C00" },
+            stats?.totalKg > 0
+              ? { val: `${stats.totalKg}kg`, label: "SOULEVE", color: "#FF8C00" }
+              : { val: `${stats?.totalReps || 0}`, label: "REPETITIONS", color: "#FF8C00" },
           ].map((stat, i) => (
             <div key={i} style={{ flex: 1, background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
@@ -3795,7 +3803,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
             Ta progression vient de commencer.
           </p>
           <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
-            {stats?.totalKg > 0 ? `Tu viens de soulever ${stats.totalKg}kg. ` : ""}La vraie transformation commence maintenant — continue avec Pro pour débloquer toutes tes séances.
+            {stats?.totalKg > 0 ? `Tu viens de soulever ${stats.totalKg}kg. ` : stats?.totalReps > 0 ? `Tu viens de faire ${stats.totalReps} répétitions. ` : ""}La vraie transformation commence maintenant — continue avec Pro pour débloquer toutes tes séances.
           </p>
         </div>
 
@@ -4263,15 +4271,18 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
 
               // Si gratuit → paywall après la 1ère séance avec vraies stats
               if (!isPro) {
-                const totalKg = (seanceActive?.exercices || []).reduce((acc, ex) => {
-                  const charge = ex.chargeKg > 0 ? ex.chargeKg : 20;
-                  return acc + charge * (ex.sets || 3) * (parseInt(ex.reps) || 8);
+                const exos = seanceActive?.exercices || [];
+                const totalKg = exos.reduce((acc, ex) => {
+                  if (!(ex.chargeKg > 0)) return acc;
+                  return acc + ex.chargeKg * (ex.sets || 3) * (parseInt(ex.reps) || 8);
                 }, 0);
+                const totalReps = exos.reduce((acc, ex) => acc + (ex.sets || 3) * (parseInt(ex.reps) || 8), 0);
                 setLastSessionStats({
                   titre: seanceActive?.titre || "Seance",
-                  exercices: seanceActive?.exercices?.length || 0,
+                  exercices: exos.length || 0,
                   duree: durationMin,
                   totalKg: Math.round(totalKg),
+                  totalReps,
                   feedback,
                 });
                 setScreen("post-session-upsell");
