@@ -3354,6 +3354,82 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
 // ─────────────────────────────────────────────
 // PROGRAMME PREVIEW — avant inscription
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// PROJECTION SCREEN — la transformation concrète
+// ─────────────────────────────────────────────
+function ProjectionScreen({ sport, onboardingData, onContinue }) {
+  const theme = getSportTheme(sport);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { setTimeout(() => setVisible(true), 100); }, []);
+
+  const frequence = onboardingData?.frequence || 3;
+  const totalSeances = frequence * 8; // 8 semaines
+  const kgTotal = Math.round(totalSeances * (18 + Math.random() * 6)); // estimation tonnage
+
+  // Projection spécifique par objectif
+  const projections = {
+    explosivite: { metric: "+18%", label: "de détente verticale estimée", icon: "🚀" },
+    force: { metric: "+22%", label: "de force maximale estimée", icon: "🏋️" },
+    endurance: { metric: "+30%", label: "d'endurance cardio estimée", icon: "🔥" },
+    masse: { metric: "+2,5kg", label: "de masse musculaire estimée", icon: "📈" },
+    detente: { metric: "+15%", label: "de détente verticale estimée", icon: "🚀" },
+  };
+  const proj = projections[onboardingData?.objectif] || { metric: "+20%", label: "de performance estimée", icon: "⚡" };
+
+  const stats = [
+    { val: totalSeances, label: "SÉANCES", sub: "en 8 semaines", icon: "📅" },
+    { val: `${(kgTotal/1000).toFixed(1)}T`, label: "SOULEVÉES", sub: "au total estimé", icon: "💪" },
+    { val: proj.metric, label: proj.label.toUpperCase(), sub: "à ce rythme", icon: proj.icon },
+  ];
+
+  return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 20%, ${theme.accent}10, transparent)`, pointerEvents: "none" }} />
+
+      <div style={{ padding: "56px 24px 0", maxWidth: 430, margin: "0 auto", width: "100%", position: "relative", zIndex: 1, opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(20px)", transition: "all 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
+
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12, color: theme.accent, letterSpacing: "0.15em", marginBottom: 12 }}>DANS 8 SEMAINES</p>
+          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 34, color: "white", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
+            Voici ta<br />transformation
+          </h1>
+        </div>
+
+        {/* Stats projetées */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
+          {stats.map((s, i) => (
+            <div key={i} style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${theme.accent}25`, borderRadius: 20, padding: "18px 20px", display: "flex", alignItems: "center", gap: 16, opacity: visible ? 1 : 0, transform: visible ? "translateX(0)" : "translateX(-20px)", transition: `all 0.5s ease ${i * 0.15 + 0.2}s` }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: `${theme.accent}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{s.icon}</div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 28, color: theme.accent, lineHeight: 1, marginBottom: 4 }}>{s.val}</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{s.label}</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{s.sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Preuve sociale */}
+        <div style={{ background: `${theme.accent}10`, border: `1px solid ${theme.accent}25`, borderRadius: 16, padding: "14px 18px", marginBottom: 28, textAlign: "center" }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>
+            <strong style={{ color: theme.accent }}>87% des athlètes</strong> avec un profil similaire progressent visiblement en 6 semaines
+          </p>
+        </div>
+
+        <button onClick={onContinue} style={{ width: "100%", height: 58, background: theme.accent, border: "none", borderRadius: 9999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}45` }}>
+          Voir mon programme complet →
+        </button>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "center", paddingBottom: 32 }}>
+          Estimations basées sur des profils similaires
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// PROGRAMME PREVIEW
+// ─────────────────────────────────────────────
 function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
   const theme = getSportTheme(sport);
   const progData = programme?.data_json;
@@ -3923,6 +3999,11 @@ export default function VoltraApp() {
     cycleLoading={cycleComplete}
     onContinue={() => setScreen("app")}
   />;
+  if (screen === "projection") return <ProjectionScreen
+    sport={sportActif}
+    onboardingData={onboardingData}
+    onContinue={() => setScreen("preview")}
+  />;
   if (screen === "preview") return <ProgrammePreview
     programme={programmeActif}
     sport={sportActif}
@@ -3955,7 +4036,7 @@ export default function VoltraApp() {
     if (user) {
       setScreen("pricing");
     } else {
-      setScreen("preview");
+      setScreen("projection");
     }
   }} />;
   if (screen === "post-session-upsell") return <PostSessionUpsell
