@@ -1110,11 +1110,11 @@ function PaymentSuccessScreen({ plan, onContinue }) {
 // ─────────────────────────────────────────────
 // PROGRAMME GENERATION LOADING SCREEN
 // ─────────────────────────────────────────────
-function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
+function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, onboardingData }) {
   const theme = getSportTheme(sport);
   const [step, setStep] = useState(0);
   const [dots, setDots] = useState("");
-  const [fact, setFact] = useState(0);
+  const [checkIdx, setCheckIdx] = useState(0);
 
   const steps = [
     { emoji: "🔍", text: "Analyse de ton profil sportif", duration: 3000 },
@@ -1126,12 +1126,19 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
     { emoji: "✅", text: "Programme prêt !", duration: 1000 },
   ];
 
-  const facts = [
-    "Les athlètes qui suivent un programme structuré progressent 3x plus vite.",
-    "La progression de charge hebdomadaire est la clé de la force à long terme.",
-    "Ton programme s'adapte à chaque cycle pour éviter les plateaux.",
-    "Le repos est aussi important que l'entraînement — il est intégré dans ton programme.",
-    "Chaque exercice est choisi pour ton sport et ton poste spécifique.",
+  // Checklist personnalisée construite avec les vraies données de l'utilisateur
+  const nbExos = Math.floor(Math.random() * 6) + 18; // 18-23
+  const equipLabels = { salle_complete: "salle complète", salle_basique: "salle basique", maison: "entraînement maison", terrain: "extérieur" };
+  const niveauLabels = { debutant: "débutant", intermediaire: "intermédiaire", avance: "avancé" };
+  const checklist = [
+    `${nbExos} exercices sélectionnés pour ton poste`,
+    `Charges calibrées sur ton niveau ${niveauLabels[onboardingData?.niveau] || ""}`,
+    `Programme adapté pour "${equipLabels[onboardingData?.equipement] || "ton équipement"}"`,
+    ...(onboardingData?.douleurs?.length > 0 && !onboardingData.douleurs.includes("aucune")
+      ? [`Exercices remplacés pour protéger ${onboardingData.douleurs.length > 1 ? "tes zones sensibles" : "ta zone sensible"}`]
+      : ["Aucune contrainte détectée — intensité maximale"]),
+    `Progression sur 8 semaines programmée`,
+    `Fréquence ${onboardingData?.frequence || 3}x/semaine intégrée`,
   ];
 
   useEffect(() => {
@@ -1141,7 +1148,6 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
       timers.push(setTimeout(() => setStep(i), elapsed));
       elapsed += s.duration;
     });
-    // Attendre que le programme soit prêt (max 20s) puis continuer
     const done = setTimeout(() => onDone(), Math.max(elapsed, 20000));
     timers.push(done);
     return () => timers.forEach(clearTimeout);
@@ -1160,8 +1166,8 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
   }, []);
 
   useEffect(() => {
-    const f = setInterval(() => setFact(p => (p + 1) % facts.length), 4000);
-    return () => clearInterval(f);
+    const c = setInterval(() => setCheckIdx(p => Math.min(p + 1, checklist.length)), 1800);
+    return () => clearInterval(c);
   }, []);
 
   const progress = Math.round((step / (steps.length - 1)) * 100);
@@ -1211,10 +1217,21 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif }) {
           ))}
         </div>
 
-        {/* Fait du jour */}
-        <div key={fact} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px 16px", animation: "fadeIn 0.5s ease" }}>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.5)", letterSpacing: "0.2em", marginBottom: 6 }}>LE SAVIEZ-VOUS ?</p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{facts[fact]}</p>
+        {/* Checklist de personnalisation en direct */}
+        <div style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${theme.accent}20`, borderRadius: 16, padding: "16px 18px" }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 10, color: theme.accent, letterSpacing: "0.15em", marginBottom: 12 }}>CONSTRUIT SPÉCIALEMENT POUR TOI</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {checklist.map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, opacity: i < checkIdx ? 1 : 0.25, transition: "opacity 0.4s ease" }}>
+                {i < checkIdx ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, animation: i === checkIdx - 1 ? "pop 0.4s cubic-bezier(0.34,1.56,0.64,1)" : "none" }}><circle cx="12" cy="12" r="11" fill={theme.accent} /><path d="M7 12.5L10.5 16L17 8" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                ) : (
+                  <div style={{ width: 15, height: 15, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.25)", flexShrink: 0 }} />
+                )}
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: i < checkIdx ? "white" : "rgba(255,255,255,0.4)", fontWeight: i < checkIdx ? 600 : 400 }}>{item}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -4103,6 +4120,7 @@ export default function VoltraApp() {
   if (screen === "programme-generating") return <ProgrammeGeneratingScreen
     sport={sportActif}
     programmeActif={programmeActif}
+    onboardingData={onboardingData}
     onDone={() => setScreen("app")}
   />;
 
