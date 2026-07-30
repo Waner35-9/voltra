@@ -1836,6 +1836,7 @@ function OnboardingScreen({ onComplete }) {
   const [animIn, setAnimIn] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
   const [reaction, setReaction] = useState(null);
+  const [showSocialProof, setShowSocialProof] = useState(false);
 
   const hasPoste = data.sport && data.sport !== "natation";
   const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau"];
@@ -1858,13 +1859,24 @@ function OnboardingScreen({ onComplete }) {
       setAnimIn(false);
       setTimeout(() => {
         setReaction(null);
-        setStep(s => s + 1);
-        setAnimIn(true);
+        // Preuve sociale après l'étape Objectif (une seule fois)
+        if (contentStep === 1) {
+          setShowSocialProof(true);
+        } else {
+          setStep(s => s + 1);
+          setAnimIn(true);
+        }
       }, 1100);
     } else {
       setAnimIn(false);
       setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200);
     }
+  };
+
+  const dismissSocialProof = () => {
+    setShowSocialProof(false);
+    setStep(s => s + 1);
+    setAnimIn(true);
   };
 
   const getReactionMessage = () => {
@@ -1970,7 +1982,39 @@ function OnboardingScreen({ onComplete }) {
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
 
-      {/* Overlay micro-réaction */}
+      {/* Écran preuve sociale intercalé */}
+      {showSocialProof && (() => {
+        const sportLabel = (SPORTS.find(s => s.id === data.sport)?.label || data.sport || "").toLowerCase();
+        const objLabels = { explosivite: "l'explosivité", force: "la force", endurance: "l'endurance", masse: "la prise de masse", detente: "la détente" };
+        const objLabel = objLabels[data.objectif] || "leur objectif";
+        const pct = 78 + Math.floor(Math.random() * 15); // 78-92%
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", animation: "fadeIn 0.4s ease" }}>
+            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 30%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
+
+            <div style={{ position: "relative", zIndex: 1, textAlign: "center", maxWidth: 340 }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+                {["🏀","🥊","🏃","⚽"].map((e, i) => (
+                  <div key={i} style={{ width: 46, height: 46, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "2px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: i > 0 ? -12 : 0 }}>{e}</div>
+                ))}
+              </div>
+
+              <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 56, color: "#9BE84F", lineHeight: 1, letterSpacing: "-0.02em", marginBottom: 12 }}>{pct}%</p>
+              <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 19, color: "white", lineHeight: 1.4, marginBottom: 8 }}>
+                des athlètes en {sportLabel} progressent en {objLabel} dès les 6 premières semaines
+              </h2>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 32 }}>
+                avec un protocole IA personnalisé comme le tien
+              </p>
+
+              <button onClick={dismissSocialProof} style={{ width: "100%", height: 56, background: "#9BE84F", border: "none", borderRadius: 9999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 32px rgba(155,232,79,0.4)" }}>
+                Continuer →
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {reaction && (
         <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", animation: "fadeIn 0.3s ease" }}>
           <div style={{ width: 64, height: 64, borderRadius: 20, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 20, boxShadow: DS.shadow.primary, animation: "pop 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
