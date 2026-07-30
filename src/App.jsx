@@ -1837,6 +1837,7 @@ function OnboardingScreen({ onComplete }) {
   const [slideIndex, setSlideIndex] = useState(0);
   const [reaction, setReaction] = useState(null);
   const [showSocialProof, setShowSocialProof] = useState(false);
+  const [showCoachDemo, setShowCoachDemo] = useState(false);
 
   const hasPoste = data.sport && data.sport !== "natation";
   const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau"];
@@ -1982,7 +1983,60 @@ function OnboardingScreen({ onComplete }) {
   return (
     <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
 
-      {/* Écran preuve sociale intercalé */}
+      {/* Écran demo coach IA — avant génération */}
+      {showCoachDemo && (() => {
+        const CoachDemoContent = () => {
+          const [msgVisible, setMsgVisible] = useState(0);
+          useEffect(() => {
+            const t1 = setTimeout(() => setMsgVisible(1), 500);
+            const t2 = setTimeout(() => setMsgVisible(2), 1600);
+            const t3 = setTimeout(() => setMsgVisible(3), 2900);
+            return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+          }, []);
+          return (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28, minHeight: 180 }}>
+                {msgVisible >= 1 && (
+                  <div style={{ alignSelf: "flex-end", maxWidth: "78%", background: "#9BE84F", color: "#000", padding: "10px 14px", borderRadius: "18px 18px 4px 18px", fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, animation: "fadeIn 0.3s ease" }}>
+                    Je suis épuisé, j'y arrive plus 😮‍💨
+                  </div>
+                )}
+                {msgVisible >= 2 && (
+                  <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "flex-end", gap: 8, animation: "fadeIn 0.3s ease" }}>
+                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>🤖</div>
+                    <div style={{ maxWidth: "78%", background: "rgba(255,255,255,0.08)", color: "white", padding: "10px 14px", borderRadius: "18px 18px 18px 4px", fontFamily: "'Inter',sans-serif", fontSize: 13 }}>
+                      Pas de souci, on baisse la charge de <strong>15%</strong> pour cette série. On garde le volume, on protège ta forme 💪
+                    </div>
+                  </div>
+                )}
+                {msgVisible >= 3 && (
+                  <div style={{ alignSelf: "center", background: "rgba(155,232,79,0.12)", border: "1px solid rgba(155,232,79,0.3)", borderRadius: 12, padding: "6px 14px", marginTop: 4, animation: "fadeIn 0.3s ease" }}>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "#9BE84F", fontWeight: 600 }}>✓ Série adaptée en temps réel</p>
+                  </div>
+                )}
+              </div>
+              <button onClick={() => { setShowCoachDemo(false); handleFinish(); }} style={{ width: "100%", height: 56, background: "#9BE84F", border: "none", borderRadius: 9999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 32px rgba(155,232,79,0.4)" }}>
+                Générer mon programme →
+              </button>
+            </>
+          );
+        };
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", animation: "fadeIn 0.4s ease" }}>
+            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 20%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
+            <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 360 }}>
+              <div style={{ textAlign: "center", marginBottom: 28 }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, margin: "0 auto 14px", boxShadow: "0 0 40px rgba(155,232,79,0.4)" }}>🤖</div>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 11, color: "#9BE84F", letterSpacing: "0.15em", marginBottom: 8 }}>TON COACH IA</p>
+                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 24, color: "white", lineHeight: 1.2 }}>Il s'adapte à toi,<br />en temps réel</h2>
+              </div>
+              <CoachDemoContent />
+            </div>
+          </div>
+        );
+      })()}
+
+
       {showSocialProof && (() => {
         const sportLabel = (SPORTS.find(s => s.id === data.sport)?.label || data.sport || "").toLowerCase();
         const objLabels = { explosivite: "l'explosivité", force: "la force", endurance: "l'endurance", masse: "la prise de masse", detente: "la détente" };
@@ -2324,7 +2378,7 @@ function OnboardingScreen({ onComplete }) {
       </div>
 
       <div style={{ paddingBottom: 48, paddingTop: 24 }}>
-        <PrimaryButton onClick={isLastStep ? handleFinish : goNext} disabled={!canNext}>
+        <PrimaryButton onClick={isLastStep ? () => setShowCoachDemo(true) : goNext} disabled={!canNext}>
           {isLastStep ? "Generer mon programme" : "Continuer"}
         </PrimaryButton>
         {step > 0 && (
