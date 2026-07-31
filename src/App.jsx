@@ -584,6 +584,18 @@ async function getExercicePhoto(nom) {
 // ─────────────────────────────────────────────
 // ECRAN SEANCE LIVE
 // ─────────────────────────────────────────────
+// Verifie qu'une image se charge vraiment avant de l'utiliser (evite images cassees/404)
+function preloadImage(url) {
+  return new Promise((resolve) => {
+    if (!url) { resolve(false); return; }
+    const img = new Image();
+    const timeout = setTimeout(() => resolve(false), 4000);
+    img.onload = () => { clearTimeout(timeout); resolve(true); };
+    img.onerror = () => { clearTimeout(timeout); resolve(false); };
+    img.src = url;
+  });
+}
+
 function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
   const [exIdx, setExIdx] = useState(resumeState?.exIdx || 0);
   const [setIdx, setSetIdx] = useState(resumeState?.setIdx || 0);
@@ -642,8 +654,16 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
     if (!currentEx) return;
     setPhotoUrl(null);
     setGifUrl(null);
-    getExercicePhoto(currentEx.nom).then(url => setPhotoUrl(url));
-    getExerciseGif(currentEx.nom, currentEx.nomEn).then(url => setGifUrl(url));
+    // Priorite au GIF anime, verifie qu'il charge vraiment avant de l'afficher
+    getExerciseGif(currentEx.nom, currentEx.nomEn).then(async url => {
+      if (url && await preloadImage(url)) {
+        setGifUrl(url);
+      } else {
+        // Fallback photo, verifie aussi qu'elle charge
+        const photo = await getExercicePhoto(currentEx.nom);
+        if (photo && await preloadImage(photo)) setPhotoUrl(photo);
+      }
+    });
     const intro = exIdx === 0
       ? `Séance lancée ! On commence par **${currentEx.nom}** — ${currentEx.sets} séries de ${currentEx.reps} reps. ${currentEx.chargeKg > 0 ? `Charge : ${currentEx.chargeKg}kg.` : ""} Je suis là si tu as besoin d'adapter. 💪`
       : `Exercice ${exIdx + 1}/${exercices.length} — **${currentEx.nom}**. ${currentEx.muscles ? `Muscles ciblés : ${currentEx.muscles}.` : ""} ${currentEx.chargeKg > 0 ? `${currentEx.chargeKg}kg, ${currentEx.sets}×${currentEx.reps}.` : `${currentEx.sets}×${currentEx.reps}.`}`;
