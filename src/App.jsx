@@ -3511,10 +3511,10 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
   const proj = projections[onboardingData?.objectif] || { metric: "+20%", label: "de performance estimée", icon: "⚡" };
 
   const stats = [
-    { val: totalSeances, label: "SÉANCES", sub: "en 8 semaines", icon: "📅" },
+    { val: totalSeances, label: "SÉANCES · CYCLE 1", sub: "puis ça continue", icon: "📅" },
     isBodyweight
-      ? { val: `${totalReps}`, label: "RÉPÉTITIONS", sub: "au total estimé", icon: "💪" }
-      : { val: `${(kgTotal/1000).toFixed(1)}T`, label: "SOULEVÉES", sub: "au total estimé", icon: "💪" },
+      ? { val: `${totalReps}`, label: "RÉPÉTITIONS", sub: "sur ce premier cycle", icon: "💪" }
+      : { val: `${(kgTotal/1000).toFixed(1)}T`, label: "SOULEVÉES", sub: "sur ce premier cycle", icon: "💪" },
     { val: proj.metric, label: proj.label.toUpperCase(), sub: "à ce rythme", icon: proj.icon },
   ];
 
@@ -3525,7 +3525,7 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
       <div style={{ padding: "56px 24px 0", maxWidth: 430, margin: "0 auto", width: "100%", position: "relative", zIndex: 1, opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(20px)", transition: "all 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
 
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12, color: theme.accent, letterSpacing: "0.15em", marginBottom: 12 }}>DANS 8 SEMAINES</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12, color: theme.accent, letterSpacing: "0.15em", marginBottom: 12 }}>DÈS TON PREMIER CYCLE (8 SEMAINES)</p>
           <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 34, color: "white", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
             Voici ta<br />transformation
           </h1>
@@ -3543,6 +3543,14 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Continuité — pas juste 8 semaines */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 16px", marginBottom: 16 }}>
+          <span style={{ fontSize: 22 }}>♾️</span>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+            Et ce n'est que le <strong style={{ color: "white" }}>premier cycle</strong>. Ton programme évolue ensuite automatiquement — <strong style={{ color: theme.accent }}>progression continue toute l'année</strong>.
+          </p>
         </div>
 
         {/* Preuve sociale */}
@@ -3643,7 +3651,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
           {[
             { val: exercices.length || "5+", label: "Exos / séance", color: theme.accent },
-            { val: frequence * 8, label: "Séances", color: "#00FF87" },
+            { val: frequence * 8, label: "Séances / cycle", color: "#00FF87" },
             { val: "∞", label: "Progression", color: "#FF8C00" },
           ].map((stat, i) => (
             <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
