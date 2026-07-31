@@ -75,6 +75,22 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
     const { data: deload } = await supabase.rpc("check_deload_needed", { p_user_id: userId });
     if (deload) await supabase.rpc("appliquer_deload", { p_user_id: userId, p_raison: deload });
 
+    // Faire progresser reellement la semaine du programme selon les seances completees
+    const { data: progData } = await supabase.from("programmes").select("frequence, total_semaines, semaine_courante").eq("id", programmeId).single();
+    if (progData) {
+      const { count } = await supabase
+        .from("seances")
+        .select("*", { count: "exact", head: true })
+        .eq("programme_id", programmeId)
+        .eq("statut", "faite");
+      const freq = progData.frequence || 3;
+      const totalSem = progData.total_semaines || 4;
+      const nouvelleSemaine = Math.min(Math.floor((count || 1) / freq) + 1, totalSem);
+      if (nouvelleSemaine !== progData.semaine_courante) {
+        await supabase.from("programmes").update({ semaine_courante: nouvelleSemaine }).eq("id", programmeId);
+      }
+    }
+
     return { success: true, deload };
   } catch (err) {
     console.error("saveCompleteSession:", err);
@@ -2756,7 +2772,23 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
   const sport = sportProp || "default";
   const theme = getSportTheme(sport);
   const progData = programme?.data_json;
-  const seance = progData?.semaines?.[0]?.seances?.[0] || null;
+
+  // Determiner la vraie seance du jour selon la progression reelle
+  const [seanceIdxDansSemaine, setSeanceIdxDansSemaine] = useState(0);
+  useEffect(() => {
+    if (!programme?.id) return;
+    const freq = programme?.frequence || 1;
+    supabase
+      .from("seances")
+      .select("id", { count: "exact", head: true })
+      .eq("programme_id", programme.id)
+      .eq("statut", "faite")
+      .then(({ count }) => setSeanceIdxDansSemaine((count || 0) % freq));
+  }, [programme?.id, programme?.frequence]);
+
+  const semaineIdx = Math.max(0, Math.min((programme?.semaine_courante || 1) - 1, (progData?.semaines?.length || 1) - 1));
+  const seancesSemaine = progData?.semaines?.[semaineIdx]?.seances || progData?.semaines?.[0]?.seances || [];
+  const seance = seancesSemaine[seanceIdxDansSemaine] || seancesSemaine[0] || null;
   const exercices = seance?.exercices || [];
 
   const prog = {
@@ -2866,7 +2898,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
             </div>
 
             <div style={{ padding: "0 16px 16px" }}>
-              <button onClick={onStartSession} style={{ width: "100%", height: 50, background: theme.accent, border: "none", borderRadius: DS.radius.lg, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.01em" }}>
+              <button onClick={() => onStartSession(seance)} style={{ width: "100%", height: 50, background: theme.accent, border: "none", borderRadius: DS.radius.lg, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.01em" }}>
                 Démarrer la séance →
               </button>
             </div>
@@ -4322,9 +4354,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                 localStorage.removeItem("voltra_paused_session");
                 setSeanceActive(paused.seance);
               }}
-              onStartSession={() => {
-                const prog = programmeActif?.data_json;
-                const rawSeance = prog?.semaines?.[0]?.seances?.[0];
+              onStartSession={(rawSeance) => {
                 if (!rawSeance) {
                   console.warn("Pas de séance disponible");
                   return;
