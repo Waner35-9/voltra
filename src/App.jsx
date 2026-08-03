@@ -3322,6 +3322,34 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
   const [lastSessionStats, setLastSessionStats] = useState(null);
   const [cycleComplete, setCycleComplete] = useState(false);
   const [streak, setStreak] = useState(0);
+  const [avatarUrl, setAvatarUrl] = useState(user?.user_metadata?.avatar_url || null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert("Image trop lourde (max 5Mo)"); return; }
+    setUploadingAvatar(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const ext = file.name.split(".").pop();
+      const fileName = `${session.user.id}-${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(fileName);
+      await supabase.auth.updateUser({ data: { avatar_url: pub.publicUrl } });
+      await supabase.from("profiles").upsert({ id: session.user.id, avatar_url: pub.publicUrl }, { onConflict: "id" });
+      setAvatarUrl(pub.publicUrl);
+    } catch (err) {
+      console.error("Erreur upload avatar:", err.message);
+      alert("Erreur lors de l'envoi de la photo");
+    }
+    setUploadingAvatar(false);
+  };
 
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
   const progData = programme?.data_json;
@@ -3441,8 +3469,21 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
       {/* Header hero */}
       <div style={{ padding: "60px 24px 32px", position: "relative", zIndex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ width: 72, height: 72, background: theme.accent + "20", border: `2px solid ${theme.accent}50`, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, ...s.display, color: theme.accent, flexShrink: 0, boxShadow: `0 0 30px ${theme.accent}20` }}>
-            {userName[0].toUpperCase()}
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: "none" }} />
+          <div onClick={() => fileInputRef.current?.click()} style={{ position: "relative", width: 72, height: 72, flexShrink: 0, cursor: "pointer" }}>
+            <div style={{ width: 72, height: 72, background: avatarUrl ? "transparent" : theme.accent + "20", border: `2px solid ${theme.accent}50`, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, ...s.display, color: theme.accent, overflow: "hidden", boxShadow: `0 0 30px ${theme.accent}20` }}>
+              {uploadingAvatar ? (
+                <div style={{ width: 20, height: 20, border: `2px solid ${theme.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              ) : avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                userName[0].toUpperCase()
+              )}
+            </div>
+            {/* Bouton camera */}
+            <div style={{ position: "absolute", bottom: -4, right: -4, width: 26, height: 26, borderRadius: "50%", background: theme.accent, border: `2px solid ${DS.colors.bg}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="13" r="4" stroke="#000" strokeWidth="2"/></svg>
+            </div>
           </div>
           <div>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "2px 8px", marginBottom: 6 }}>
