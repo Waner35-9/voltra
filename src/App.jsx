@@ -102,6 +102,30 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
 // ─────────────────────────────────────────────
 // SPORT THEMES
 // ─────────────────────────────────────────────
+// Avatar du coach IA "Ace" - style manga guerrier
+function AceAvatar({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ borderRadius: "50%", flexShrink: 0 }}>
+      <defs>
+        <linearGradient id="aceSkin" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#2A2A2E" />
+          <stop offset="100%" stopColor="#141416" />
+        </linearGradient>
+      </defs>
+      <rect width="100" height="100" rx="26" fill="#0A0A0C" />
+      <path d="M30 38 Q30 20 50 20 Q70 20 70 38 L70 55 Q70 68 58 74 L50 78 L42 74 Q30 68 30 55 Z" fill="url(#aceSkin)" stroke="#9BE84F" strokeWidth="1.2" />
+      <path d="M28 34 L22 14 L34 26 L38 8 L44 24 L50 6 L56 24 L62 8 L66 26 L78 14 L72 34" fill="#0A0A0C" stroke="#9BE84F" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M35 42 L45 45" stroke="#9BE84F" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M65 42 L55 45" stroke="#9BE84F" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M36 49 L44 49" stroke="#9BE84F" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M56 49 L64 49" stroke="#9BE84F" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M50 50 L48 60 L52 60" stroke="#5A5A5E" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <path d="M43 67 Q50 70 57 67" stroke="#9BE84F" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+      <path d="M60 34 L64 46" stroke="#9BE84F" strokeWidth="1.3" strokeLinecap="round" opacity="0.7" />
+    </svg>
+  );
+}
+
 const SPORT_THEMES = {
   basketball: { accent: "#FF8C00", accentRgb: "255,140,0", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(255,140,0,0.06), transparent)" },
   football:   { accent: "#00D94F", accentRgb: "0,217,79",  bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(0,217,79,0.06), transparent)" },
@@ -940,7 +964,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
           <div style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", borderRadius: 20, padding: "6px 14px", border: "1px solid rgba(255,255,255,0.15)" }}>
             <p style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{formatElapsed(elapsed)}</p>
           </div>
-          <button onClick={() => setShowCoach(true)} style={{ width: 36, height: 36, borderRadius: 18, background: `${accentColor}30`, backdropFilter: "blur(10px)", border: `1px solid ${accentColor}60`, fontSize: 15, cursor: "pointer" }}>🤖</button>
+          <button onClick={() => setShowCoach(true)} style={{ width: 36, height: 36, borderRadius: 18, background: `${accentColor}30`, backdropFilter: "blur(10px)", border: `1px solid ${accentColor}60`, cursor: "pointer", padding: 3, display: "flex", alignItems: "center", justifyContent: "center" }}><AceAvatar size={28} /></button>
         </div>
 
         {/* Progression exercices — segments */}
@@ -997,7 +1021,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
       {/* Bouton Coach IA flottant */}
       <button onClick={() => setShowCoach(true)} style={{ position: "fixed", bottom: 32, right: 20, width: 54, height: 54, borderRadius: DS.radius.full, background: accentColor, border: "none", color: "#000", fontSize: 22, cursor: "pointer", boxShadow: `0 0 24px ${accentColor}60`, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150 }}>
-        🤖
+        <AceAvatar size={22} />
       </button>
 
       {/* Drawer Coach IA */}
@@ -1007,7 +1031,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
           <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "0 0 40px", maxHeight: "75vh", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "18px 20px 14px", borderBottom: `1px solid ${DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: DS.radius.full, background: accentColor + "20", border: `1px solid ${accentColor}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🤖</div>
+                <div style={{ width: 36, height: 36, borderRadius: DS.radius.full, background: accentColor + "20", border: `1px solid ${accentColor}40`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><AceAvatar size={30} /></div>
                 <div>
                   <p style={{ ...s.heading, fontSize: 15, color: DS.colors.textPrimary }}>Coach IA</p>
                   <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.15em" }}>EN LIGNE</p>
@@ -1034,7 +1058,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
               {coachMessages.map((msg, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8 }}>
                   {msg.role === "assistant" && (
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0, marginBottom: 2 }}>🤖</div>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0, marginBottom: 2 }}><AceAvatar size={28} /></div>
                   )}
                   <div style={{ maxWidth: "78%", padding: "10px 14px", borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: msg.role === "user" ? accentColor : "rgba(255,255,255,0.08)", color: msg.role === "user" ? "#000" : "white", fontSize: 13, lineHeight: 1.6, fontFamily: "'Inter',sans-serif", fontWeight: msg.role === "user" ? 600 : 400 }}>
                     {msg.text.split("**").map((part, j) => j % 2 === 1 ? <strong key={j}>{part}</strong> : part)}
@@ -1043,7 +1067,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
               ))}
               {coachLoading && (
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>🤖</div>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><AceAvatar size={28} /></div>
                   <div style={{ display: "flex", gap: 4, padding: "12px 16px", background: DS.colors.surfaceHigh, borderRadius: "18px 18px 18px 4px" }}>
                     {[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: accentColor, animation: `pulse 1s ease ${i*0.2}s infinite` }} />)}
                   </div>
@@ -1072,7 +1096,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
             </div>
             {/* Input */}
             <div style={{ padding: "8px 16px 4px", display: "flex", gap: 8 }}>
-              <input value={coachInput} onChange={e => !coachBlocked && setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder={coachBlocked ? "Limite atteinte — Passe en Pro" : "Parle à ton coach..."} style={{ flex: 1, height: 44, padding: "0 16px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 14, outline: "none", fontFamily: "'Inter',sans-serif" }} />
+              <input value={coachInput} onChange={e => !coachBlocked && setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder={coachBlocked ? "Limite atteinte — Passe en Pro" : "Parle à Ace..."} style={{ flex: 1, height: 44, padding: "0 16px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 14, outline: "none", fontFamily: "'Inter',sans-serif" }} />
               <button onClick={sendCoachMessage} disabled={!coachInput.trim() || coachLoading} style={{ width: 44, height: 44, borderRadius: DS.radius.full, background: coachInput.trim() ? accentColor : "rgba(255,255,255,0.08)", border: "none", color: coachInput.trim() ? "#000" : "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 18, flexShrink: 0, fontWeight: 700 }}>→</button>
             </div>
           </div>
@@ -2058,7 +2082,7 @@ function OnboardingScreen({ onComplete }) {
                 )}
                 {msgVisible >= 2 && (
                   <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "flex-end", gap: 8, animation: "fadeIn 0.3s ease" }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>🤖</div>
+                    <div style={{ width: 26, height: 26, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><AceAvatar size={26} /></div>
                     <div style={{ maxWidth: "78%", background: "rgba(255,255,255,0.08)", color: "white", padding: "10px 14px", borderRadius: "18px 18px 18px 4px", fontFamily: "'Inter',sans-serif", fontSize: 13 }}>
                       Pas de souci, on baisse la charge de <strong>15%</strong> pour cette série. On garde le volume, on protège ta forme 💪
                     </div>
@@ -2081,8 +2105,8 @@ function OnboardingScreen({ onComplete }) {
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 20%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
             <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 360 }}>
               <div style={{ textAlign: "center", marginBottom: 28 }}>
-                <div style={{ width: 56, height: 56, borderRadius: 16, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, margin: "0 auto 14px", boxShadow: "0 0 40px rgba(155,232,79,0.4)" }}>🤖</div>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 11, color: "#9BE84F", letterSpacing: "0.15em", marginBottom: 8 }}>TON COACH IA</p>
+                <div style={{ width: 56, height: 56, borderRadius: 16, overflow: "hidden", margin: "0 auto 14px", boxShadow: "0 0 40px rgba(155,232,79,0.4)" }}><AceAvatar size={56} /></div>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 11, color: "#9BE84F", letterSpacing: "0.15em", marginBottom: 8 }}>ACE — TON COACH IA</p>
                 <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 24, color: "white", lineHeight: 1.2 }}>Il s'adapte à toi,<br />en temps réel</h2>
               </div>
               <CoachDemoContent />
