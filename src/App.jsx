@@ -3323,6 +3323,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
   const [cycleComplete, setCycleComplete] = useState(false);
   const [streak, setStreak] = useState(0);
   const [recordKg, setRecordKg] = useState(0);
+  const [seancesFaitesSemaine, setSeancesFaitesSemaine] = useState([]);
   const [totalSeancesAllTime, setTotalSeancesAllTime] = useState(0);
   const memberSinceDays = user?.created_at ? Math.floor((Date.now() - new Date(user.created_at)) / (1000 * 60 * 60 * 24)) : 0;
   const [avatarUrl, setAvatarUrl] = useState(user?.user_metadata?.avatar_url || null);
@@ -3397,6 +3398,19 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
           if (kgSeance > maxKg) maxKg = kgSeance;
         });
         setRecordKg(Math.round(maxKg));
+      }
+      // Seances faites cette semaine (pour le calendrier)
+      const now = new Date();
+      const dayOfWeek = (now.getDay() + 6) % 7; // lundi=0
+      const monday = new Date(now); monday.setDate(now.getDate() - dayOfWeek); monday.setHours(0, 0, 0, 0);
+      const { data: weekData } = await supabase
+        .from("seances")
+        .select("date_realisee")
+        .eq("user_id", session.user.id)
+        .eq("statut", "faite")
+        .gte("date_realisee", monday.toISOString());
+      if (weekData) {
+        setSeancesFaitesSemaine(weekData.map(d => new Date(d.date_realisee).getDay()));
       }
     });
   }, []);
@@ -3575,6 +3589,44 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
               </div>
             </div>
           )}
+        </div>
+
+        {/* Calendrier de la semaine */}
+        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase" }}>Cette semaine</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>{seancesFaitesSemaine.length}/{frequence} séances</p>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {(() => {
+              const jours = ["L", "M", "M", "J", "V", "S", "D"];
+              const joursIdx = [1, 2, 3, 4, 5, 6, 0]; // getDay() index: L=1..D=0
+              const todayIdx = new Date().getDay();
+              const planPositions = {
+                1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5],
+              }[Math.min(frequence, 4)] || [1, 2, 3, 4, 5];
+              return jours.map((j, i) => {
+                const dayNum = joursIdx[i];
+                const isPlanned = planPositions.includes(dayNum);
+                const isDone = seancesFaitesSemaine.includes(dayNum);
+                const isToday = dayNum === todayIdx;
+                return (
+                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: isToday ? theme.accent : DS.colors.textDim, fontWeight: isToday ? 700 : 400 }}>{j}</p>
+                    <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, background: isDone ? theme.accent : isPlanned ? theme.accent + "15" : DS.colors.surfaceHigh, border: `1.5px solid ${isDone ? theme.accent : isPlanned ? theme.accent + "40" : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isToday ? `0 0 0 2px ${theme.accent}30` : "none" }}>
+                      {isDone ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#000" strokeWidth="3" strokeLinecap="round" /></svg>
+                      ) : isPlanned ? (
+                        <span style={{ fontSize: 12 }}>💪</span>
+                      ) : (
+                        <span style={{ fontSize: 10, color: DS.colors.textDim }}>·</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
         </div>
 
         {/* Historique des cycles — badges */}
