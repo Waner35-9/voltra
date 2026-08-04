@@ -3363,6 +3363,8 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
   const objectif = progData?.objectif || "Non defini";
   const frequence = progData?.frequence || 3;
   const theme = getSportTheme(sport);
+  const currentCycle = progData?.cycle || getNiveauCycle(progData?.niveau) || 1;
+  const startCycle = progData?.startCycle || getNiveauCycle(progData?.niveau) || 1;
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -3556,13 +3558,39 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
               <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading }}>{programme?.titre || "Aucun programme"}</p>
             </div>
             <div style={{ background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "4px 10px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent }}>CYCLE {semaineCourante}</p>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent }}>CYCLE {currentCycle}</p>
             </div>
           </div>
           <ProgressBar value={progression} />
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>{frequence}x / semaine</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>CYCLE {semaineCourante} · {progression}%</p>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>Semaine {semaineCourante}/{totalSemaines} · {progression}%</p>
+          </div>
+        </div>
+
+        {/* Historique des cycles — badges */}
+        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
+          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 14 }}>Parcours de cycles</p>
+          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+            {(() => {
+              const cycleInfo = (n) => n === 1 ? { label: "Fondations", emoji: "🌱" } : n === 2 ? { label: "Intensification", emoji: "⚡" } : n === 3 ? { label: "Puissance", emoji: "🔥" } : n === 4 ? { label: "Elite", emoji: "💎" } : { label: `Elite+${n - 4}`, emoji: "🚀" };
+              const maxDisplay = Math.max(currentCycle, 4);
+              return Array.from({ length: maxDisplay }, (_, i) => i + 1).map(n => {
+                const info = cycleInfo(n);
+                const isDone = currentCycle > n && n >= startCycle;
+                const isSkipped = n < startCycle;
+                const isCurrent = currentCycle === n;
+                return (
+                  <div key={n} style={{ flexShrink: 0, width: 72, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, opacity: isSkipped ? 0.35 : 1 }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 16, background: isDone ? theme.accent : isCurrent ? theme.accent + "20" : DS.colors.surfaceHigh, border: `2px solid ${isDone || isCurrent ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: isCurrent ? `0 0 16px ${theme.accent}50` : "none" }}>
+                      {isSkipped ? "—" : info.emoji}
+                    </div>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, fontWeight: isCurrent ? 700 : 500, color: isCurrent ? theme.accent : DS.colors.textSec, textAlign: "center", lineHeight: 1.2 }}>{info.label}</p>
+                    {isDone && <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: theme.accent }}>✓ FAIT</p>}
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
 
