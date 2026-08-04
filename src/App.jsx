@@ -3322,6 +3322,9 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
   const [lastSessionStats, setLastSessionStats] = useState(null);
   const [cycleComplete, setCycleComplete] = useState(false);
   const [streak, setStreak] = useState(0);
+  const [recordKg, setRecordKg] = useState(0);
+  const [totalSeancesAllTime, setTotalSeancesAllTime] = useState(0);
+  const memberSinceDays = user?.created_at ? Math.floor((Date.now() - new Date(user.created_at)) / (1000 * 60 * 60 * 24)) : 0;
   const [avatarUrl, setAvatarUrl] = useState(user?.user_metadata?.avatar_url || null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef(null);
@@ -3374,6 +3377,24 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
           else break;
         }
         setStreak(s);
+      }
+      // Record de kg soulevés en une seule seance + total seances toutes periodes
+      const { data: allSeances, count: totalCount } = await supabase
+        .from("seances")
+        .select("id, exercices(charge_kg, sets, reps)", { count: "exact" })
+        .eq("user_id", session.user.id)
+        .eq("statut", "faite");
+      if (allSeances) {
+        setTotalSeancesAllTime(totalCount || allSeances.length);
+        let maxKg = 0;
+        allSeances.forEach(sc => {
+          const kgSeance = (sc.exercices || []).reduce((acc, ex) => {
+            if (!(ex.charge_kg > 0)) return acc;
+            return acc + ex.charge_kg * (ex.sets || 1) * (parseInt(ex.reps) || 1);
+          }, 0);
+          if (kgSeance > maxKg) maxKg = kgSeance;
+        });
+        setRecordKg(Math.round(maxKg));
       }
     });
   }, []);
@@ -3499,11 +3520,24 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
       <div style={{ padding: "0 20px", position: "relative", zIndex: 1 }}>
 
         {/* Stats rapides */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
           {[
-            { val: seancesCount, label: "Seances", color: theme.accent },
+            { val: totalSeancesAllTime || seancesCount, label: "Seances", color: theme.accent },
             { val: streak, label: "Streak", color: DS.colors.success },
             { val: `${progression}%`, label: "Progres", color: DS.colors.warning },
+          ].map((stat, i) => (
+            <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 22, fontWeight: 700, color: stat.color, lineHeight: 1, marginBottom: 4 }}>{stat.val}</p>
+              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em", textTransform: "uppercase" }}>{stat.label}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
+          {[
+            { val: recordKg > 0 ? `${recordKg}` : "—", label: "Record kg", color: "#FF8C00" },
+            { val: memberSinceDays, label: "Jours actif", color: "#00C8FF" },
+            { val: `${seancesCount}`, label: "Ce mois", color: DS.colors.textSec },
           ].map((stat, i) => (
             <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
