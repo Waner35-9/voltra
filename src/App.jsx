@@ -3566,6 +3566,15 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>{frequence}x / semaine</p>
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>Semaine {semaineCourante}/{totalSemaines} · {progression}%</p>
           </div>
+          {objectif && objectif !== "Non defini" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${DS.colors.border}` }}>
+              <span style={{ fontSize: 16 }}>🎯</span>
+              <div>
+                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.1em", textTransform: "uppercase" }}>Ton objectif</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, textTransform: "capitalize" }}>{objectif}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Historique des cycles — badges */}
