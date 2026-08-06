@@ -4165,6 +4165,29 @@ export default function VoltraApp() {
   const [showMatchs, setShowMatchs] = useState(false);
   const [derniereSeance, setDerniereSeance] = useState(null);
   const [isPro, setIsPro] = useState(false);
+  const [showDoubleSessionWarning, setShowDoubleSessionWarning] = useState(false);
+  const [pendingSeance, setPendingSeance] = useState(null);
+
+  const launchSeance = (rawSeance) => {
+    const seance = {
+      ...rawSeance,
+      exercices: (rawSeance.exercices || []).map((ex, i) => ({
+        id: ex.id || `ex_${i}`,
+        nom: ex.nom || "Exercice",
+        nomEn: ex.nomEn || ex.nom_en || "",
+        muscles: ex.muscles || "",
+        sets: ex.sets || 3,
+        reps: ex.reps || "8",
+        chargeKg: ex.chargeKg || ex.charge_kg || 0,
+        reposSec: ex.reposSec || ex.repos_sec || 90,
+        conseil: ex.conseil || "",
+        ordre: ex.ordre || i + 1,
+      }))
+    };
+    setResumeState(null);
+    localStorage.removeItem("voltra_paused_session");
+    setSeanceActive(seance);
+  };
   const [showUpsell, setShowUpsell] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
@@ -4463,6 +4486,25 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
   return (
     <div key={`${appTheme}-${screen}`} style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
 
+      {/* Avertissement 2eme seance dans la journee (Pro uniquement) */}
+      {showDoubleSessionWarning && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
+          <div style={{ width: "100%", maxWidth: 360, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 24, padding: "28px 24px", textAlign: "center" }}>
+            <p style={{ fontSize: 40, marginBottom: 12 }}>💪</p>
+            <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 20, color: DS.colors.textPrimary, marginBottom: 8, lineHeight: 1.15 }}>Tu as déjà fait une séance aujourd'hui</h2>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, lineHeight: 1.6, marginBottom: 20 }}>
+              Le repos fait partie de la progression. Es-tu sûr de vouloir enchaîner une 2ème séance ?
+            </p>
+            <button onClick={() => { setShowDoubleSessionWarning(false); if (pendingSeance) launchSeance(pendingSeance); setPendingSeance(null); }} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: 999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 800, cursor: "pointer", marginBottom: 10 }}>
+              Oui, je continue
+            </button>
+            <button onClick={() => { setShowDoubleSessionWarning(false); setPendingSeance(null); }} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textSec, fontFamily: "'Inter',sans-serif", fontSize: 13, cursor: "pointer" }}>
+              Non, à demain
+            </button>
+          </div>
+        </div>
+      )}
+
       {showMatchs ? (
         <MatchsScreen user={user} onBack={() => {
           setShowMatchs(false);
@@ -4562,30 +4604,35 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                 localStorage.removeItem("voltra_paused_session");
                 setSeanceActive(paused.seance);
               }}
-              onStartSession={(rawSeance) => {
+              onStartSession={async (rawSeance) => {
                 if (!rawSeance) {
                   console.warn("Pas de séance disponible");
                   return;
                 }
-                // Normaliser les données de la séance
-                const seance = {
-                  ...rawSeance,
-                  exercices: (rawSeance.exercices || []).map((ex, i) => ({
-                    id: ex.id || `ex_${i}`,
-                    nom: ex.nom || "Exercice",
-                    nomEn: ex.nomEn || ex.nom_en || "",
-                    muscles: ex.muscles || "",
-                    sets: ex.sets || 3,
-                    reps: ex.reps || "8",
-                    chargeKg: ex.chargeKg || ex.charge_kg || 0,
-                    reposSec: ex.reposSec || ex.repos_sec || 90,
-                    conseil: ex.conseil || "",
-                    ordre: ex.ordre || i + 1,
-                  }))
-                };
-                setResumeState(null);
-                localStorage.removeItem("voltra_paused_session");
-                setSeanceActive(seance);
+                // Verifier si une seance a deja ete faite aujourd'hui
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+                  const { count: doneToday } = await supabase
+                    .from("seances")
+                    .select("id", { count: "exact", head: true })
+                    .eq("user_id", session.user.id)
+                    .eq("statut", "faite")
+                    .gte("date_realisee", todayStart.toISOString());
+
+                  if (!isPro && (doneToday || 0) >= 1) {
+                    // Plan gratuit strict : 1 seule seance, point final
+                    setLastSessionStats({ titre: rawSeance.titre || "Seance", exercices: 0, duree: 0, totalKg: 0, totalReps: 0, feedback: null });
+                    setScreen("post-session-upsell");
+                    return;
+                  }
+                  if (isPro && (doneToday || 0) >= 1) {
+                    setPendingSeance(rawSeance);
+                    setShowDoubleSessionWarning(true);
+                    return;
+                  }
+                }
+                launchSeance(rawSeance);
               }}
             />
           )}
