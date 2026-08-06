@@ -75,17 +75,20 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
     const { data: deload } = await supabase.rpc("check_deload_needed", { p_user_id: userId });
     if (deload) await supabase.rpc("appliquer_deload", { p_user_id: userId, p_raison: deload });
 
-    // Faire progresser reellement la semaine du programme selon les seances completees
+    // Faire progresser reellement la semaine du programme selon les JOURS DISTINCTS entraines
+    // (et non le nombre brut de seances - evite qu'une double seance le meme jour ne fasse
+    // avancer artificiellement la structure du programme sans le temps de recuperation reel)
     const { data: progData } = await supabase.from("programmes").select("frequence, total_semaines, semaine_courante").eq("id", programmeId).single();
     if (progData) {
-      const { count } = await supabase
+      const { data: seancesDates } = await supabase
         .from("seances")
-        .select("*", { count: "exact", head: true })
+        .select("date_realisee")
         .eq("programme_id", programmeId)
         .eq("statut", "faite");
+      const joursDistincts = new Set((seancesDates || []).map(s => new Date(s.date_realisee).toDateString())).size;
       const freq = progData.frequence || 3;
       const totalSem = progData.total_semaines || 4;
-      const nouvelleSemaine = Math.min(Math.floor((count || 1) / freq) + 1, totalSem);
+      const nouvelleSemaine = Math.min(Math.floor((joursDistincts || 1) / freq) + 1, totalSem);
       if (nouvelleSemaine !== progData.semaine_courante) {
         await supabase.from("programmes").update({ semaine_courante: nouvelleSemaine }).eq("id", programmeId);
       }
