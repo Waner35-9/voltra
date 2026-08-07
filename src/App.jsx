@@ -15,7 +15,7 @@ function getNiveauCycle(niveau) {
   return 1;
 }
 
-async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste }) {
+async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Pas de session");
   const startCycle = cycle || getNiveauCycle(niveau);
@@ -28,7 +28,7 @@ async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, eq
         "Authorization": `Bearer ${session.access_token}`,
         "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle, startCycle, equipement, douleurs, poste }),
+      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle, startCycle, equipement, douleurs, poste, poids, age }),
     }
   );
   const data = await res.json();
@@ -1911,7 +1911,8 @@ function OnboardingScreen({ onComplete }) {
   const [data, setData] = useState({
     sport: null, objectif: null, poste: null,
     douleurs: [], equipement: null,
-    niveau: null, frequence: 3
+    niveau: null, frequence: 3,
+    poids: null, age: null, taille: null,
   });
   const [loading, setLoading] = useState(false);
   const [genError, setGenError] = useState(false);
@@ -1922,14 +1923,14 @@ function OnboardingScreen({ onComplete }) {
   const [showCoachDemo, setShowCoachDemo] = useState(false);
 
   const hasPoste = data.sport && data.sport !== "natation";
-  const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau"];
+  const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau", "Profil"];
   const totalSteps = stepLabels.length;
 
   // Step mapping selon si poste existe
   const getStepContent = () => {
     const steps = [0, 1]; // sport, objectif
     if (hasPoste) steps.push(2); // poste
-    steps.push(3, 4, 5); // douleurs, equipement, niveau
+    steps.push(3, 4, 5, 6); // douleurs, equipement, niveau, profil physique
     return steps[step];
   };
   const contentStep = getStepContent();
@@ -2057,6 +2058,7 @@ function OnboardingScreen({ onComplete }) {
     if (contentStep === 3) return data.douleurs.length > 0;
     if (contentStep === 4) return data.equipement !== null;
     if (contentStep === 5) return data.niveau !== null;
+    if (contentStep === 6) return true; // profil physique optionnel
     return false;
   })();
 
@@ -2469,6 +2471,49 @@ function OnboardingScreen({ onComplete }) {
                 </div>
                 <p style={{ color: DS.colors.textSec, fontSize: 13, textAlign: "center", marginTop: 12, ...s.body }}>jours / semaine</p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {contentStep === 6 && (
+          <div>
+            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Ton profil physique</h1>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 36 }}>Pour des charges vraiment adaptées à toi. (Optionnel)</p>
+
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Poids (kg)</p>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={data.poids || ""}
+                onChange={e => setData(d => ({ ...d, poids: e.target.value ? parseInt(e.target.value) : null }))}
+                placeholder="Ex: 72"
+                style={{ width: "100%", padding: "16px 18px", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 18, ...s.heading, outline: "none" }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Âge</p>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={data.age || ""}
+                onChange={e => setData(d => ({ ...d, age: e.target.value ? parseInt(e.target.value) : null }))}
+                placeholder="Ex: 24"
+                style={{ width: "100%", padding: "16px 18px", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 18, ...s.heading, outline: "none" }}
+              />
+            </div>
+
+            <div>
+              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Taille (cm) — facultatif</p>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={data.taille || ""}
+                onChange={e => setData(d => ({ ...d, taille: e.target.value ? parseInt(e.target.value) : null }))}
+                placeholder="Ex: 178"
+                style={{ width: "100%", padding: "16px 18px", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 18, ...s.heading, outline: "none" }}
+              />
             </div>
           </div>
         )}
@@ -4428,7 +4473,7 @@ export default function VoltraApp() {
     userRef.current = u;
     // Sauvegarder le sport dans le profil
     if (onboardingData?.sport) {
-      await supabase.from("profiles").upsert({ id: u.id, sport: onboardingData.sport }, { onConflict: "id" });
+      await supabase.from("profiles").upsert({ id: u.id, sport: onboardingData.sport, poids: onboardingData.poids || null, age: onboardingData.age || null, taille: onboardingData.taille || null }, { onConflict: "id" });
     }
     if (onboardingData) {
       // Toujours regenerer apres auth — maintenant on a une session valide
