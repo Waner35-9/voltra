@@ -1,4189 +1,229 @@
-// @ts-nocheck
 import { useState, useEffect, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
+import html2canvas from "html2canvas";
+import { supabase } from "./supabase";
+import Auth from "./Auth";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@300;400;600;700;900&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow-x:hidden}
+body{background:#050608;color:#e8eaf0;font-family:'Barlow Condensed',sans-serif}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#0a0b0f}
+::-webkit-scrollbar-thumb{background:#C9A84C;border-radius:2px}
+input,select,textarea,button{font-family:'Barlow Condensed',sans-serif;outline:none}
+button{cursor:pointer}
+@keyframes fadeUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes countUp{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
+@keyframes holo{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes glow{0%,100%{box-shadow:0 0 20px #C9A84C40}50%{box-shadow:0 0 50px #C9A84C80}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.fu {animation:fadeUp .5s cubic-bezier(.16,1,.3,1) both}
+.fu1{animation:fadeUp .5s .08s cubic-bezier(.16,1,.3,1) both}
+.fu2{animation:fadeUp .5s .16s cubic-bezier(.16,1,.3,1) both}
+.fu3{animation:fadeUp .5s .24s cubic-bezier(.16,1,.3,1) both}
+.fu4{animation:fadeUp .5s .32s cubic-bezier(.16,1,.3,1) both}
+.fi {animation:fadeIn .4s ease both}
+`;
 
-function getNiveauCycle(niveau) {
-  if (!niveau) return 1;
-  const n = niveau.toLowerCase();
-  if (n === "avance" || n === "avancé") return 3;
-  if (n === "intermediaire" || n === "intermédiaire") return 2;
-  return 1;
+const APP_URL="https://voltra-yznl.vercel.app";
+
+const C={
+  bg:"#050608",surf:"#0c0d12",surf2:"#121420",surf3:"#181b26",
+  border:"#1c2030",gold:"#C9A84C",goldLight:"#F0D080",
+  text:"#e8eaf0",muted:"#4a5270",red:"#F44336",
+};
+
+function useWindowWidth(){
+  const[w,setW]=useState(window.innerWidth);
+  useEffect(()=>{
+    const h=()=>setW(window.innerWidth);
+    window.addEventListener("resize",h);
+    return()=>window.removeEventListener("resize",h);
+  },[]);
+  return w;
 }
 
-async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age }) {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("Pas de session");
-  const startCycle = cycle || getNiveauCycle(niveau);
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-program`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${session.access_token}`,
-        "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle, startCycle, equipement, douleurs, poste, poids, age }),
-    }
-  );
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Erreur generation");
-  return data.programme;
-}
+const clamp=(v,mn,mx)=>Math.min(mx,Math.max(mn,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
 
-async function saveCompleteSession(programmeId, seance, completedSetsData, feedback, durationMin) {
-  await supabase.auth.refreshSession();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return null;
-  const userId = session.user.id;
-  try {
-    const { data: seanceRecord, error: seanceError } = await supabase
-      .from("seances")
-      .insert({ programme_id: programmeId, user_id: userId, semaine: 1, jour: 1, titre: seance.titre, type: seance.type || "force_basse", duree_min: durationMin, statut: "faite", date_realisee: new Date().toISOString() })
-      .select().single();
-    if (seanceError) throw seanceError;
-
-    for (let exI = 0; exI < seance.exercices.length; exI++) {
-      const ex = seance.exercices[exI];
-      const { data: exRecord, error: exErr } = await supabase
-        .from("exercices")
-        .insert({ seance_id: seanceRecord.id, nom: ex.nom, muscles: ex.muscles, sets: ex.sets, reps: String(ex.reps), charge_kg: ex.chargeKg || 0, repos_sec: ex.reposSec || 90, ordre: exI + 1, conseil: ex.conseil })
-        .select().single();
-      if (exErr) continue;
-
-      const repsParSet = [];
-      for (let setI = 0; setI < (ex.sets || 3); setI++) {
-        const setData = completedSetsData[`${exI}-${setI}`];
-        repsParSet.push(setData?.reps || parseInt(ex.reps) || 8);
-      }
-      const repsCible = parseInt(ex.reps) || 8;
-      const taux = repsParSet.filter(r => r >= repsCible).length / repsParSet.length;
-
-      await supabase.from("logs_performance").insert({
-        exercice_id: exRecord.id, seance_id: seanceRecord.id, user_id: userId,
-        reps_par_set: repsParSet, charge_kg: ex.chargeKg || 0, feedback,
-        statut: taux === 1 ? "reussite" : taux >= 0.5 ? "partiel" : "echec",
-      });
-    }
-
-    await supabase.rpc("calculer_progression", { p_user_id: userId, p_seance_id: seanceRecord.id, p_feedback: feedback });
-    const { data: deload } = await supabase.rpc("check_deload_needed", { p_user_id: userId });
-    if (deload) await supabase.rpc("appliquer_deload", { p_user_id: userId, p_raison: deload });
-
-    // Faire progresser reellement la semaine du programme selon les JOURS DISTINCTS entraines
-    // (et non le nombre brut de seances - evite qu'une double seance le meme jour ne fasse
-    // avancer artificiellement la structure du programme sans le temps de recuperation reel)
-    const { data: progData } = await supabase.from("programmes").select("frequence, total_semaines, semaine_courante").eq("id", programmeId).single();
-    if (progData) {
-      const { data: seancesDates } = await supabase
-        .from("seances")
-        .select("date_realisee")
-        .eq("programme_id", programmeId)
-        .eq("statut", "faite");
-      const joursDistincts = new Set((seancesDates || []).map(s => new Date(s.date_realisee).toDateString())).size;
-      const freq = progData.frequence || 3;
-      const totalSem = progData.total_semaines || 4;
-      const nouvelleSemaine = Math.min(Math.floor((joursDistincts || 1) / freq) + 1, totalSem);
-      if (nouvelleSemaine !== progData.semaine_courante) {
-        await supabase.from("programmes").update({ semaine_courante: nouvelleSemaine }).eq("id", programmeId);
-      }
-    }
-
-    return { success: true, deload };
-  } catch (err) {
-    console.error("saveCompleteSession:", err);
-    return null;
+function scoreFromTable(val,table){
+  const sorted=[...table].sort((a,b)=>a[0]-b[0]);
+  if(val<=sorted[0][0])return sorted[0][1];
+  if(val>=sorted[sorted.length-1][0])return sorted[sorted.length-1][1];
+  for(let i=0;i<sorted.length-1;i++){
+    const[v0,s0]=sorted[i],[v1,s1]=sorted[i+1];
+    if(val>=v0&&val<=v1)return Math.round(lerp(s0,s1,(val-v0)/(v1-v0)));
   }
+  return sorted[sorted.length-1][1];
 }
 
-
-// ─────────────────────────────────────────────
-// SPORT THEMES
-// ─────────────────────────────────────────────
-// Avatar du coach IA "Ace" - style manga guerrier
-function AceAvatar({ size = 36 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" style={{ borderRadius: "50%", flexShrink: 0 }}>
-      <defs>
-        <linearGradient id="aceSkin" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2A2A2E" />
-          <stop offset="100%" stopColor="#141416" />
-        </linearGradient>
-      </defs>
-      <rect width="100" height="100" rx="26" fill="#0A0A0C" />
-      <path d="M30 38 Q30 20 50 20 Q70 20 70 38 L70 55 Q70 68 58 74 L50 78 L42 74 Q30 68 30 55 Z" fill="url(#aceSkin)" stroke="#9BE84F" strokeWidth="1.2" />
-      <path d="M28 34 L22 14 L34 26 L38 8 L44 24 L50 6 L56 24 L62 8 L66 26 L78 14 L72 34" fill="#0A0A0C" stroke="#9BE84F" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M35 42 L45 45" stroke="#9BE84F" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M65 42 L55 45" stroke="#9BE84F" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M36 49 L44 49" stroke="#9BE84F" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M56 49 L64 49" stroke="#9BE84F" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M50 50 L48 60 L52 60" stroke="#5A5A5E" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-      <path d="M43 67 Q50 70 57 67" stroke="#9BE84F" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-      <path d="M60 34 L64 46" stroke="#9BE84F" strokeWidth="1.3" strokeLinecap="round" opacity="0.7" />
-    </svg>
-  );
-}
-
-const SPORT_THEMES = {
-  basketball: { accent: "#FF8C00", accentRgb: "255,140,0", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(255,140,0,0.06), transparent)" },
-  football:   { accent: "#00D94F", accentRgb: "0,217,79",  bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(0,217,79,0.06), transparent)" },
-  tennis:     { accent: "#FFE500", accentRgb: "255,229,0", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(255,229,0,0.06), transparent)" },
-  rugby:      { accent: "#FF4500", accentRgb: "255,69,0",  bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(255,69,0,0.07), transparent)" },
-  natation:   { accent: "#00C8FF", accentRgb: "0,200,255", bg: "radial-gradient(ellipse 400px 200px at 50% 0%, rgba(0,200,255,0.07), transparent)" },
-  sprint:     { accent: "#FF2D55", accentRgb: "255,45,85", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(255,45,85,0.06), transparent)" },
-  combat:     { accent: "#CC00FF", accentRgb: "204,0,255", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(204,0,255,0.07), transparent)" },
-  default:    { accent: "#9BE84F", accentRgb: "155,232,79", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(155,232,79,0.06), transparent)" },
+const SCORE_TABLES={
+  force:[[0.4,35],[0.8,50],[1.0,60],[1.3,70],[1.6,78],[2.0,86],[2.5,93],[3.0,99]],
+  detente:[[10,35],[20,48],[30,58],[40,68],[50,76],[60,84],[70,91],[80,99]],
+  sprint30:[[6.5,35],[6.0,48],[5.5,58],[5.0,68],[4.7,76],[4.4,84],[4.1,91],[3.8,99]],
+  sprint10:[[2.5,35],[2.2,48],[2.0,58],[1.85,68],[1.75,76],[1.65,84],[1.55,91],[1.45,99]],
+  endurance:[[1200,35],[1600,48],[2000,58],[2400,68],[2800,76],[3000,84],[3200,91],[3600,99]],
+  gainage:[[20,35],[45,48],[70,58],[100,68],[130,76],[165,84],[200,91],[240,99]],
 };
 
-function getSportTheme(sport) {
-  return SPORT_THEMES[sport] || SPORT_THEMES.default;
+function calcScore(attr,val){
+  const table=SCORE_TABLES[attr];
+  if(!table)return 50;
+  if(attr==="sprint30"||attr==="sprint10"){
+    const inv=table.map(([v,s])=>[-v,s]);
+    return scoreFromTable(-val,inv);
+  }
+  return scoreFromTable(val,table);
 }
 
-// Alias for backwards compatibility
-const s = {
-  mono: { fontFamily: "'Space Mono', 'Courier New', monospace" },
-  display: { fontFamily: "'Rajdhani', system-ui, sans-serif", fontWeight: 700, letterSpacing: "0.02em", textTransform: "uppercase" },
-  heading: { fontFamily: "'Rajdhani', system-ui, sans-serif", fontWeight: 600 },
-  body: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 },
-};
-
-const THEMES = {
-  light: {
-    // Style B — Apple aesthetic, light
-    bg: "#F5F5F7", surface: "#FFFFFF", surfaceUp: "#F5F5F7", surfaceHigh: "#E8E8ED",
-    surfaceDark: "#ECEEF0", // light theme - slightly darker surface
-    primary: "#9BE84F", primarySoft: "rgba(155,232,79,0.15)", primaryGlow: "rgba(155,232,79,0.3)",
-    primaryDark: "#5FAE2E",
-    success: "#34C759", successSoft: "rgba(52,199,89,0.12)",
-    warning: "#FF9500", warningSoft: "rgba(255,149,0,0.10)",
-    gold: "#FFD60A", goldSoft: "rgba(255,214,10,0.12)",
-    textPrimary: "#1D1D1F", textSec: "#86868B", textDim: "#C7C7CC",
-    border: "rgba(0,0,0,0.06)", borderAccent: "rgba(155,232,79,0.4)",
-    shadow: { primary: "0 4px 24px rgba(155,232,79,0.3)", card: "0 2px 12px rgba(0,0,0,0.06)", glow: "0 0 40px rgba(155,232,79,0.2)" },
-    navBg: "rgba(255,255,255,0.92)",
-    stickyBg: "rgba(245,245,247,0.95)",
-    heroText: "#FFFFFF",
-    isDark: false,
-  },
-  dark: {
-    // Style B — Apple aesthetic, dark
-    bg: "#000000", surface: "#1C1C1E", surfaceUp: "#2C2C2E", surfaceHigh: "#3A3A3C",
-    surfaceDark: "#1C1C1E",
-    primary: "#9BE84F", primarySoft: "rgba(155,232,79,0.15)", primaryGlow: "rgba(155,232,79,0.3)",
-    primaryDark: "#9BE84F",
-    success: "#30D158", successSoft: "rgba(48,209,88,0.12)",
-    warning: "#FF9F0A", warningSoft: "rgba(255,159,10,0.12)",
-    gold: "#FFD60A", goldSoft: "rgba(255,214,10,0.12)",
-    textPrimary: "#FFFFFF", textSec: "rgba(255,255,255,0.5)", textDim: "rgba(255,255,255,0.2)",
-    border: "rgba(255,255,255,0.08)", borderAccent: "rgba(155,232,79,0.3)",
-    shadow: { primary: "0 8px 32px rgba(155,232,79,0.2)", card: "none", glow: "0 0 40px rgba(155,232,79,0.15)" },
-    navBg: "rgba(0,0,0,0.92)",
-    stickyBg: "rgba(0,0,0,0.92)",
-    heroText: "#FFFFFF",
-    isDark: true,
-  },
-};
-
-let DS = (() => {
-  const saved = localStorage.getItem("voltra_theme") || "light";
-  return { colors: THEMES[saved], radius: { sm: 10, md: 14, lg: 20, xl: 24, full: 9999 }, shadow: THEMES[saved].shadow };
-})();
-
-function applyTheme(theme) {
-  DS = { colors: THEMES[theme], radius: { sm: 10, md: 14, lg: 20, xl: 24, full: 9999 }, shadow: THEMES[theme].shadow };
+function calcOVR(scores){
+  const vals=Object.values(scores).filter(v=>v>0);
+  return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
 }
 
-function PrimaryButton({ children, onClick, disabled, style = {} }) {
-  const [p, setP] = useState(false);
-  return (
-    <button onClick={onClick} disabled={disabled}
-      onMouseDown={() => setP(true)} onMouseUp={() => setP(false)} onMouseLeave={() => setP(false)}
-      style={{
-        width: "100%", height: 56,
-        background: disabled ? DS.colors.surfaceHigh : `linear-gradient(135deg, ${DS.colors.primary}, #00C896)`,
-        border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md,
-        color: disabled ? DS.colors.textDim : "white", fontSize: 16,
-        cursor: disabled ? "not-allowed" : "pointer",
-        transform: p ? "scale(0.96)" : "scale(1)", transition: "all 0.15s ease",
-        boxShadow: disabled ? "none" : DS.shadow.primary,
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-        ...s.heading, ...style,
-      }}>
+function getTier(score){
+  if(score>=90)return{label:"S",color:"#FFD700",bg:"#FFD70020",name:"ÉLITE"};
+  if(score>=80)return{label:"A",color:"#4CAF50",bg:"#4CAF5020",name:"EXCELLENT"};
+  if(score>=70)return{label:"B",color:"#2196F3",bg:"#2196F320",name:"BON NIVEAU"};
+  if(score>=60)return{label:"C",color:"#FF9800",bg:"#FF980020",name:"CORRECT"};
+  if(score>=50)return{label:"D",color:"#FF5722",bg:"#FF572220",name:"EN PROGRESSION"};
+  return{label:"F",color:"#F44336",bg:"#F4433620",name:"DÉBUTANT"};
+}
+
+function getOVRColor(ovr){
+  if(ovr>=90)return"#FFD700";
+  if(ovr>=80)return"#69F0AE";
+  if(ovr>=70)return"#40C4FF";
+  if(ovr>=60)return"#FF9800";
+  return"#F44336";
+}
+
+const TESTS=[
+  {id:"force",label:"FORCE MAXIMALE",unit:"ratio / poids corps",icon:"💪",
+   placeholder:"calculé auto",desc:"Squat + Bench + Traction — calculé automatiquement",
+   hint:"1.0 = débutant · 1.4 = bon · 1.8 = élite",min:0.3,max:3.5,step:0.05},
+  {id:"detente",label:"DÉTENTE VERTICALE",unit:"centimètres",icon:"🦘",
+   placeholder:"ex: 45",desc:"Hauteur saut vertical pieds décollés",
+   hint:"30 cm = moyen · 50 cm = bon · 70 cm = élite",min:5,max:100,step:1},
+  {id:"sprint30",label:"VITESSE 30 M",unit:"secondes",icon:"💨",
+   placeholder:"ex: 4.5",desc:"Temps sur 30 m départ arrêté",
+   hint:"5.0 s = moyen · 4.5 s = bon · 4.0 s = élite",min:3.5,max:8,step:0.1},
+  {id:"sprint10",label:"ACCÉLÉRATION 10 M",unit:"secondes",icon:"⚡",
+   placeholder:"ex: 1.7",desc:"Temps sur 10 m départ arrêté",
+   hint:"2.0 s = moyen · 1.8 s = bon · 1.5 s = élite",min:1.3,max:3,step:0.05},
+  {id:"endurance",label:"TEST DE COOPER",unit:"mètres en 12 min",icon:"🏃",
+   placeholder:"ex: 2400",desc:"Sur tapis : cours le plus loin en 12 minutes",
+   hint:"1600 m = débutant · 2400 m = bon · 3200 m = élite",min:800,max:4000,step:50},
+  {id:"gainage",label:"GAINAGE CORE",unit:"secondes (planche)",icon:"🧱",
+   placeholder:"ex: 120",desc:"Temps tenu en planche avant",
+   hint:"60 s = moyen · 120 s = bon · 200 s = élite",min:10,max:300,step:5},
+];
+
+const SPORTS=[
+  {id:"football",name:"Football",icon:"⚽",color:"#4CAF50",
+   weights:{force:0.8,detente:0.9,sprint30:1.2,sprint10:1.1,endurance:1.0,gainage:0.9},
+   contexte:"Le footballeur effectue 150-200 sprints/match, frappes rotatives, dribbles explosifs.",
+   patterns:["triple_extension","rotation_hanche","frappe_balistique","deceleration_excentrique"],
+   cardio:{volume:85,type:"Intervalles courts 85-95% FCmax"},
+   equipement:["Barre olympique","Haltères","Kettlebell","Médecine ball","Box pliométrique"]},
+  {id:"tennis",name:"Tennis",icon:"🎾",color:"#CDDC39",
+   weights:{force:0.8,detente:0.8,sprint30:0.9,sprint10:1.0,endurance:1.0,gainage:1.1},
+   contexte:"Le tennisman réalise 400-500 frappes/match avec chaîne cinétique complète.",
+   patterns:["chaine_cinetique_frappe","service_overhead","rotation_differentielle","split_step"],
+   cardio:{volume:82,type:"Intermittent aléatoire 78-95% FCmax"},
+   equipement:["Haltères","Médecine ball","Câble poulie","Élastiques","Kettlebell"]},
+  {id:"mma",name:"MMA",icon:"🥊",color:"#F44336",
+   weights:{force:1.1,detente:0.9,sprint30:0.8,sprint10:0.9,endurance:1.2,gainage:1.3},
+   contexte:"Le combattant MMA intègre frappes rotation, wrestling, sol isométrique sur 3-5 rounds.",
+   patterns:["frappe_rotation","projection_wrestling","gainage_multidirectionnel","explosion_releve"],
+   cardio:{volume:92,type:"Rounds 3-5 min 85-100% FCmax"},
+   equipement:["Barre olympique","Haltères","Kettlebell","Battle ropes","Médecine ball"]},
+  {id:"sprint",name:"Sprint",icon:"💨",color:"#FFD600",
+   weights:{force:1.1,detente:1.2,sprint30:1.5,sprint10:1.3,endurance:0.5,gainage:0.9},
+   contexte:"Le sprinter produit 5x le poids du corps à l'impulsion, 4.5-5 Hz fréquence de pas.",
+   patterns:["triple_extension_maximale","mecanique_bras_sprint","frequence_pas","depart_blocs"],
+   cardio:{volume:50,type:"Lactique pur 95-100% FCmax repos long"},
+   equipement:["Barre olympique","Sled","Élastiques","Box pliométrique","Haltères"]},
+  {id:"basket",name:"Basketball",icon:"🏀",color:"#FF7043",
+   weights:{force:0.9,detente:1.3,sprint30:1.0,sprint10:1.1,endurance:0.9,gainage:0.9},
+   contexte:"Le basketteur enchaîne accélérations/décélérations, sauts répétés, changements direction.",
+   patterns:["detente_verticale","deceleration_excentrique","crossover_lateral","tir_stability"],
+   cardio:{volume:72,type:"Intervalles courts 82-95% FCmax"},
+   equipement:["Barre olympique","Haltères","Box pliométrique","Élastiques","Médecine ball"]},
+  {id:"rugby",name:"Rugby",icon:"🏉",color:"#A1887F",
+   weights:{force:1.3,detente:0.9,sprint30:1.1,sprint10:1.0,endurance:1.1,gainage:1.3},
+   contexte:"Le rugbyman réalise placages, mêlées isométriques, rucks sur 80 min.",
+   patterns:["poussee_horizontale","absorption_choc","mele_isometrique","rotation_tronc_charge"],
+   cardio:{volume:78,type:"Intervals longs sprints 80-92% FCmax"},
+   equipement:["Barre olympique","Haltères","Sled","Battle ropes","Kettlebell"]},
+  {id:"crossfit",name:"CrossFit",icon:"🏋️",color:"#E91E63",
+   weights:{force:1.1,detente:1.0,sprint30:0.8,sprint10:0.8,endurance:1.2,gainage:1.1},
+   contexte:"Le crossfitter développe puissance globale: arraché, épaulé-jeté, gymnastics.",
+   patterns:["arrachee_epaule","muscle_up","kb_swing_hinge","clean_and_jerk"],
+   cardio:{volume:88,type:"Métabolique intégré 80-100% FCmax"},
+   equipement:["Barre olympique","Kettlebell","Anneaux","Haltères","Box"]},
+  {id:"natation",name:"Natation",icon:"🏊",color:"#0288D1",
+   weights:{force:0.9,detente:0.7,sprint30:0.6,sprint10:0.6,endurance:1.3,gainage:1.2},
+   contexte:"Le nageur réalise jusqu'à 1 million de cycles/an. Gainage et endurance dominent.",
+   patterns:["rotation_corps_nage","pull_adduction_epaule","kick_cheville","virage_culbute"],
+   cardio:{volume:88,type:"Aérobie soutenu intervalles 70-88% FCmax"},
+   equipement:["Câble poulie","Haltères","Élastiques","TRX","Médecine ball"]},
+];
+
+const ATHLETE_SVG={
+  football:<svg viewBox="0 0 200 260" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="gf" cx="50%" cy="70%" r="50%"><stop offset="0%" stopColor="#4CAF50" stopOpacity=".5"/><stop offset="100%" stopColor="#050608" stopOpacity="0"/></radialGradient></defs><ellipse cx="100" cy="220" rx="80" ry="50" fill="url(#gf)"/><ellipse cx="100" cy="255" rx="40" ry="7" fill="#000" opacity=".5"/><line x1="90" y1="180" x2="70" y2="230" stroke="#2E7D32" strokeWidth="18" strokeLinecap="round"/><line x1="70" y1="230" x2="55" y2="255" stroke="#2E7D32" strokeWidth="14" strokeLinecap="round"/><ellipse cx="52" cy="257" rx="14" ry="7" fill="#111" transform="rotate(-10 52 257)"/><line x1="110" y1="180" x2="150" y2="185" stroke="#2E7D32" strokeWidth="20" strokeLinecap="round"/><line x1="150" y1="185" x2="172" y2="170" stroke="#2E7D32" strokeWidth="16" strokeLinecap="round"/><ellipse cx="178" cy="167" rx="16" ry="9" fill="#111" transform="rotate(-20 178 167)"/><path d="M80 120 Q100 110 122 120 L128 180 Q100 190 75 180Z" fill="#4CAF50"/><text x="100" y="157" textAnchor="middle" fill="white" fontSize="18" fontFamily="'Bebas Neue',sans-serif">9</text><line x1="80" y1="134" x2="55" y2="158" stroke="#81C784" strokeWidth="13" strokeLinecap="round"/><line x1="122" y1="134" x2="148" y2="152" stroke="#81C784" strokeWidth="13" strokeLinecap="round"/><rect x="92" y="105" width="14" height="18" rx="5" fill="#FFCC80"/><ellipse cx="99" cy="95" rx="20" ry="23" fill="#FFCC80"/><ellipse cx="99" cy="78" rx="20" ry="10" fill="#1a1a1a"/><circle cx="91" cy="95" r="3" fill="#333"/><circle cx="107" cy="95" r="3" fill="#333"/></svg>,
+  mma:<svg viewBox="0 0 200 260" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="gm" cx="50%" cy="65%" r="55%"><stop offset="0%" stopColor="#F44336" stopOpacity=".6"/><stop offset="100%" stopColor="#050608" stopOpacity="0"/></radialGradient></defs><ellipse cx="100" cy="215" rx="85" ry="55" fill="url(#gm)"/><line x1="92" y1="182" x2="72" y2="238" stroke="#7B1FA2" strokeWidth="20" strokeLinecap="round"/><line x1="108" y1="182" x2="148" y2="145" stroke="#7B1FA2" strokeWidth="20" strokeLinecap="round"/><line x1="148" y1="145" x2="178" y2="112" stroke="#7B1FA2" strokeWidth="16" strokeLinecap="round"/><path d="M72 118 Q100 104 130 118 L136 182 Q100 194 68 182Z" fill="#EF9A9A"/><rect x="90" y="103" width="18" height="18" rx="6" fill="#FFCC80"/><ellipse cx="99" cy="90" rx="24" ry="27" fill="#FFCC80"/><ellipse cx="99" cy="68" rx="24" ry="12" fill="#2e1a0f"/></svg>,
+  sprint:<svg viewBox="0 0 200 260" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="gs" cx="50%" cy="60%" r="50%"><stop offset="0%" stopColor="#FFD600" stopOpacity=".4"/><stop offset="100%" stopColor="#050608" stopOpacity="0"/></radialGradient></defs><ellipse cx="100" cy="210" rx="80" ry="50" fill="url(#gs)"/><line x1="95" y1="180" x2="65" y2="225" stroke="#E65100" strokeWidth="20" strokeLinecap="round"/><line x1="108" y1="180" x2="148" y2="190" stroke="#E65100" strokeWidth="22" strokeLinecap="round"/><path d="M82 122 Q105 110 128 122 L134 180 Q105 192 78 180Z" fill="#FFF176"/><ellipse cx="101" cy="96" rx="20" ry="23" fill="#FFCC80"/><ellipse cx="101" cy="79" rx="20" ry="10" fill="#1a1a1a"/></svg>,
+};
+
+function Tag({children,color}){
+  return <span style={{background:`${color}18`,border:`1px solid ${color}35`,color,borderRadius:4,padding:"3px 10px",fontSize:13,fontWeight:700,letterSpacing:.5}}>{children}</span>;
+}
+
+function Btn({children,onClick,variant="gold",disabled,full,style:s2={}}){
+  const styles={
+    gold:{background:`linear-gradient(135deg,${C.gold},#a07830)`,color:"#000",boxShadow:`0 4px 20px ${C.gold}40`},
+    ghost:{background:"transparent",border:`1px solid ${C.border}`,color:C.muted},
+    outline:{background:"transparent",border:`1px solid ${C.gold}`,color:C.gold},
+  };
+  return(
+    <button onClick={onClick} disabled={disabled} style={{border:"none",borderRadius:10,fontWeight:700,letterSpacing:1.5,fontSize:15,padding:"12px 24px",transition:"all .2s",cursor:disabled?"not-allowed":"pointer",opacity:disabled?.45:1,fontFamily:"'Bebas Neue',sans-serif",width:full?"100%":undefined,...styles[variant],...s2}}>
       {children}
     </button>
   );
 }
 
-function Input({ label, type = "text", value, onChange, placeholder }) {
-  const [focused, setFocused] = useState(false);
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <label style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-        {label}
-      </label>
-      <input
-        type={type} value={value} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-        style={{
-          width: "100%", height: 52, padding: "0 16px",
-          background: DS.colors.surface,
-          border: `1.5px solid ${focused ? DS.colors.primary : DS.colors.border}`,
-          borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 16,
-          outline: "none", transition: "border 0.2s ease",
-          boxShadow: focused ? `0 0 0 3px ${DS.colors.primarySoft}` : DS.shadow.card,
-          fontFamily: "'Inter', system-ui, sans-serif",
-        }}
-      />
+function VoltraLogo({size=22}){
+  return(
+    <div style={{fontFamily:"'Bebas Neue'",fontSize:size,letterSpacing:4,display:"flex",alignItems:"center",gap:4}}>
+      <span style={{color:C.gold}}>⚡</span>
+      <span style={{color:C.text}}>VOL</span><span style={{color:C.gold}}>TRA</span>
     </div>
   );
 }
 
-function Card({ children, style = {} }) {
-  return (
-    <div style={{
-      background: DS.colors.surface,
-      borderRadius: DS.radius.xl,
-      padding: 20,
-      boxShadow: DS.shadow.card,
-      ...style,
-    }}>
-      {children}
-    </div>
-  );
-}
-
-function Badge({ children, color = "primary" }) {
-  const colors = {
-    primary: { bg: DS.colors.primarySoft, text: DS.colors.primary, border: DS.colors.borderAccent },
-    success: { bg: DS.colors.successSoft, text: DS.colors.success, border: "rgba(0,229,160,0.25)" },
-    gold: { bg: DS.colors.goldSoft, text: DS.colors.gold, border: "rgba(255,209,102,0.25)" },
-  };
-  const c = colors[color];
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 12px",
-      background: c.bg, border: `1px solid ${c.border}`,
-      borderRadius: DS.radius.full, color: c.text, fontSize: 12, ...s.heading,
-    }}>
-      {children}
-    </span>
-  );
-}
-
-function ProgressBar({ value }) {
-  const [width, setWidth] = useState(0);
-  useEffect(() => { const t = setTimeout(() => setWidth(value), 100); return () => clearTimeout(t); }, [value]);
-  return (
-    <div style={{ height: 6, background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, overflow: "hidden" }}>
-      <div style={{
-        height: "100%", width: `${width}%`,
-        background: DS.colors.primary,
-        borderRadius: DS.radius.full, transition: "width 0.8s cubic-bezier(0.34,1.56,0.64,1)",
-        boxShadow: `0 0 8px ${DS.colors.primaryGlow}`,
-      }} />
-    </div>
-  );
-}
-
-const Icons = {
-  home: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 12L12 3L21 12V21H15V15H9V21H3V12Z" stroke={a ? DS.colors.primaryDark : DS.colors.textSec} strokeWidth="2" strokeLinejoin="round" fill={a ? DS.colors.primarySoft : "none"} /></svg>,
-  chart: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 20H21M5 20V12M9 20V8M13 20V14M17 20V4" stroke={a ? DS.colors.primaryDark : DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
-  user: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={a ? DS.colors.primaryDark : DS.colors.textSec} strokeWidth="2" /><path d="M4 20C4 16.686 7.582 14 12 14C16.418 14 20 16.686 20 20" stroke={a ? DS.colors.primaryDark : DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
-  arrow: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18L15 12L9 6" stroke={DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
-  clock: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={DS.colors.textSec} strokeWidth="2" /><path d="M12 7V12L15 15" stroke={DS.colors.textSec} strokeWidth="2" strokeLinecap="round" /></svg>,
-};
-
-const MOCK_PROGRAM = {
-  titre: "Explosivite Basketball", semaineCourante: 3, totalSemaines: 8, progression: 62,
-  seancesDuJour: [{
-    id: "s3_j1", titre: "Force & Explosivite", type: "force_basse", dureeMin: 48,
-    exercices: [
-      { id: "e1", nom: "Squat barre", muscles: "Quadriceps Fessiers", sets: 4, reps: "6-8", chargeKg: 75, reposSec: 120, conseil: "Descendre sous le parallele, genoux dans l'axe." },
-      { id: "e2", nom: "Romanian Deadlift", muscles: "Ischio Lombaires", sets: 3, reps: "10", chargeKg: 60, reposSec: 90, conseil: "Dos plat, tension dans les ischios en bas." },
-      { id: "e3", nom: "Box Jump", muscles: "Quadriceps Mollets", sets: 5, reps: "5", chargeKg: 0, reposSec: 150, conseil: "Atterrissage souple, amorti complet." },
-      { id: "e4", nom: "Hip Thrust", muscles: "Fessiers", sets: 3, reps: "12", chargeKg: 70, reposSec: 75, conseil: "Pause 1s en haut, contraction max." },
-      { id: "e5", nom: "Kettlebell Swing", muscles: "Fessiers Dorsaux", sets: 4, reps: "12", chargeKg: 20, reposSec: 90, conseil: "Puissance vient des hanches, pas des bras." },
-    ],
-  }],
-  derniereSeance: { titre: "Haut du Corps", joursPasses: 2, dureeMin: 42, nbExercices: 5, gainKg: 2.5 },
-};
-
-const SPORTS = [
-  { id: "basketball", label: "Basketball", emoji: "🏀" },
-  { id: "football", label: "Football", emoji: "⚽" },
-  { id: "tennis", label: "Tennis", emoji: "🎾" },
-  { id: "rugby", label: "Rugby", emoji: "🏉" },
-  { id: "natation", label: "Natation", emoji: "🏊" },
-  { id: "sprint", label: "Sprint", emoji: "🏃" },
-  { id: "combat", label: "Combat", emoji: "🥊" },
-];
-const SPORT_EMOJIS = {
-  basketball: "🏀", football: "⚽", tennis: "🎾",
-  rugby: "🏉", natation: "🏊", sprint: "🏃", combat: "🥊", default: "⚡"
-};
-
-const OBJECTIFS_PAR_SPORT = {
-  basketball: [
-    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-    { id: "detente", label: "Detente verticale", desc: "Jump & reactivite", emoji: "🚀" },
-    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-  ],
-  football: [
-    { id: "explosivite", label: "Explosivite", desc: "Accel & sprint", emoji: "⚡" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-    { id: "force", label: "Force", desc: "Puissance physique", emoji: "🏋️" },
-  ],
-  tennis: [
-    { id: "explosivite", label: "Explosivite", desc: "Reactivite & vitesse", emoji: "⚡" },
-    { id: "force", label: "Force", desc: "Puissance de frappe", emoji: "🏋️" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-  ],
-  rugby: [
-    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
-    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-  ],
-  natation: [
-    { id: "endurance", label: "Endurance", desc: "Cardio & resistance", emoji: "🫁" },
-    { id: "force", label: "Force haut du corps", desc: "Epaules & dorsaux", emoji: "🏋️" },
-    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
-  ],
-  sprint: [
-    { id: "explosivite", label: "Explosivite", desc: "Puissance & vitesse", emoji: "⚡" },
-    { id: "force", label: "Force", desc: "Charges maximales", emoji: "🏋️" },
-    { id: "detente", label: "Detente", desc: "Puissance impulsion", emoji: "🚀" },
-  ],
-  combat: [
-    { id: "explosivite", label: "Explosivite", desc: "Puissance et vitesse de frappe", emoji: "⚡" },
-    { id: "endurance", label: "Endurance", desc: "Cardio et resistance", emoji: "🫁" },
-    { id: "force", label: "Force", desc: "Puissance maximale", emoji: "🏋️" },
-    { id: "masse", label: "Masse musculaire", desc: "Hypertrophie", emoji: "💪" },
-  ],
-};
-const OBJECTIFS = [];
-const NIVEAUX = ["Debutant", "Intermediaire", "Avance"];
-const STRIPE_PLANS = {
-  monthly: { priceId: "price_1Tkhvu8P7FaKivct2II0H82c", mode: "subscription" },
-  annual:  { priceId: "price_1Tki3X8P7FaKivctbeVPHjpj", mode: "subscription" },
-  lifetime:{ priceId: "price_1TkiCx8P7FaKivctSOaKjLWO", mode: "payment" },
-};
-
-const PLANS = [
-  { id: "annual", label: "Annuel", price: 119.99, displayPrice: "9,99€", unit: "/ mois", priceDetail: "Facturé 119,99€ par an", savings: "2 mois offerts", color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: "LE PLUS POPULAIRE", highlight: true },
-  { id: "monthly", label: "Mensuel", price: 14.99, displayPrice: "14,99€", unit: "/ mois", priceDetail: "-30% le 1er mois : 10,49€", savings: null, color: DS.colors.success, colorSoft: DS.colors.successSoft, colorBorder: "rgba(0,229,160,0.35)", badge: null, highlight: false },
-  { id: "lifetime", label: "À vie", price: 249, displayPrice: "249€", unit: "une fois", priceDetail: "Paiement unique · Accès à vie", savings: null, color: DS.colors.gold, colorSoft: DS.colors.goldSoft, colorBorder: "rgba(255,209,102,0.35)", badge: null, highlight: false },
-];
-
-// ─────────────────────────────────────────────
-// MUSCLE ICONS SVG
-// ─────────────────────────────────────────────
-function getMuscleIcon(muscles, color) {
-  const m = (muscles || "").toLowerCase();
-  if (m.includes("quad")) return (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-      <ellipse cx="16" cy="28" rx="7" ry="12" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
-      <ellipse cx="32" cy="28" rx="7" ry="12" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
-      <ellipse cx="16" cy="24" rx="4" ry="8" fill={color + "60"}/>
-      <ellipse cx="32" cy="24" rx="4" ry="8" fill={color + "60"}/>
-    </svg>
-  );
-  if (m.includes("fessier")) return (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-      <ellipse cx="16" cy="30" rx="10" ry="10" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
-      <ellipse cx="32" cy="30" rx="10" ry="10" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
-      <ellipse cx="16" cy="28" rx="6" ry="6" fill={color + "60"}/>
-      <ellipse cx="32" cy="28" rx="6" ry="6" fill={color + "60"}/>
-    </svg>
-  );
-  if (m.includes("pectoral") || m.includes("chest")) return (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-      <path d="M8 20 Q16 12 24 16 Q32 12 40 20 L40 32 Q32 38 24 34 Q16 38 8 32 Z" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
-      <path d="M12 22 Q20 16 24 18 L24 32 Q16 36 12 30 Z" fill={color + "50"}/>
-      <path d="M36 22 Q28 16 24 18 L24 32 Q32 36 36 30 Z" fill={color + "50"}/>
-    </svg>
-  );
-  if (m.includes("dorsal") || m.includes("dos")) return (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-      <path d="M8 12 Q16 8 24 10 Q32 8 40 12 L38 36 Q30 42 24 40 Q18 42 10 36 Z" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
-      <path d="M12 14 Q20 10 24 12 L22 36 Q16 40 12 34 Z" fill={color + "50"}/>
-      <path d="M36 14 Q28 10 24 12 L26 36 Q32 40 36 34 Z" fill={color + "50"}/>
-    </svg>
-  );
-  if (m.includes("ischio")) return (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-      <ellipse cx="16" cy="26" rx="7" ry="13" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
-      <ellipse cx="32" cy="26" rx="7" ry="13" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
-      <ellipse cx="16" cy="28" rx="4" ry="9" fill={color + "60"}/>
-      <ellipse cx="32" cy="28" rx="4" ry="9" fill={color + "60"}/>
-    </svg>
-  );
-  if (m.includes("mollet")) return (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-      <ellipse cx="16" cy="30" rx="6" ry="10" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
-      <ellipse cx="32" cy="30" rx="6" ry="10" fill={color + "30"} stroke={color} strokeWidth="1.5"/>
-      <ellipse cx="16" cy="32" rx="3" ry="6" fill={color + "60"}/>
-      <ellipse cx="32" cy="32" rx="3" ry="6" fill={color + "60"}/>
-    </svg>
-  );
-  return (
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="24" r="18" fill={color + "20"} stroke={color} strokeWidth="1.5"/>
-      <path d="M16 24 Q20 16 24 20 Q28 16 32 24 Q28 32 24 28 Q20 32 16 24Z" fill={color + "60"}/>
-    </svg>
-  );
-}
-
-function getExerciceColor(type, index) {
-  const palettes = {
-    force_basse: ["#6C63FF", "#7B6EFF", "#8A7AFF", "#9B8BFF", "#AC9CFF"],
-    force_haute: ["#FF63D4", "#FF70DA", "#FF7EE0", "#FF8CE6", "#FF9AEC"],
-    explosivite: ["#FF6B35", "#FF7A45", "#FF8A55", "#FF9A66", "#FFAA77"],
-    gainage: ["#00E5A0", "#10EBA8", "#20F1B0", "#30F7B8", "#40FDC0"],
-  };
-  const colors = palettes[type] || palettes.force_basse;
-  return colors[index % colors.length];
-}
-
-const MOTIVATION = {
-  rest: ["Recupere bien.", "Souffle, t'as bien bosse.", "Presque fini.", "Tu geres.", "Keep going."],
-  complete: ["Propre !", "Excellent !", "Belle serie !", "On continue.", "Top !"],
-  finish: ["Seance terminee", "Travail accompli.", "Champion.", "Incroyable.", "Respect."],
-};
-const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-// ─────────────────────────────────────────────
-// TIMER DE REPOS
-// ─────────────────────────────────────────────
-function RestTimer({ seconds, onComplete }) {
-  const [left, setLeft] = useState(seconds);
-  const [running, setRunning] = useState(true);
-  const ref = useRef(null);
-  const [motivText] = useState(() => getRandom(MOTIVATION.rest));
-
-  useEffect(() => { setLeft(seconds); setRunning(true); }, [seconds]);
-  useEffect(() => {
-    if (!running) return;
-    if (left <= 0) { onComplete?.(); return; }
-    ref.current = setInterval(() => setLeft(l => l - 1), 1000);
-    return () => clearInterval(ref.current);
-  }, [left, running]);
-
-  const pct = ((seconds - left) / seconds) * 100;
-  const pad = n => String(n).padStart(2, "0");
-  const color = left > seconds * 0.6 ? DS.colors.primary : left > seconds * 0.3 ? DS.colors.warning : DS.colors.success;
-  const circumference = 2 * Math.PI * 54;
-
-  return (
-    <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "28px 24px", textAlign: "center", position: "relative", overflow: "hidden", boxShadow: DS.shadow.card }}>
-      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 50% 40%, ${color}10, transparent 70%)`, transition: "background 0.5s ease", pointerEvents: "none" }} />
-      <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.1em" }}>Temps de repos</p>
-      <div style={{ position: "relative", width: 148, height: 148, margin: "0 auto 16px" }}>
-        <svg width="148" height="148" viewBox="0 0 148 148" style={{ transform: "rotate(-90deg)" }}>
-          <circle cx="74" cy="74" r="54" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="10" />
-          <circle cx="74" cy="74" r="54" fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
-            strokeDasharray={circumference} strokeDashoffset={circumference * (1 - pct / 100)}
-            style={{ transition: "stroke-dashoffset 1s linear, stroke 0.5s ease" }} />
-        </svg>
-        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ ...s.mono, fontSize: 38, color, fontWeight: 700, lineHeight: 1, transition: "color 0.5s ease" }}>
-            {pad(Math.floor(left / 60))}:{pad(left % 60)}
-          </span>
-          <span style={{ color: DS.colors.textDim, fontSize: 11, marginTop: 4 }}>sec</span>
-        </div>
-      </div>
-      <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 20, fontStyle: "italic" }}>"{motivText}"</p>
-      <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={() => setRunning(r => !r)} style={{ flex: 1, height: 44, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.heading }}>
-          {running ? "Pause" : "Reprendre"}
-        </button>
-        <button onClick={onComplete} style={{ flex: 1, height: 44, background: DS.colors.successSoft, border: `1px solid rgba(0,229,160,0.3)`, borderRadius: DS.radius.md, color: DS.colors.success, fontSize: 14, cursor: "pointer", ...s.heading }}>
-          Passer
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Cache local + Edge Function pour les GIFs animés ExerciseDB
-const gifCache = {};
-async function getExerciseGif(nomFr, nomEn) {
-  const key = (nomEn || nomFr || "").toLowerCase().trim();
-  if (!key) return null;
-  if (gifCache[key]) return gifCache[key];
-  try {
-    const stored = localStorage.getItem(`voltra_gif_${key}`);
-    if (stored) { gifCache[key] = stored; return stored; }
-  } catch (e) {}
-  try {
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/exercise-gif`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
-      body: JSON.stringify({ nom: nomFr, nomEn: nomEn }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.gifUrl) {
-      gifCache[key] = data.gifUrl;
-      try { localStorage.setItem(`voltra_gif_${key}`, data.gifUrl); } catch (e) {}
-      return data.gifUrl;
-    }
-  } catch (e) {}
-  return null;
-}
-
-async function getExercicePhoto(nom) {
-  const n = (nom || "").toLowerCase();
-
-  // Mapping precis par exercice
-  const exactMatch = [
-    { keys: ["squat barre", "back squat", "squat"], q: "barbell back squat gym" },
-    { keys: ["front squat"], q: "front squat barbell" },
-    { keys: ["goblet squat"], q: "goblet squat dumbbell" },
-    { keys: ["romanian deadlift", "rdl", "soulevé de terre roumain"], q: "romanian deadlift barbell gym" },
-    { keys: ["soulevé de terre", "deadlift"], q: "deadlift barbell powerlifting" },
-    { keys: ["sumo deadlift"], q: "sumo deadlift barbell" },
-    { keys: ["développé couché", "bench press", "developpe couche"], q: "bench press barbell chest gym" },
-    { keys: ["développé incliné", "incline bench", "developpe incline"], q: "incline bench press dumbbell" },
-    { keys: ["développé épaules", "overhead press", "military press", "developpe epaules"], q: "overhead press barbell shoulders" },
-    { keys: ["traction", "pull up", "tractions"], q: "pull up bar athlete calisthenics" },
-    { keys: ["lat pulldown", "tirage nuque", "tirage poitrine"], q: "lat pulldown cable machine" },
-    { keys: ["rowing barre", "bent over row"], q: "barbell row bent over back" },
-    { keys: ["rowing haltere", "dumbbell row"], q: "dumbbell row single arm back" },
-    { keys: ["box jump", "saut boite"], q: "box jump athlete explosive training" },
-    { keys: ["saut en longueur", "broad jump"], q: "broad jump athlete training" },
-    { keys: ["burpee", "burpees"], q: "burpees athlete hiit training" },
-    { keys: ["hip thrust", "pont fessier"], q: "hip thrust barbell glutes gym" },
-    { keys: ["fente", "lunge"], q: "lunges barbell dumbbell legs gym" },
-    { keys: ["leg press", "presse a cuisses"], q: "leg press machine gym" },
-    { keys: ["leg extension", "extension jambes"], q: "leg extension machine quadriceps" },
-    { keys: ["leg curl", "curl jambes"], q: "leg curl machine hamstrings" },
-    { keys: ["mollet", "calf raise", "mollets"], q: "calf raise standing machine" },
-    { keys: ["kettlebell swing", "swing kettlebell"], q: "kettlebell swing athlete training" },
-    { keys: ["kettlebell", "girevoy"], q: "kettlebell workout training" },
-    { keys: ["planche", "plank", "gainage"], q: "plank core strength athlete" },
-    { keys: ["abdos", "crunch", "sit up"], q: "abs workout crunch core athlete" },
-    { keys: ["curl biceps", "bicep curl", "curl haltere"], q: "bicep curl dumbbell gym" },
-    { keys: ["triceps", "dips triceps", "extension triceps"], q: "triceps extension pushdown gym" },
-    { keys: ["pompes", "push up", "pushup"], q: "push ups athlete workout" },
-    { keys: ["dips", "dip"], q: "dips parallel bars triceps gym" },
-    { keys: ["sprint", "vitesse"], q: "sprint athlete track speed training" },
-    { keys: ["corde a sauter", "jump rope", "corde"], q: "jump rope athlete training cardio" },
-    { keys: ["sled", "traineau"], q: "sled push athlete power training" },
-    { keys: ["battle rope", "corde ondulatoire"], q: "battle ropes athlete training" },
-    { keys: ["oiseau", "rear delt", "oiseau haltere"], q: "rear delt fly dumbbell" },
-    { keys: ["elevation laterale", "lateral raise"], q: "lateral raise dumbbell shoulders" },
-    { keys: ["face pull", "tirage visage"], q: "face pull cable rear deltoid" },
-    { keys: ["rowing poulie", "cable row"], q: "seated cable row back machine" },
-    { keys: ["step up", "montee marche"], q: "step up box dumbbell legs" },
-  ];
-
-  let query = null;
-  for (const entry of exactMatch) {
-    if (entry.keys.some(k => n.includes(k))) {
-      query = entry.q;
-      break;
-    }
-  }
-
-  // Fallback: utilise le nom directement
-  if (!query) query = `${nom} exercise gym workout`;
-
-  try {
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5&orientation=landscape`,
-      { headers: { Authorization: import.meta.env.VITE_PEXELS_API_KEY } }
-    );
-    const data = await res.json();
-    if (!data.photos || data.photos.length === 0) return null;
-    // Prend une photo aleatoire parmi les 3 premieres
-    const idx = Math.floor(Math.random() * Math.min(3, data.photos.length));
-    return data.photos[idx]?.src?.large || null;
-  } catch { return null; }
-}
-
-// ─────────────────────────────────────────────
-// ECRAN SEANCE LIVE
-// ─────────────────────────────────────────────
-// Verifie qu'une image se charge vraiment avant de l'utiliser (evite images cassees/404)
-function preloadImage(url) {
-  return new Promise((resolve) => {
-    if (!url) { resolve(false); return; }
-    const img = new Image();
-    const timeout = setTimeout(() => resolve(false), 4000);
-    img.onload = () => { clearTimeout(timeout); resolve(true); };
-    img.onerror = () => { clearTimeout(timeout); resolve(false); };
-    img.src = url;
-  });
-}
-
-function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
-  const [exIdx, setExIdx] = useState(resumeState?.exIdx || 0);
-  const [setIdx, setSetIdx] = useState(resumeState?.setIdx || 0);
-  const [resting, setResting] = useState(false);
-  const [waitingRest, setWaitingRest] = useState(false);
-  const [completedSets, setCompletedSets] = useState(resumeState?.completedSets || {});
-  const [showExitModal, setShowExitModal] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
-  const [feedback, setFeedback] = useState(null);
-  const [animKey, setAnimKey] = useState(0);
-  const [toast, setToast] = useState(null);
-  const [showCoach, setShowCoach] = useState(false);
-  const [showUpsell, setShowUpsell] = useState(false);
-  const [coachMessages, setCoachMessages] = useState([]);
-  const [coachInput, setCoachInput] = useState("");
-  const [coachLoading, setCoachLoading] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState(null);
-  const [gifUrl, setGifUrl] = useState(null);
-  const [startTime] = useState(() => resumeState?.elapsed ? Date.now() - resumeState.elapsed * 1000 : Date.now());
-  const [elapsed, setElapsed] = useState(0);
-  const [celebrate, setCelebrate] = useState(false);
-
-  const theme = getSportTheme(sport);
-
-  useEffect(() => {
-    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
-    return () => clearInterval(timer);
-  }, [startTime]);
-
-  // Compte à rebours repos plein écran
-  const [restLeft, setRestLeft] = useState(0);
-  useEffect(() => {
-    if (!resting) return;
-    setRestLeft(currentEx?.reposSec || 90);
-    const t = setInterval(() => {
-      setRestLeft(p => {
-        if (p <= 1) {
-          clearInterval(t);
-          setResting(false);
-          setSetIdx(i => i + 1);
-          return 0;
-        }
-        return p - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, [resting]);
-
-  const formatElapsed = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
-
-  const exercices = seance?.exercices || [];
-  const currentEx = exercices[exIdx] || null;
-
-  // Message coach proactif quand exercice change
-  useEffect(() => {
-    if (!currentEx) return;
-    setPhotoUrl(null);
-    setGifUrl(null);
-    // Priorite au GIF anime, verifie qu'il charge vraiment avant de l'afficher
-    getExerciseGif(currentEx.nom, currentEx.nomEn).then(async url => {
-      if (url && await preloadImage(url)) {
-        setGifUrl(url);
-      } else {
-        // Fallback photo, verifie aussi qu'elle charge
-        const photo = await getExercicePhoto(currentEx.nom);
-        if (photo && await preloadImage(photo)) setPhotoUrl(photo);
-      }
-    });
-    const intro = exIdx === 0
-      ? `Séance lancée ! On commence par **${currentEx.nom}** — ${currentEx.sets} séries de ${currentEx.reps} reps. ${currentEx.chargeKg > 0 ? `Charge : ${currentEx.chargeKg}kg.` : ""} Je suis là si tu as besoin d'adapter. 💪`
-      : `Exercice ${exIdx + 1}/${exercices.length} — **${currentEx.nom}**. ${currentEx.muscles ? `Muscles ciblés : ${currentEx.muscles}.` : ""} ${currentEx.chargeKg > 0 ? `${currentEx.chargeKg}kg, ${currentEx.sets}×${currentEx.reps}.` : `${currentEx.sets}×${currentEx.reps}.`}`;
-    setCoachMessages([{ role: "assistant", text: intro }]);
-  }, [exIdx, currentEx?.nom]);
-
-  if (exercices.length === 0 && !showSummary) {
-    return (
-      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", textAlign: "center" }}>
-        <p style={{ fontSize: 48, marginBottom: 16 }}>⚠️</p>
-        <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 24, color: DS.colors.textPrimary, marginBottom: 8 }}>Séance introuvable</h2>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, marginBottom: 24 }}>Le programme n'a pas encore d'exercices. Attends que la génération soit terminée.</p>
-        <button onClick={() => onFinish && onFinish("skip", {}, 0)} style={{ padding: "12px 24px", background: DS.colors.primary, border: "none", borderRadius: DS.radius.full, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Retour au dashboard</button>
-      </div>
-    );
-  }
-
-  if (!currentEx && !showSummary) return null;
-
-  const totalSets = currentEx ? (currentEx.sets || 4) : 4;
-  const progressPct = currentEx ? Math.round(((exIdx + setIdx / totalSets) / exercices.length) * 100) : 100;
-  const accentColor = theme.accent;
-
-  const freeCoachMessages = coachMessages.filter(m => m.role === "user").length;
-  const coachBlocked = !isPro && freeCoachMessages >= 2;
-
-  const sendCoachMessage = async () => {
-    if (!coachInput.trim() || coachLoading || coachBlocked) return;
-    const userMsg = coachInput.trim();
-    setCoachInput("");
-    setCoachMessages(prev => [...prev, { role: "user", text: userMsg }]);
-    setCoachLoading(true);
-    try {
-      await supabase.auth.refreshSession();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Pas de session");
-
-      // Contexte complet de la séance
-      const setsCompletes = Object.keys(completedSets).filter(k => k.startsWith(`${exIdx}-`)).length;
-      const totalSetsEx = currentEx?.sets || 4;
-      const exercicesCompletes = exercices.slice(0, exIdx).map(ex => ex.nom);
-      const dureeMin = Math.floor(elapsed / 60);
-
-      const sessionContext = {
-        seance_titre: seance?.titre,
-        sport,
-        exercice_actuel: {
-          nom: currentEx?.nom,
-          muscles: currentEx?.muscles,
-          sets_total: totalSetsEx,
-          sets_completes: setsCompletes,
-          reps: currentEx?.reps,
-          charge_kg: currentEx?.chargeKg || 0,
-          index: exIdx + 1,
-          total: exercices.length,
-        },
-        progression_seance: {
-          exercices_completes: exercicesCompletes,
-          exercices_restants: exercices.slice(exIdx + 1).map(ex => ex.nom),
-          duree_ecoulee_min: dureeMin,
-          pourcentage: Math.round(((exIdx + setsCompletes / totalSetsEx) / exercices.length) * 100),
-        },
-      };
-
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({
-          message: userMsg,
-          context: sessionContext,
-          history: coachMessages.slice(-8),
-        }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setCoachMessages(prev => [...prev, { role: "assistant", text: data.reply || "Désolé, erreur." }]);
-    } catch (err) {
-      setCoachMessages(prev => [...prev, { role: "assistant", text: "Erreur de connexion. Réessaie." }]);
-    }
-    setCoachLoading(false);
-  };
-
-  const handleSetComplete = () => {
-    const key = `${exIdx}-${setIdx}`;
-    setCompletedSets(prev => ({ ...prev, [key]: { reps: parseInt(currentEx.reps) || 8, kg: currentEx.chargeKg || 0 } }));
-    const msg = getRandom(MOTIVATION.complete);
-    setToast(msg);
-    setTimeout(() => setToast(null), 1400);
-    if (setIdx < totalSets - 1) {
-      // Repos plein écran directement
-      setResting(true);
-    } else {
-      if (exIdx < exercices.length - 1) {
-        setCelebrate(true);
-        setTimeout(() => setCelebrate(false), 1200);
-        setTimeout(() => { setExIdx(i => i + 1); setSetIdx(0); setAnimKey(k => k + 1); }, 500);
-      } else {
-        setTimeout(() => setShowSummary(true), 600);
-      }
-    }
-  };
-
-  const handlePause = () => {
-    try {
-      localStorage.setItem("voltra_paused_session", JSON.stringify({
-        seance, exIdx, setIdx, completedSets, elapsed, sport, savedAt: Date.now()
-      }));
-    } catch (e) {}
-    setShowExitModal(false);
-    onBack();
-  };
-
-  // ── ECRAN RECAPITULATIF ──
-  if (showSummary) {
-    const totalSetsCount = exercices.reduce((acc, ex) => acc + (ex.sets || 3), 0);
-    const durationMin = Math.max(1, Math.round((Date.now() - startTime) / 60000));
-    return (
-      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", maxWidth: 430, margin: "0 auto", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 300px 300px at 50% 30%, ${accentColor}08, transparent)`, pointerEvents: "none" }} />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 40, position: "relative" }}>
-
-          {/* Trophee */}
-          <div style={{ width: 100, height: 100, borderRadius: 26, background: `${accentColor}15`, border: `2px solid ${accentColor}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46, marginBottom: 24, boxShadow: `0 0 60px ${accentColor}30`, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
-            🏆
-          </div>
-
-          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8 }}>SEANCE TERMINEE</div>
-          <h1 style={{ ...s.display, fontSize: 36, color: DS.colors.textPrimary, marginBottom: 6, textAlign: "center", letterSpacing: "0.02em" }}>{getRandom(MOTIVATION.finish).toUpperCase()}</h1>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, marginBottom: 36, letterSpacing: "0.15em" }}>{(seance.titre || "").toUpperCase()}</p>
-
-          {/* Stats */}
-          <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 36 }}>
-            {[
-              { val: exercices.length, label: "EXO", color: accentColor },
-              { val: totalSetsCount, label: "SERIES", color: DS.colors.success },
-              { val: `${durationMin}`, label: "MIN", color: "#FF8C00" },
-            ].map((stat, i) => (
-              <div key={i} style={{ flex: 1, background: DS.colors.surface, border: `1px solid ${stat.color}25`, borderRadius: DS.radius.lg, padding: "18px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 28, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
-                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Ressenti */}
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 14 }}>Comment tu te sens ?</p>
-          <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 24 }}>
-            {[
-              { id: "easy", emoji: "😤", label: "FACILE", color: accentColor },
-              { id: "good", emoji: "💪", label: "PARFAIT", color: DS.colors.success },
-              { id: "hard", emoji: "🔥", label: "DUR", color: "#FF4500" },
-            ].map(fb => (
-              <button key={fb.id} onClick={() => setFeedback(fb.id)} style={{ flex: 1, padding: "16px 8px", background: feedback === fb.id ? fb.color + "20" : DS.colors.surface, border: `2px solid ${feedback === fb.id ? fb.color : DS.colors.border}`, borderRadius: DS.radius.lg, cursor: "pointer", transition: "all 0.2s", transform: feedback === fb.id ? "scale(1.05)" : "scale(1)" }}>
-                <div style={{ fontSize: 26, marginBottom: 6 }}>{fb.emoji}</div>
-                <div style={{ fontFamily: "'Space Mono',monospace", color: feedback === fb.id ? fb.color : DS.colors.textSec, fontSize: 9, letterSpacing: "0.1em" }}>{fb.label}</div>
-              </button>
-            ))}
-          </div>
-
-          <button onClick={() => onFinish(feedback, completedSets, exercices, durationMin)} disabled={!feedback} style={{ width: "100%", height: 56, background: feedback ? `linear-gradient(135deg, ${accentColor}, ${accentColor}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? "#000" : DS.colors.textSec, fontSize: 15, cursor: feedback ? "pointer" : "not-allowed", fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", boxShadow: feedback ? `0 8px 32px ${accentColor}40` : "none", transition: "all 0.3s" }}>
-            {feedback ? "ENREGISTRER ET CONTINUER" : "SELECTIONNE TON RESSENTI"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── ÉCRAN REPOS PLEIN ÉCRAN ──
-  if (resting) {
-    const restTotal = currentEx?.reposSec || 90;
-    const restPct = (restLeft / restTotal) * 100;
-    const nextSetNum = setIdx + 2; // série suivante (1-indexed)
-    return (
-      <div style={{ fontFamily: "'Inter',sans-serif", background: "linear-gradient(180deg, #0A2540 0%, #051426 100%)", minHeight: "100vh", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", color: "white", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: "25%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(10,132,255,0.25), transparent 70%)", pointerEvents: "none" }} />
-
-        <div style={{ padding: "52px 24px 0", display: "flex", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontVariantNumeric: "tabular-nums" }}>{formatElapsed(elapsed)}</p>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>EX {exIdx + 1}/{exercices.length}</p>
-        </div>
-
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.35em", color: "#5AC8FA", marginBottom: 12 }}>💨 RÉCUPÉRATION</p>
-          <p style={{ fontSize: 140, fontWeight: 800, lineHeight: 0.9, letterSpacing: "-0.05em", fontVariantNumeric: "tabular-nums", textShadow: "0 0 60px rgba(90,200,250,0.4)" }}>{restLeft}</p>
-          <div style={{ width: 200, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 4, marginTop: 24, overflow: "hidden" }}>
-            <div style={{ width: `${restPct}%`, height: "100%", background: "#5AC8FA", borderRadius: 4, transition: "width 1s linear" }} />
-          </div>
-        </div>
-
-        <div style={{ padding: "0 20px 32px", position: "relative", zIndex: 1 }}>
-          <div style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "16px 18px", marginBottom: 14 }}>
-            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.2em", marginBottom: 6 }}>ENSUITE</p>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <p style={{ fontSize: 17, fontWeight: 800 }}>{currentEx.nom} — Série {nextSetNum}/{totalSets}</p>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{currentEx.reps} reps{currentEx.chargeKg > 0 ? ` · ${currentEx.chargeKg} kg` : ""}</p>
-              </div>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(90,200,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎯</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => setRestLeft(r => r + 30)} style={{ flex: 1, height: 52, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 16, color: "white", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>+30 sec</button>
-            <button onClick={() => { setResting(false); setSetIdx(i => i + 1); }} style={{ flex: 2, height: 52, background: "#5AC8FA", border: "none", borderRadius: 16, color: "#000", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>Reprendre →</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── ÉCRAN EFFORT — photo + zone focus ──
-  return (
-    <div style={{ fontFamily: "'Inter',sans-serif", minHeight: "100vh", background: "#000", maxWidth: 430, margin: "0 auto", position: "relative", display: "flex", flexDirection: "column", color: "white" }}>
-
-      {/* Celebration */}
-      {celebrate && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-          <div style={{ fontSize: 80, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards" }}>💥</div>
-          <div style={{ position: "absolute", fontSize: 40, top: "35%", left: "20%", animation: "floatUp 1s ease forwards", opacity: 0 }}>⚡</div>
-          <div style={{ position: "absolute", fontSize: 30, top: "30%", right: "20%", animation: "floatUp 1s ease forwards", animationDelay: "0.15s", opacity: 0 }}>✨</div>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: accentColor, color: "#000", padding: "8px 20px", borderRadius: 999, fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 800, zIndex: 200, boxShadow: `0 4px 20px ${accentColor}60`, whiteSpace: "nowrap" }}>
-          {toast}
-        </div>
-      )}
-
-      {/* Modal de sortie — stats + pause */}
-      {showExitModal && (() => {
-        const doneSets = Object.keys(completedSets).length;
-        const setsWithWeight = Object.values(completedSets).filter(s => s.kg > 0);
-        const kgTotal = Math.round(setsWithWeight.reduce((a, s) => a + (s.kg * (s.reps || 8)), 0));
-        const totalReps = Object.values(completedSets).reduce((a, s) => a + (s.reps || 8), 0);
-        const exosRestants = exercices.length - exIdx;
-        return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
-            <div style={{ width: "100%", maxWidth: 360, background: "#101418", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 24, padding: "28px 24px", textAlign: "center" }}>
-              <p style={{ fontSize: 40, marginBottom: 12 }}>😳</p>
-              <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 22, color: "white", marginBottom: 8, lineHeight: 1.15 }}>Tu abandonnes maintenant ?</h2>
-              {doneSets > 0 ? (
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.6, marginBottom: 20 }}>
-                  Tu as déjà validé <strong style={{ color: accentColor }}>{doneSets} série{doneSets > 1 ? "s" : ""}</strong>{kgTotal > 0 ? <> et soulevé <strong style={{ color: accentColor }}>{kgTotal} kg</strong></> : totalReps > 0 ? <> et fait <strong style={{ color: accentColor }}>{totalReps} répétitions</strong></> : null}. Il ne reste que <strong style={{ color: "white" }}>{exosRestants} exercice{exosRestants > 1 ? "s" : ""}</strong>.
-                </p>
-              ) : (
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.6, marginBottom: 20 }}>
-                  La séance vient de commencer — c'est maintenant que tout se joue.
-                </p>
-              )}
-              <button onClick={() => setShowExitModal(false)} style={{ width: "100%", height: 56, background: accentColor, border: "none", borderRadius: 999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 17, fontWeight: 900, cursor: "pointer", marginBottom: 10, boxShadow: `0 8px 32px ${accentColor}40` }}>
-                JE CONTINUE 💪
-              </button>
-              <button onClick={handlePause} style={{ width: "100%", height: 48, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, color: "white", fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}>
-                ⏸ Mettre en pause — je reviens
-              </button>
-              <button onClick={() => { setShowExitModal(false); onBack(); }} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontFamily: "'Inter',sans-serif", fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
-                Quitter sans sauvegarder
-              </button>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ── Photo immersive ── */}
-      <div key={animKey} style={{ position: "relative", height: "36vh", minHeight: 260, overflow: "hidden", flexShrink: 0 }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: gifUrl ? `url(${gifUrl})` : photoUrl ? `url(${photoUrl})` : "none", backgroundSize: gifUrl ? "contain" : "cover", backgroundRepeat: "no-repeat", backgroundPosition: "center", backgroundColor: gifUrl ? "#FFFFFF" : "#101418" }} />
-        <div style={{ position: "absolute", inset: 0, background: gifUrl ? "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 70%, #000 100%)" : "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 35%, transparent 55%, #000 100%)" }} />
-
-        {/* Header sur la photo */}
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "50px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
-          <button onClick={() => setShowExitModal(true)} style={{ width: 36, height: 36, borderRadius: 18, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", color: "white", fontSize: 15, cursor: "pointer" }}>✕</button>
-          <div style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", borderRadius: 20, padding: "6px 14px", border: "1px solid rgba(255,255,255,0.15)" }}>
-            <p style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{formatElapsed(elapsed)}</p>
-          </div>
-          <button onClick={() => setShowCoach(true)} style={{ width: 36, height: 36, borderRadius: 18, background: `${accentColor}30`, backdropFilter: "blur(10px)", border: `1px solid ${accentColor}60`, cursor: "pointer", padding: 3, display: "flex", alignItems: "center", justifyContent: "center" }}><AceAvatar size={28} /></button>
-        </div>
-
-        {/* Progression exercices — segments */}
-        <div style={{ position: "absolute", bottom: 12, left: 20, right: 20, zIndex: 2, display: "flex", gap: 4 }}>
-          {exercices.map((_, i) => {
-            const fill = i < exIdx ? 1 : i === exIdx ? setIdx / totalSets : 0;
-            return (
-              <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", overflow: "hidden" }}>
-                <div style={{ width: `${fill * 100}%`, height: "100%", background: accentColor, borderRadius: 2, transition: "width 0.4s ease" }} />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Zone Focus ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "18px 20px 36px" }}>
-
-        {/* Nom */}
-        <div style={{ textAlign: "center", marginBottom: 14 }}>
-          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.25em", color: accentColor, marginBottom: 6 }}>EXERCICE {exIdx + 1}/{exercices.length}{currentEx.muscles ? ` · ${(currentEx.muscles || "").split(" ")[0].toUpperCase()}` : ""}</p>
-          <h1 style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, letterSpacing: "-0.02em", textTransform: "uppercase", color: "white" }}>{currentEx.nom}</h1>
-          {currentEx.conseil && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8, fontStyle: "italic" }}>💡 {currentEx.conseil}</p>}
-        </div>
-
-        {/* Chiffre géant */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.3em", color: "rgba(255,255,255,0.4)", marginBottom: 2 }}>SÉRIE {setIdx + 1} SUR {totalSets}</p>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <span style={{ fontSize: 88, fontWeight: 900, lineHeight: 1, color: accentColor, letterSpacing: "-0.04em", textShadow: `0 0 50px ${accentColor}40` }}>{currentEx.reps}</span>
-            <span style={{ fontSize: 20, color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>{currentEx.chargeKg > 0 ? `× ${currentEx.chargeKg}kg` : "reps"}</span>
-          </div>
-
-          {/* Séries cercles */}
-          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            {Array.from({ length: totalSets }).map((_, i) => {
-              const done = !!completedSets[`${exIdx}-${i}`];
-              const current = i === setIdx && !done;
-              return (
-                <div key={i} style={{ width: 38, height: 38, borderRadius: 19, background: done ? accentColor : current ? `${accentColor}20` : "rgba(255,255,255,0.06)", border: `2px solid ${done || current ? accentColor : "rgba(255,255,255,0.15)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: done ? "#000" : current ? accentColor : "rgba(255,255,255,0.3)", boxShadow: current ? `0 0 16px ${accentColor}50` : "none", transition: "all 0.3s" }}>
-                  {done ? "✓" : i + 1}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Bouton massif */}
-        <button onClick={handleSetComplete} style={{ width: "100%", height: 64, background: accentColor, border: "none", borderRadius: 20, color: "#000", fontSize: 18, fontWeight: 900, letterSpacing: "-0.01em", cursor: "pointer", boxShadow: `0 8px 40px ${accentColor}40`, fontFamily: "'Inter',sans-serif" }}>
-          SÉRIE VALIDÉE ✓
-        </button>
-      </div>
-
-
-      {/* Bouton Coach IA flottant */}
-      <button onClick={() => setShowCoach(true)} style={{ position: "fixed", bottom: 32, right: 20, width: 54, height: 54, borderRadius: DS.radius.full, background: accentColor, border: "none", color: "#000", fontSize: 22, cursor: "pointer", boxShadow: `0 0 24px ${accentColor}60`, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150 }}>
-        <AceAvatar size={22} />
-      </button>
-
-      {/* Drawer Coach IA */}
-      {showCoach && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-          <div onClick={() => setShowCoach(false)} style={{ position: "absolute", inset: 0, background: DS.colors.surfaceHigh, backdropFilter: "blur(4px)" }} />
-          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "0 0 40px", maxHeight: "75vh", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "18px 20px 14px", borderBottom: `1px solid ${DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: DS.radius.full, background: accentColor + "20", border: `1px solid ${accentColor}40`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><AceAvatar size={30} /></div>
-                <div>
-                  <p style={{ ...s.heading, fontSize: 15, color: DS.colors.textPrimary }}>Coach IA</p>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.15em" }}>EN LIGNE</p>
-                </div>
-              </div>
-              <button onClick={() => setShowCoach(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 30, height: 30, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
-            </div>
-            {/* Contexte exercice actuel */}
-            {currentEx && (
-              <div style={{ margin: "8px 16px 0", background: accentColor + "12", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.md, padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12, color: accentColor, marginBottom: 1 }}>{currentEx.nom}</p>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>
-                    {Object.keys(completedSets).filter(k => k.startsWith(`${exIdx}-`)).length}/{currentEx.sets} séries · {currentEx.reps} reps{currentEx.chargeKg > 0 ? ` · ${currentEx.chargeKg}kg` : ""}
-                  </p>
-                </div>
-                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec }}>
-                  {exIdx + 1}/{exercices.length}
-                </div>
-              </div>
-            )}
-            {/* Messages */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-              {coachMessages.map((msg, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8 }}>
-                  {msg.role === "assistant" && (
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0, marginBottom: 2 }}><AceAvatar size={28} /></div>
-                  )}
-                  <div style={{ maxWidth: "78%", padding: "10px 14px", borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: msg.role === "user" ? accentColor : "rgba(255,255,255,0.08)", color: msg.role === "user" ? "#000" : "white", fontSize: 13, lineHeight: 1.6, fontFamily: "'Inter',sans-serif", fontWeight: msg.role === "user" ? 600 : 400 }}>
-                    {msg.text.split("**").map((part, j) => j % 2 === 1 ? <strong key={j}>{part}</strong> : part)}
-                  </div>
-                </div>
-              ))}
-              {coachLoading && (
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><AceAvatar size={28} /></div>
-                  <div style={{ display: "flex", gap: 4, padding: "12px 16px", background: DS.colors.surfaceHigh, borderRadius: "18px 18px 18px 4px" }}>
-                    {[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: accentColor, animation: `pulse 1s ease ${i*0.2}s infinite` }} />)}
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* Message bloqué si limite atteinte */}
-            {coachBlocked && (
-              <div style={{ margin: "8px 16px", background: "rgba(155,232,79,0.08)", border: "1px solid rgba(155,232,79,0.2)", borderRadius: DS.radius.lg, padding: "12px 14px", textAlign: "center" }}>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: accentColor, fontWeight: 600, marginBottom: 4 }}>⚡ Limite gratuite atteinte</p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, marginBottom: 8 }}>2 messages gratuits par séance. Passe en Pro pour un coach illimité.</p>
-                <button onClick={() => setShowUpsell(true)} style={{ background: accentColor, border: "none", borderRadius: DS.radius.full, padding: "6px 16px", color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Débloquer le coach →</button>
-              </div>
-            )}
-            {/* Suggestions rapides contextuelles */}
-            <div style={{ padding: "6px 16px 0", display: "flex", gap: 6, overflowX: "auto", opacity: coachBlocked ? 0.3 : 1, pointerEvents: coachBlocked ? "none" : "auto" }}>
-              {[
-                "Trop lourd 😓",
-                "Alternative ?",
-                "J'ai mal 🤕",
-                "Forme correcte ?",
-                "Prochain exo ?",
-              ].map((sug, i) => (
-                <button key={i} onClick={() => setCoachInput(sug)} style={{ flexShrink: 0, padding: "5px 12px", background: accentColor + "10", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.full, color: accentColor, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'Inter',sans-serif", fontWeight: 500 }}>{sug}</button>
-              ))}
-            </div>
-            {/* Input */}
-            <div style={{ padding: "8px 16px 4px", display: "flex", gap: 8 }}>
-              <input value={coachInput} onChange={e => !coachBlocked && setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder={coachBlocked ? "Limite atteinte — Passe en Pro" : "Parle à Ace..."} style={{ flex: 1, height: 44, padding: "0 16px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 14, outline: "none", fontFamily: "'Inter',sans-serif" }} />
-              <button onClick={sendCoachMessage} disabled={!coachInput.trim() || coachLoading} style={{ width: 44, height: 44, borderRadius: DS.radius.full, background: coachInput.trim() ? accentColor : "rgba(255,255,255,0.08)", border: "none", color: coachInput.trim() ? "#000" : "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 18, flexShrink: 0, fontWeight: 700 }}>→</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// PAYMENT SUCCESS SCREEN
-// ─────────────────────────────────────────────
-function PaymentSuccessScreen({ plan, onContinue }) {
-  const [phase, setPhase] = useState(0);
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 300);
-    const t2 = setTimeout(() => setPhase(2), 1200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
-
-  const planLabel = plan === "monthly" ? "Mensuel" : plan === "annual" ? "Annuel" : "Lifetime";
-  const planEmoji = plan === "lifetime" ? "💎" : plan === "annual" ? "⚡" : "🚀";
-
-  return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.1), transparent)", pointerEvents: "none" }} />
-
-      <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
-        {/* Icône animée */}
-        <div style={{ opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.3)", transition: "all 0.6s cubic-bezier(0.34,1.56,0.64,1)", marginBottom: 32 }}>
-          <div style={{ width: 100, height: 100, borderRadius: 28, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, margin: "0 auto", boxShadow: "0 0 60px rgba(155,232,79,0.5)" }}>
-            {planEmoji}
-          </div>
-        </div>
-
-        {/* Texte */}
-        <div style={{ opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "translateY(0)" : "translateY(20px)", transition: "all 0.5s ease" }}>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#9BE84F", letterSpacing: "0.3em", marginBottom: 14 }}>PAIEMENT CONFIRMÉ</p>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em" }}>
-            BIENVENUE DANS<br />L'ÉQUIPE PRO ⚡
-          </h1>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 8, lineHeight: 1.6 }}>
-            Plan <strong style={{ color: "white" }}>{planLabel}</strong> activé. Ton programme personnalisé est en cours de génération.
-          </p>
-
-          {/* Features débloquées */}
-          <div style={{ background: "rgba(155,232,79,0.06)", border: "1px solid rgba(155,232,79,0.2)", borderRadius: 20, padding: "20px 20px", marginTop: 28, marginBottom: 32, textAlign: "left" }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "#9BE84F", letterSpacing: "0.2em", marginBottom: 14 }}>CE QUE TU VIENS DE DÉBLOQUER</p>
-            {[
-              { emoji: "📈", text: "Séances illimitées" },
-              { emoji: "🤖", text: "Coach IA en temps réel" },
-              { emoji: "⚡", text: "Progression automatique des charges" },
-              { emoji: "🏆", text: "Cycles infinis de progression" },
-            ].map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                <span style={{ fontSize: 16 }}>{f.emoji}</span>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "white", fontWeight: 500 }}>{f.text}</p>
-                <svg style={{ marginLeft: "auto" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#9BE84F" strokeWidth="2.5" strokeLinecap="round"/></svg>
-              </div>
-            ))}
-          </div>
-
-          <button onClick={onContinue} style={{ width: "100%", height: 56, background: "#9BE84F", border: "none", borderRadius: 9999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 32px rgba(155,232,79,0.4)" }}>
-            Voir mon programme →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// PROGRAMME GENERATION LOADING SCREEN
-// ─────────────────────────────────────────────
-function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, onboardingData }) {
-  const theme = getSportTheme(sport);
-  const [step, setStep] = useState(0);
-  const [dots, setDots] = useState("");
-  const [checkIdx, setCheckIdx] = useState(0);
-
-  const steps = [
-    { emoji: "🔍", text: "Analyse de ton profil sportif", duration: 3000 },
-    { emoji: "🧠", text: "L'IA construit ta structure", duration: 4000 },
-    { emoji: "💪", text: "Sélection des exercices clés", duration: 3000 },
-    { emoji: "📈", text: "Calibration des progressions", duration: 4000 },
-    { emoji: "⚡", text: "Optimisation pour ton sport", duration: 3000 },
-    { emoji: "🎯", text: "Personnalisation finale", duration: 2000 },
-    { emoji: "✅", text: "Programme prêt !", duration: 1000 },
-  ];
-
-  // Checklist personnalisée construite avec les vraies données de l'utilisateur
-  const nbExos = Math.floor(Math.random() * 6) + 18; // 18-23
-  const equipLabels = { salle_complete: "salle complète", salle_basique: "salle basique", maison: "entraînement maison", terrain: "extérieur" };
-  const niveauLabels = { debutant: "débutant", intermediaire: "intermédiaire", avance: "avancé" };
-  const checklist = [
-    `${nbExos} exercices sélectionnés pour ton poste`,
-    `Charges calibrées sur ton niveau ${niveauLabels[onboardingData?.niveau] || ""}`,
-    `Programme adapté pour "${equipLabels[onboardingData?.equipement] || "ton équipement"}"`,
-    ...(onboardingData?.douleurs?.length > 0 && !onboardingData.douleurs.includes("aucune")
-      ? [`Exercices remplacés pour protéger ${onboardingData.douleurs.length > 1 ? "tes zones sensibles" : "ta zone sensible"}`]
-      : ["Aucune contrainte détectée — intensité maximale"]),
-    `Progression sur 8 semaines programmée`,
-    `Fréquence ${onboardingData?.frequence || 3}x/semaine intégrée`,
-  ];
-
-  useEffect(() => {
-    let elapsed = 0;
-    const timers = [];
-    steps.forEach((s, i) => {
-      timers.push(setTimeout(() => setStep(i), elapsed));
-      elapsed += s.duration;
-    });
-    const done = setTimeout(() => onDone(), Math.max(elapsed, 20000));
-    timers.push(done);
-    return () => timers.forEach(clearTimeout);
-  }, []);
-
-  // Si programme déjà prêt et on a dépassé les étapes visuelles
-  useEffect(() => {
-    if (programmeActif && step >= steps.length - 2) {
-      setTimeout(() => onDone(), 800);
-    }
-  }, [programmeActif, step]);
-
-  useEffect(() => {
-    const d = setInterval(() => setDots(p => p.length >= 3 ? "" : p + "."), 400);
-    return () => clearInterval(d);
-  }, []);
-
-  useEffect(() => {
-    const c = setInterval(() => setCheckIdx(p => Math.min(p + 1, checklist.length)), 1800);
-    return () => clearInterval(c);
-  }, []);
-
-  const progress = Math.round((step / (steps.length - 1)) * 100);
-
-  return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
-        {SPORT_EMOJIS[sport] || "⚡"}
-      </div>
-
-      <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 390 }}>
-
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 20, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, margin: "0 auto 16px", boxShadow: `0 0 50px ${theme.accent}50`, animation: "pulse 2s ease infinite" }}>⚡</div>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 10 }}>GÉNÉRATION EN COURS</p>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: "white", lineHeight: 1.1, letterSpacing: "0.02em" }}>
-            Ton programme<br />se construit{dots}
-          </h1>
-        </div>
-
-        {/* Barre de progression */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.5)" }}>PROGRESSION</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>{progress}%</p>
-          </div>
-          <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 9999, height: 6, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${progress}%`, background: theme.accent, borderRadius: 9999, transition: "width 0.8s ease", boxShadow: `0 0 12px ${theme.accent}80` }} />
-          </div>
-        </div>
-
-        {/* Étapes */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
-          {steps.map((s, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: i < step ? theme.accent + "08" : i === step ? theme.accent + "15" : "rgba(255,255,255,0.02)", border: `1px solid ${i <= step ? theme.accent + "25" : "rgba(255,255,255,0.04)"}`, borderRadius: 14, transition: "all 0.4s ease", opacity: i > step ? 0.35 : 1 }}>
-              <span style={{ fontSize: 16, filter: i > step ? "grayscale(1)" : "none", transition: "filter 0.3s" }}>{s.emoji}</span>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: i <= step ? "white" : "rgba(255,255,255,0.35)", fontWeight: i === step ? 600 : 400, flex: 1 }}>{s.text}</p>
-              {i < step && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round"/></svg>
-              )}
-              {i === step && (
-                <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${theme.accent}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Checklist de personnalisation en direct */}
-        <div style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${theme.accent}20`, borderRadius: 16, padding: "16px 18px" }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 10, color: theme.accent, letterSpacing: "0.15em", marginBottom: 12 }}>CONSTRUIT SPÉCIALEMENT POUR TOI</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {checklist.map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, opacity: i < checkIdx ? 1 : 0.25, transition: "opacity 0.4s ease" }}>
-                {i < checkIdx ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, animation: i === checkIdx - 1 ? "pop 0.4s cubic-bezier(0.34,1.56,0.64,1)" : "none" }}><circle cx="12" cy="12" r="11" fill={theme.accent} /><path d="M7 12.5L10.5 16L17 8" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                ) : (
-                  <div style={{ width: 15, height: 15, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.25)", flexShrink: 0 }} />
-                )}
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: i < checkIdx ? "white" : "rgba(255,255,255,0.4)", fontWeight: i < checkIdx ? 600 : 400 }}>{item}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-// ─────────────────────────────────────────────
-function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
-  const theme = getSportTheme(sport);
-  const cycle = (programme?.data_json?.cycle || 1);
-  const [showContinue, setShowContinue] = useState(false);
-
-  useEffect(() => {
-    if (!cycleLoading) {
-      const t = setTimeout(() => setShowContinue(true), 1000);
-      return () => clearTimeout(t);
-    }
-  }, [cycleLoading]);
-
-  const getCycleMsg = (n) => {
-    if (n === 1) return { emoji: "🏆", title: "Cycle 1 termine !", desc: "Tu as complete ton premier cycle. Tu es deja plus fort." };
-    if (n === 2) return { emoji: "⚡", title: "Cycle 2 accompli !", desc: "Plus intense, plus cible. Ton corps s'est adapte." };
-    if (n === 3) return { emoji: "🔥", title: "Niveau avance atteint !", desc: "Tu fais partie des rares qui vont aussi loin." };
-    if (n === 4) return { emoji: "💎", title: "Elite !", desc: "Peu d'athletes atteignent ce niveau. Impressionnant." };
-    return { emoji: "🚀", title: `Elite+ ${n - 4} accompli !`, desc: `Cycle ${n} termine. Tu repousses des limites que peu connaissent.` };
-  };
-  const msg = getCycleMsg(cycle);
-
-  return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
-        {SPORT_EMOJIS[sport] || "⚡"}
-      </div>
-
-      <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
-
-        {/* Trophée animé */}
-        <div style={{ fontSize: 80, marginBottom: 24, animation: "celebrate 0.8s cubic-bezier(0.34,1.56,0.64,1)" }}>
-          {msg.emoji}
-        </div>
-
-        {/* Titre */}
-        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 12 }}>
-          CYCLE {cycle} COMPLETE
-        </div>
-        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 42, color: DS.colors.textPrimary, lineHeight: 0.95, marginBottom: 12, letterSpacing: "0.02em" }}>
-          {msg.title.toUpperCase()}
-        </h1>
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.1em", marginBottom: 40, maxWidth: 300, margin: "0 auto 40px" }}>
-          {msg.desc}
-        </p>
-
-        {/* Stats du cycle */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 40, justifyContent: "center" }}>
-          {[
-            { val: cycle, label: "CYCLES", color: theme.accent },
-            { val: `${(programme?.semaine_courante || 8)}`, label: "SEMAINES", color: "#00FF87" },
-            { val: "↑↑↑", label: "NIVEAU", color: "#FF8C00" },
-          ].map((stat, i) => (
-            <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 16px", textAlign: "center", position: "relative", overflow: "hidden", minWidth: 80 }}>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 24, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Status génération */}
-        {cycleLoading ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "12px 20px", marginBottom: 24, justifyContent: "center" }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: theme.accent, animation: "pulse 1s infinite", boxShadow: `0 0 8px ${theme.accent}` }} />
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, letterSpacing: "0.15em" }}>
-              GENERATION DU CYCLE {cycle + 1} EN COURS...
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(0,255,135,0.08)", border: "1px solid rgba(0,255,135,0.25)", borderRadius: DS.radius.full, padding: "12px 20px", marginBottom: 24, justifyContent: "center" }}>
-            <span style={{ fontSize: 16 }}>✅</span>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#00FF87", letterSpacing: "0.15em" }}>
-              CYCLE {cycle + 1} PRET · PLUS INTENSE
-            </p>
-          </div>
-        )}
-
-        {/* CTA */}
-        {showContinue && (
-          <button onClick={onContinue} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", boxShadow: `0 8px 32px ${theme.accent}40`, animation: "slideUp 0.5s ease" }}>
-            ATTAQUER LE CYCLE {cycle + 1} →
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// THEME CHOICE SCREEN
-// ─────────────────────────────────────────────
-function ThemeChoiceScreen({ onChoose }) {
-  const [selected, setSelected] = useState(null);
-  const [animIn, setAnimIn] = useState(false);
-
-  useEffect(() => {
-    setTimeout(() => setAnimIn(true), 100);
-  }, []);
-
-  const themes = [
-    {
-      id: "light",
-      name: "LUMINEUX",
-      desc: "Épuré, moderne, premium",
-      bg: "#F4F5F6",
-      surface: "#FFFFFF",
-      text: "#16181A",
-      textSec: "#8A8F94",
-      accent: "#9BE84F",
-      preview: [
-        { type: "card", bg: "#FFFFFF", shadow: true },
-        { type: "bar", color: "#9BE84F" },
-        { type: "btn", bg: "#9BE84F", text: "#16181A" },
-      ],
-    },
-    {
-      id: "dark",
-      name: "SOMBRE",
-      desc: "Intense, immersif, athlétique",
-      bg: "#06060E",
-      surface: "#0D0D18",
-      text: "#FFFFFF",
-      textSec: "#6B6B8A",
-      accent: "#9BE84F",
-      preview: [
-        { type: "card", bg: "#0D0D18", border: "rgba(255,255,255,0.06)" },
-        { type: "bar", color: "#9BE84F" },
-        { type: "btn", bg: "#9BE84F", text: "#000" },
-      ],
-    },
-  ];
-
-  return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
-
-      {/* Background glow */}
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.06), transparent)", pointerEvents: "none" }} />
-
-      <div style={{ width: "100%", maxWidth: 390, position: "relative", zIndex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(30px)", transition: "all 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
-
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <div style={{ width: 64, height: 64, borderRadius: 18, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 16px", boxShadow: "0 0 40px rgba(155,232,79,0.4)" }}>⚡</div>
-          <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 32, color: "white", letterSpacing: "0.15em", marginBottom: 8 }}>VOLTRA</div>
-          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.5)", letterSpacing: "0.2em" }}>CHOISIS TON STYLE</div>
-        </div>
-
-        {/* Theme cards */}
-        <div style={{ display: "flex", gap: 14, marginBottom: 32 }}>
-          {themes.map(theme => (
-            <div key={theme.id} onClick={() => setSelected(theme.id)} style={{ flex: 1, borderRadius: 24, overflow: "hidden", border: `2px solid ${selected === theme.id ? "#9BE84F" : "rgba(255,255,255,0.1)"}`, cursor: "pointer", transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)", transform: selected === theme.id ? "scale(1.02)" : "scale(1)", boxShadow: selected === theme.id ? "0 0 30px rgba(155,232,79,0.3)" : "none" }}>
-
-              {/* Preview mini app */}
-              <div style={{ background: theme.bg, padding: "16px 12px", height: 200 }}>
-                {/* Mini header */}
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 8, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>⚡</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ height: 5, background: theme.text, borderRadius: 3, opacity: 0.7, marginBottom: 3, width: "60%" }} />
-                    <div style={{ height: 3, background: theme.textSec, borderRadius: 3, opacity: 0.5, width: "40%" }} />
-                  </div>
-                </div>
-                {/* Mini card */}
-                <div style={{ background: theme.surface, borderRadius: 12, padding: "10px 10px", marginBottom: 8, boxShadow: theme.id === "light" ? "0 2px 12px rgba(0,0,0,0.08)" : "none", border: theme.id === "dark" ? `1px solid ${theme.preview[0].border}` : "none" }}>
-                  <div style={{ height: 4, background: theme.accent, borderRadius: 99, marginBottom: 6, width: "70%" }} />
-                  <div style={{ height: 3, background: theme.textSec, borderRadius: 3, opacity: 0.4, marginBottom: 4, width: "90%" }} />
-                  <div style={{ height: 3, background: theme.textSec, borderRadius: 3, opacity: 0.3, width: "60%" }} />
-                </div>
-                {/* Mini progress */}
-                <div style={{ height: 4, background: theme.id === "light" ? "#ECEEF0" : "#1A1A28", borderRadius: 99, marginBottom: 8, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: "65%", background: theme.accent, borderRadius: 99 }} />
-                </div>
-                {/* Mini button */}
-                <div style={{ height: 28, background: theme.accent, borderRadius: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{ height: 3, width: "50%", background: theme.id === "light" ? "#16181A" : "#16181A", borderRadius: 3, opacity: 0.8 }} />
-                </div>
-              </div>
-
-              {/* Theme label */}
-              <div style={{ background: selected === theme.id ? "#9BE84F" : "rgba(255,255,255,0.06)", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 15, color: selected === theme.id ? "#16181A" : "white", letterSpacing: "0.08em" }}>{theme.name}</p>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: selected === theme.id ? "#16181A" : "rgba(255,255,255,0.4)", letterSpacing: "0.1em", marginTop: 2 }}>{theme.desc}</p>
-                </div>
-                <div style={{ width: 22, height: 22, borderRadius: 9999, border: `2px solid ${selected === theme.id ? "#16181A" : "rgba(255,255,255,0.3)"}`, background: selected === theme.id ? "#16181A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {selected === theme.id && <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round"/></svg>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Note */}
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.5)", textAlign: "center", letterSpacing: "0.1em", marginBottom: 24 }}>TU POURRAS CHANGER CA DANS TON PROFIL</p>
-
-        {/* CTA */}
-        <button onClick={() => selected && onChoose(selected)} disabled={!selected} style={{ width: "100%", height: 56, background: selected ? "#9BE84F" : "rgba(255,255,255,0.1)", border: "none", borderRadius: 9999, color: selected ? "#16181A" : "rgba(255,255,255,0.3)", fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.1em", cursor: selected ? "pointer" : "not-allowed", transition: "all 0.3s", boxShadow: selected ? "0 8px 32px rgba(155,232,79,0.4)" : "none" }}>
-          {selected ? `CONTINUER EN MODE ${themes.find(t => t.id === selected)?.name} →` : "SÉLECTIONNE UN THÈME"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// WELCOME SCREEN
-// ─────────────────────────────────────────────
-function WelcomeScreen({ onStart }) {
-  const [phase, setPhase] = useState(0); // 0=logo, 1=features, 2=cta
-  const [featureIdx, setFeatureIdx] = useState(0);
-  const [logoReady, setLogoReady] = useState(false);
-
-  useEffect(() => {
-    // Phase logo → features → cta
-    const t1 = setTimeout(() => { setLogoReady(true); }, 300);
-    const t2 = setTimeout(() => setPhase(1), 1800);
-    const t3 = setTimeout(() => setPhase(2), 5200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, []);
-
-  // Auto-scroll features
-  useEffect(() => {
-    if (phase < 1) return;
-    const interval = setInterval(() => {
-      setFeatureIdx(i => (i + 1) % features.length);
-    }, 2200);
-    return () => clearInterval(interval);
-  }, [phase]);
-
-  const features = [
-    { emoji: "🎯", title: "Programme 100% personnalisé", desc: "L'IA crée ton programme selon ton sport, ton niveau et tes objectifs spécifiques", color: "#00FF87" },
-    { emoji: "📈", title: "Progression automatique", desc: "Tes charges augmentent intelligemment chaque semaine pour maximiser tes gains", color: "#FF8C00" },
-    { emoji: "🤖", title: "Coach IA en temps réel", desc: "Un coach disponible pendant chaque séance pour adapter et t'encourager", color: "#00C8FF" },
-    { emoji: "🏆", title: "Suis tes records", desc: "Visualise ta progression semaine après semaine et bats tes limites", color: "#FFE500" },
-  ];
-
-  return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
-
-      {/* Glow de fond */}
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 500px 500px at 50% 30%, rgba(0,255,135,0.07), transparent)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: -100, left: -100, width: 400, height: 400, background: "radial-gradient(circle, rgba(0,200,255,0.04), transparent)", pointerEvents: "none" }} />
-
-      {/* Phase logo */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: phase === 0 ? "center" : "flex-start", paddingTop: phase === 0 ? 0 : 60, transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1)", position: "relative", zIndex: 1 }}>
-
-        {/* Logo */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: phase === 0 ? 0 : 40, transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1)", transform: logoReady ? "scale(1)" : "scale(0.5)", opacity: logoReady ? 1 : 0 }}>
-          <div style={{ position: "relative", marginBottom: 20 }}>
-            {/* Rings animés */}
-            <div style={{ position: "absolute", inset: -20, borderRadius: "50%", border: "1px solid rgba(0,255,135,0.15)", animation: "pulse 3s ease-in-out infinite" }} />
-            <div style={{ position: "absolute", inset: -36, borderRadius: "50%", border: "1px solid rgba(0,255,135,0.08)", animation: "pulse 3s ease-in-out 0.5s infinite" }} />
-            {/* Icone */}
-            <div style={{ width: 90, height: 90, borderRadius: 26, background: "linear-gradient(135deg, #00FF87, #00C896)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, boxShadow: "0 0 60px rgba(0,255,135,0.5), 0 0 120px rgba(0,255,135,0.2)", position: "relative", zIndex: 1 }}>
-              ⚡
-            </div>
-          </div>
-
-          <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: phase === 0 ? 52 : 36, color: "white", letterSpacing: "0.2em", lineHeight: 1, transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1)", marginBottom: 8 }}>
-            VOLTRA
-          </div>
-          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.3)", letterSpacing: "0.3em", opacity: logoReady ? 1 : 0, transition: "opacity 0.6s ease 0.5s" }}>
-            PERFORMANCE · IA · SPORT
-          </div>
-        </div>
-
-        {/* Features carousel */}
-        {phase >= 1 && (
-          <div style={{ width: "100%", maxWidth: 390, padding: "0 24px", animation: "slideUp 0.6s ease" }}>
-
-            {/* Feature card principale */}
-            <div key={featureIdx} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${features[featureIdx].color}20`, borderRadius: DS.radius.xl, padding: "28px 24px", marginBottom: 20, position: "relative", overflow: "hidden", animation: "fadeIn 0.4s ease" }}>
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: features[featureIdx].color }} />
-              <div style={{ position: "absolute", top: -30, right: -20, fontSize: 100, opacity: 0.05, lineHeight: 1 }}>{features[featureIdx].emoji}</div>
-              <div style={{ fontSize: 42, marginBottom: 16 }}>{features[featureIdx].emoji}</div>
-              <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 24, color: "white", marginBottom: 10, lineHeight: 1.1, letterSpacing: "0.02em" }}>
-                {features[featureIdx].title}
-              </h2>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, letterSpacing: "0.08em" }}>
-                {features[featureIdx].desc}
-              </p>
-            </div>
-
-            {/* Dots */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 24 }}>
-              {features.map((_, i) => (
-                <div key={i} onClick={() => setFeatureIdx(i)} style={{ width: i === featureIdx ? 24 : 6, height: 6, borderRadius: 3, background: i === featureIdx ? features[featureIdx].color : "rgba(255,255,255,0.15)", transition: "all 0.3s ease", cursor: "pointer", boxShadow: i === featureIdx ? `0 0 8px ${features[featureIdx].color}` : "none" }} />
-              ))}
-            </div>
-
-            {/* 4 icones features rapides */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
-              {features.map((f, i) => (
-                <div key={i} onClick={() => setFeatureIdx(i)} style={{ background: i === featureIdx ? f.color + "15" : "rgba(255,255,255,0.06)", border: `1px solid ${i === featureIdx ? f.color + "40" : "rgba(255,255,255,0.1)"}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
-                  <div style={{ fontSize: 20, marginBottom: 4 }}>{f.emoji}</div>
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: i === featureIdx ? f.color : DS.colors.textSec, letterSpacing: "0.06em", lineHeight: 1.3 }}>{f.title.split(" ")[0]}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* CTA en bas */}
-      <div style={{ padding: "0 24px 52px", position: "relative", zIndex: 1, opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "translateY(0)" : "translateY(40px)", transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1) 0.3s" }}>
-
-        {phase >= 2 && (
-          <div style={{ marginBottom: 16, animation: "slideUp 0.5s ease" }}>
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20 }}>
-              {["🏀 Basketball", "⚽ Football", "🥊 Combat", "🏃 Sprint"].map((s, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: DS.radius.full, padding: "4px 10px", fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{s}</div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button onClick={onStart} style={{ width: "100%", height: 60, background: "linear-gradient(135deg, #00FF87, #00C896)", border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", boxShadow: "0 8px 40px rgba(0,255,135,0.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16 }}>
-          <span>⚡</span>
-          <span>CONSTRUIRE MON PROGRAMME</span>
-        </button>
-
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.2)", textAlign: "center", letterSpacing: "0.15em" }}>
-          GRATUIT · 2 MINUTES · SANS CARTE BANCAIRE
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// ECRAN SPLASH
-// ─────────────────────────────────────────────
-function SplashScreen({ onDone }) {
-  const [phase, setPhase] = useState(0);
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 400);
-    const t2 = setTimeout(() => setPhase(2), 1200);
-    const t3 = setTimeout(() => onDone && onDone(), 2600);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, []);
-
-  return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
-
-      {/* Logo animé */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.4)", transition: "all 0.7s cubic-bezier(0.34,1.56,0.64,1)" }}>
-        <div style={{ position: "relative", marginBottom: 24 }}>
-          <div style={{ position: "absolute", inset: -16, borderRadius: "50%", border: "1px solid rgba(155,232,79,0.2)", animation: phase >= 2 ? "pulse 2s ease infinite" : "none" }} />
-          <div style={{ position: "absolute", inset: -32, borderRadius: "50%", border: "1px solid rgba(155,232,79,0.1)", animation: phase >= 2 ? "pulse 2s ease 0.4s infinite" : "none" }} />
-          <div style={{ width: 90, height: 90, borderRadius: 26, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, boxShadow: "0 0 60px rgba(155,232,79,0.5)", position: "relative", zIndex: 1 }}>
-            ⚡
-          </div>
-        </div>
-        <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 52, color: "white", letterSpacing: "0.2em", lineHeight: 1, opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "translateY(0)" : "translateY(10px)", transition: "all 0.5s ease 0.3s" }}>
-          VOLTRA
-        </div>
-        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.3em", marginTop: 8, opacity: phase >= 2 ? 1 : 0, transition: "opacity 0.5s ease 0.6s" }}>
-          PERFORMANCE · IA · SPORT
-        </div>
-      </div>
-
-      {/* Loading dots */}
-      <div style={{ position: "absolute", bottom: 60, display: "flex", gap: 6, opacity: phase >= 2 ? 1 : 0, transition: "opacity 0.4s ease 0.8s" }}>
-        {[0,1,2].map(i => (
-          <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "#9BE84F", animation: `pulse 1s ease ${i*0.2}s infinite` }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// ECRAN AUTH
-// ─────────────────────────────────────────────
-function AuthScreen({ onAuth }) {
-  const [mode, setMode] = useState("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  // Detecter si on vient d'un lien reset password
-  const isPasswordRecovery = window.location.hash.includes("type=recovery");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  const handleSubmit = async () => {
-    setError(""); setSuccess("");
-    if (!email || !password) { setError("Remplis tous les champs."); return; }
-    if (mode === "signup" && !name) { setError("Entre ton prénom."); return; }
-    if (password.length < 6) { setError("Mot de passe : 6 caractères minimum."); return; }
-    setLoading(true);
-    if (mode === "signup") {
-      const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
-      if (e) { setError(e.message === "User already registered" ? "Email déjà utilisé." : e.message); setLoading(false); return; }
-      if (data.user && !data.session) { setSuccess("Vérifie ta boîte mail pour confirmer ton compte !"); setLoading(false); return; }
-      onAuth(data.user);
-    } else {
-      const { data, error: e } = await supabase.auth.signInWithPassword({ email, password });
-      if (e) { setError(e.message === "Invalid login credentials" ? "Email ou mot de passe incorrect." : e.message); setLoading(false); return; }
-      onAuth(data.user);
-    }
-    setLoading(false);
-  };
-
-  const handleForgotPassword = async () => {
-    setError(""); setSuccess("");
-    if (!email) { setError("Entre ton email d'abord."); return; }
-    setLoading(true);
-    const redirectUrl = `${window.location.origin}${window.location.pathname}#type=recovery`;
-    const { error: e } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl });
-    setLoading(false);
-    if (e) { setError(e.message); return; }
-    setSuccess("Email envoyé ! Vérifie ta boîte mail et clique sur le lien.");
-  };
-
-  const handleResetPassword = async () => {
-    setError(""); setSuccess("");
-    if (!newPassword || !confirmPassword) { setError("Remplis les deux champs."); return; }
-    if (newPassword.length < 6) { setError("Minimum 6 caractères."); return; }
-    if (newPassword !== confirmPassword) { setError("Les mots de passe ne correspondent pas."); return; }
-    setLoading(true);
-    const { error: e } = await supabase.auth.updateUser({ password: newPassword });
-    setLoading(false);
-    if (e) { setError(e.message); return; }
-    // Nettoyer le hash et rediriger
-    window.history.replaceState({}, document.title, window.location.pathname);
-    setSuccess("Mot de passe mis à jour !");
-    setTimeout(() => {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) onAuth(session.user);
-      });
-    }, 1500);
-  };
-
-  // Ecran reset password (vient du lien email)
-  if (isPasswordRecovery) {
-    return (
-      <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
-        <div style={{ paddingTop: 80, paddingBottom: 40, textAlign: "center" }}>
-          <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>🔑</div>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Nouveau mot de passe</h1>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec }}>Choisis un nouveau mot de passe sécurisé</p>
-        </div>
-        <div style={{ flex: 1 }}>
-          <Input label="Nouveau mot de passe" type="password" value={newPassword} onChange={setNewPassword} placeholder="Min. 6 caractères" />
-          <Input label="Confirmer le mot de passe" type="password" value={confirmPassword} onChange={setConfirmPassword} placeholder="Répète ton mot de passe" />
-          {error && <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.warning, fontSize: 13 }}>⚠ {error}</p></div>}
-          {success && <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(76,175,80,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.success, fontSize: 13 }}>✓ {success}</p></div>}
-          {loading ? (
-            <div style={{ height: 56, borderRadius: DS.radius.full, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: DS.colors.primary, fontSize: 15, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>
-              <div style={{ width: 16, height: 16, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite" }} />
-              Mise à jour...
-            </div>
-          ) : (
-            <PrimaryButton onClick={handleResetPassword}>Mettre à jour mon mot de passe</PrimaryButton>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Mode mot de passe oublié
-  if (mode === "forgot") {
-    return (
-      <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
-        <div style={{ paddingTop: 80, paddingBottom: 40, textAlign: "center" }}>
-          <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>📧</div>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Mot de passe oublié ?</h1>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, lineHeight: 1.6 }}>Entre ton email et on t'envoie un lien pour réinitialiser ton mot de passe.</p>
-        </div>
-        <div style={{ flex: 1 }}>
-          <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="alex@email.com" />
-          {error && <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.warning, fontSize: 13 }}>⚠ {error}</p></div>}
-          {success && (
-            <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(76,175,80,0.3)`, borderRadius: DS.radius.md, padding: "16px", marginBottom: 16, textAlign: "center" }}>
-              <p style={{ fontSize: 24, marginBottom: 8 }}>📬</p>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, color: DS.colors.success, fontSize: 14, marginBottom: 4 }}>Email envoyé !</p>
-              <p style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textSec, fontSize: 13 }}>Vérifie ta boîte mail et clique sur le lien de réinitialisation.</p>
-            </div>
-          )}
-          {!success && (
-            loading ? (
-              <div style={{ height: 56, borderRadius: DS.radius.full, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: DS.colors.primary, fontSize: 15, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>
-                <div style={{ width: 16, height: 16, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite" }} />
-                Envoi en cours...
-              </div>
-            ) : (
-              <PrimaryButton onClick={handleForgotPassword}>Envoyer le lien</PrimaryButton>
-            )
-          )}
-          <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }} style={{ width: "100%", marginTop: 16, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
-            ← Retour à la connexion
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
-      <div style={{ paddingTop: 80, paddingBottom: 48, textAlign: "center" }}>
-        <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>⚡</div>
-        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>Voltra</h1>
-        <p style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textSec, fontSize: 15 }}>{mode === "login" ? "Content de te revoir 👋" : "Commence ton parcours"}</p>
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, padding: 4, marginBottom: 32 }}>
-          {["login", "signup"].map(m => (
-            <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{ flex: 1, height: 40, borderRadius: DS.radius.full, background: mode === m ? DS.colors.primary : "transparent", border: "none", color: mode === m ? "#000" : DS.colors.textSec, fontSize: 14, fontWeight: mode === m ? 700 : 400, cursor: "pointer", transition: "all 0.2s", fontFamily: "'Inter',sans-serif" }}>
-              {m === "login" ? "Connexion" : "Inscription"}
-            </button>
-          ))}
-        </div>
-        {mode === "signup" && <Input label="Prénom" value={name} onChange={setName} placeholder="Alex" />}
-        <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="alex@email.com" />
-        <Input label="Mot de passe" type="password" value={password} onChange={setPassword} placeholder="Min. 6 caractères" />
-        {error && <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.warning, fontSize: 13 }}>⚠ {error}</p></div>}
-        {success && <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(76,175,80,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.success, fontSize: 13 }}>✓ {success}</p></div>}
-        {loading ? (
-          <div style={{ height: 56, borderRadius: DS.radius.full, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: DS.colors.primary, fontSize: 15, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>
-            <div style={{ width: 16, height: 16, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite" }} />
-            {mode === "login" ? "Connexion..." : "Création du compte..."}
-          </div>
-        ) : (
-          <PrimaryButton onClick={handleSubmit}>{mode === "login" ? "Se connecter" : "Créer mon compte"}</PrimaryButton>
-        )}
-        {mode === "login" && (
-          <button onClick={() => { setMode("forgot"); setError(""); setSuccess(""); }} style={{ width: "100%", marginTop: 16, background: "none", border: "none", color: DS.colors.textSec, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
-            Mot de passe oublié ?
-          </button>
-        )}
-      </div>
-      <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", paddingBottom: 40, fontFamily: "'Inter',sans-serif" }}>En continuant, tu acceptes nos CGU.</p>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// ECRAN ONBOARDING - 6 etapes personnalisees
-// ─────────────────────────────────────────────
-const POSTES_PAR_SPORT = {
-  basketball: [
-    { id: "meneur", label: "Meneur", desc: "Vitesse, agilite, cardio", emoji: "⚡" },
-    { id: "ailier", label: "Ailier", desc: "Polyvalence, athletisme", emoji: "🏃" },
-    { id: "ailier_fort", label: "Ailier-fort", desc: "Force, rebonds", emoji: "💪" },
-    { id: "pivot", label: "Pivot", desc: "Puissance, domination", emoji: "🏋️" },
-  ],
-  football: [
-    { id: "gardien", label: "Gardien", desc: "Reflexes, detente", emoji: "🧤" },
-    { id: "defenseur", label: "Defenseur", desc: "Force, duels aeriens", emoji: "🛡️" },
-    { id: "milieu", label: "Milieu", desc: "Endurance, polyvalence", emoji: "⚙️" },
-    { id: "attaquant", label: "Attaquant", desc: "Explosivite, vitesse", emoji: "🎯" },
-  ],
-  tennis: [
-    { id: "fond_de_court", label: "Fond de court", desc: "Endurance, regularite", emoji: "🔄" },
-    { id: "serve_volley", label: "Serveur-volleyeur", desc: "Explosivite, reflexes", emoji: "⚡" },
-  ],
-  rugby: [
-    { id: "pilier", label: "Pilier / Talonneur", desc: "Force brute, puissance", emoji: "🏋️" },
-    { id: "troisieme_ligne", label: "3eme ligne", desc: "Force + endurance", emoji: "💪" },
-    { id: "demi", label: "Demi", desc: "Agilite, explosivite", emoji: "⚡" },
-    { id: "trois_quarts", label: "Trois-quarts", desc: "Vitesse, detente", emoji: "🏃" },
-    { id: "arriere", label: "Arriere", desc: "Vitesse, vision du jeu", emoji: "🎯" },
-  ],
-  sprint: [
-    { id: "60m", label: "60m / 100m", desc: "Acceleration pure", emoji: "💨" },
-    { id: "200m", label: "200m", desc: "Puissance + vitesse", emoji: "⚡" },
-    { id: "400m", label: "400m", desc: "Endurance lactique", emoji: "🔥" },
-  ],
-  combat: [
-    { id: "mma", label: "MMA", desc: "Combat complet, polyvalence", emoji: "🥊" },
-    { id: "boxe_anglaise", label: "Boxe anglaise", desc: "Vitesse, explosivite des poings", emoji: "👊" },
-    { id: "boxe_francaise", label: "Boxe francaise", desc: "Vitesse, coordination pieds-poings", emoji: "🦵" },
-    { id: "judo", label: "Judo", desc: "Force, equilibre, explosivite", emoji: "🥋" },
-    { id: "jiu_jitsu", label: "Jiu-jitsu bresilien", desc: "Force fonctionnelle, gainage", emoji: "💪" },
-    { id: "boxe_thai", label: "Boxe thai", desc: "Puissance, endurance, genoux/coudes", emoji: "🔥" },
-  ],
-};
-
-const DOULEURS = [
-  { id: "aucune", label: "Aucune douleur", emoji: "✅", exclusive: true },
-  { id: "epaule", label: "Epaule", emoji: "💪" },
-  { id: "genou", label: "Genou", emoji: "🦵" },
-  { id: "dos", label: "Dos / Lombaires", emoji: "🦴" },
-  { id: "cheville", label: "Cheville", emoji: "🦶" },
-  { id: "poignet", label: "Poignet / Coude", emoji: "✋" },
-];
-
-const EQUIPEMENTS = [
-  { id: "salle_complete", label: "Salle complete", desc: "Tout le materiel disponible", emoji: "🏋️" },
-  { id: "salle_basique", label: "Salle basique", desc: "Barres, halteres, machines", emoji: "⚙️" },
-  { id: "maison", label: "Maison", desc: "Poids du corps + elastiques", emoji: "🏠" },
-  { id: "terrain", label: "Terrain / Exterieur", desc: "Sans materiel specifique", emoji: "🌿" },
-];
-
-const TOTAL_STEPS = 6;
-
-function OnboardingScreen({ onComplete }) {
-  const [step, setStep] = useState(0);
-  const [data, setData] = useState({
-    sport: null, objectif: null, poste: null,
-    douleurs: [], equipement: null,
-    niveau: null, frequence: 3,
-    poids: null, age: null, taille: null,
-  });
-  const [loading, setLoading] = useState(false);
-  const [genError, setGenError] = useState(false);
-  const [animIn, setAnimIn] = useState(true);
-  const [slideIndex, setSlideIndex] = useState(0);
-  const [reaction, setReaction] = useState(null);
-  const [showSocialProof, setShowSocialProof] = useState(false);
-  const [showCoachDemo, setShowCoachDemo] = useState(false);
-
-  const hasPoste = data.sport && data.sport !== "natation";
-  const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau", "Profil"];
-  const totalSteps = stepLabels.length;
-
-  // Step mapping selon si poste existe
-  const getStepContent = () => {
-    const steps = [0, 1]; // sport, objectif
-    if (hasPoste) steps.push(2); // poste
-    steps.push(3, 4, 5, 6); // douleurs, equipement, niveau, profil physique
-    return steps[step];
-  };
-  const contentStep = getStepContent();
-
-  const goNext = () => {
-    // Génère un message de réaction personnalisé selon l'étape
-    const msg = getReactionMessage();
-    if (msg) {
-      setReaction(msg);
-      setAnimIn(false);
-      setTimeout(() => {
-        setReaction(null);
-        // Preuve sociale après l'étape Objectif (une seule fois)
-        if (contentStep === 1) {
-          setShowSocialProof(true);
-        } else {
-          setStep(s => s + 1);
-          setAnimIn(true);
-        }
-      }, 1100);
-    } else {
-      setAnimIn(false);
-      setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200);
-    }
-  };
-
-  const dismissSocialProof = () => {
-    setShowSocialProof(false);
-    setStep(s => s + 1);
-    setAnimIn(true);
-  };
-
-  const getReactionMessage = () => {
-    const sportLabel = SPORTS.find(s => s.id === data.sport)?.label || data.sport;
-    if (contentStep === 0) {
-      const reactions = {
-        basketball: "On va cibler ta détente verticale 🚀",
-        football: "Programme calibré pour la vitesse et l'endurance ⚡",
-        tennis: "On travaille explosivité et réactivité 🎾",
-        rugby: "Préparation physique impact et puissance 🏉",
-        natation: "Endurance et puissance de nage en approche 🏊",
-        sprint: "On va chercher chaque dixième de seconde ⏱️",
-        combat: "Puissance et cardio de combattant en approche 🥊",
-      };
-      return reactions[data.sport] || `Programme ${sportLabel} en préparation 🎯`;
-    }
-    if (contentStep === 1) {
-      const reactions = {
-        explosivite: "Objectif explosivité noté — on va bosser le fast-twitch 💥",
-        force: "Objectif force noté — charges progressives à venir 🏋️",
-        endurance: "Objectif endurance noté — cardio et volume adaptés 🔥",
-        masse: "Objectif prise de masse noté — volume et surcharge calibrés 📈",
-        detente: "Objectif détente noté — pliométrie au programme 🚀",
-      };
-      return reactions[data.objectif] || "Objectif noté, programme ajusté 🎯";
-    }
-    if (contentStep === 2) {
-      return `Parfait, on cible les qualités clés de ton poste 🎯`;
-    }
-    if (contentStep === 3) {
-      if (data.douleurs.includes("aucune") || data.douleurs.length === 0) {
-        return "Aucune contrainte — on peut pousser fort 💪";
-      }
-      return "On adapte tes exercices pour te protéger 🛡️";
-    }
-    if (contentStep === 4) {
-      const eqLabel = EQUIPEMENTS.find(e => e.id === data.equipement)?.label || "";
-      return `Exercices sélectionnés pour "${eqLabel}" ✅`;
-    }
-    return null;
-  };
-
-  const handleFinish = () => {
-    setLoading(true);
-    setGenError(false);
-    setSlideIndex(0);
-    const timeout = setTimeout(() => {
-      setGenError(true);
-    }, 20000);
-    onComplete(data, null);
-    generateProgramIA(data).then(async programme => {
-      clearTimeout(timeout);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await supabase.from("profiles").upsert({ id: session.user.id, sport: data.sport }, { onConflict: "id" });
-      }
-      onComplete(data, programme);
-    }).catch(err => {
-      clearTimeout(timeout);
-      console.error(err);
-      setGenError(true);
-    });
-  };
-
-  const retryGeneration = () => {
-    setGenError(false);
-    handleFinish();
-  };
-
-  const skipGeneration = () => {
-    setLoading(false);
-    setGenError(false);
-    onComplete(data, null);
-  };
-
-  const toggleDouleur = (id) => {
-    if (id === "aucune") {
-      setData(d => ({ ...d, douleurs: d.douleurs.includes("aucune") ? [] : ["aucune"] }));
-    } else {
-      setData(d => ({
-        ...d,
-        douleurs: d.douleurs.includes("aucune")
-          ? [id]
-          : d.douleurs.includes(id)
-            ? d.douleurs.filter(x => x !== id)
-            : [...d.douleurs, id]
-      }));
-    }
-  };
-
-  const canNext = (() => {
-    if (contentStep === 0) return data.sport !== null;
-    if (contentStep === 1) return data.objectif !== null;
-    if (contentStep === 2) return data.poste !== null;
-    if (contentStep === 3) return data.douleurs.length > 0;
-    if (contentStep === 4) return data.equipement !== null;
-    if (contentStep === 5) return data.niveau !== null;
-    if (contentStep === 6) return true; // profil physique optionnel
-    return false;
-  })();
-
-  const isLastStep = step === totalSteps - 1;
-
-  return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
-
-      {/* Écran demo coach IA — avant génération */}
-      {showCoachDemo && (() => {
-        const CoachDemoContent = () => {
-          const [msgVisible, setMsgVisible] = useState(0);
-          useEffect(() => {
-            const t1 = setTimeout(() => setMsgVisible(1), 500);
-            const t2 = setTimeout(() => setMsgVisible(2), 1600);
-            const t3 = setTimeout(() => setMsgVisible(3), 2900);
-            return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-          }, []);
-          return (
-            <>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28, minHeight: 180 }}>
-                {msgVisible >= 1 && (
-                  <div style={{ alignSelf: "flex-end", maxWidth: "78%", background: "#9BE84F", color: "#000", padding: "10px 14px", borderRadius: "18px 18px 4px 18px", fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, animation: "fadeIn 0.3s ease" }}>
-                    Je suis épuisé, j'y arrive plus 😮‍💨
-                  </div>
-                )}
-                {msgVisible >= 2 && (
-                  <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "flex-end", gap: 8, animation: "fadeIn 0.3s ease" }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><AceAvatar size={26} /></div>
-                    <div style={{ maxWidth: "78%", background: "rgba(255,255,255,0.08)", color: "white", padding: "10px 14px", borderRadius: "18px 18px 18px 4px", fontFamily: "'Inter',sans-serif", fontSize: 13 }}>
-                      Pas de souci, on baisse la charge de <strong>15%</strong> pour cette série. On garde le volume, on protège ta forme 💪
-                    </div>
-                  </div>
-                )}
-                {msgVisible >= 3 && (
-                  <div style={{ alignSelf: "center", background: "rgba(155,232,79,0.12)", border: "1px solid rgba(155,232,79,0.3)", borderRadius: 12, padding: "6px 14px", marginTop: 4, animation: "fadeIn 0.3s ease" }}>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "#9BE84F", fontWeight: 600 }}>✓ Série adaptée en temps réel</p>
-                  </div>
-                )}
-              </div>
-              <button onClick={() => { setShowCoachDemo(false); handleFinish(); }} style={{ width: "100%", height: 56, background: "#9BE84F", border: "none", borderRadius: 9999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 32px rgba(155,232,79,0.4)" }}>
-                Générer mon programme →
-              </button>
-            </>
-          );
-        };
-        return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", animation: "fadeIn 0.4s ease" }}>
-            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 20%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
-            <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 360 }}>
-              <div style={{ textAlign: "center", marginBottom: 28 }}>
-                <div style={{ width: 56, height: 56, borderRadius: 16, overflow: "hidden", margin: "0 auto 14px", boxShadow: "0 0 40px rgba(155,232,79,0.4)" }}><AceAvatar size={56} /></div>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 11, color: "#9BE84F", letterSpacing: "0.15em", marginBottom: 8 }}>ACE — TON COACH IA</p>
-                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 24, color: "white", lineHeight: 1.2 }}>Il s'adapte à toi,<br />en temps réel</h2>
-              </div>
-              <CoachDemoContent />
-            </div>
-          </div>
-        );
-      })()}
-
-
-      {showSocialProof && (() => {
-        const sportLabel = (SPORTS.find(s => s.id === data.sport)?.label || data.sport || "").toLowerCase();
-        const objLabels = { explosivite: "l'explosivité", force: "la force", endurance: "l'endurance", masse: "la prise de masse", detente: "la détente" };
-        const objLabel = objLabels[data.objectif] || "leur objectif";
-        const pct = 78 + Math.floor(Math.random() * 15); // 78-92%
-        return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", animation: "fadeIn 0.4s ease" }}>
-            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 30%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
-
-            <div style={{ position: "relative", zIndex: 1, textAlign: "center", maxWidth: 340 }}>
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-                {["🏀","🥊","🏃","⚽"].map((e, i) => (
-                  <div key={i} style={{ width: 46, height: 46, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "2px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: i > 0 ? -12 : 0 }}>{e}</div>
-                ))}
-              </div>
-
-              <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 56, color: "#9BE84F", lineHeight: 1, letterSpacing: "-0.02em", marginBottom: 12 }}>{pct}%</p>
-              <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 19, color: "white", lineHeight: 1.4, marginBottom: 8 }}>
-                des athlètes en {sportLabel} progressent en {objLabel} dès les 6 premières semaines
-              </h2>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 32 }}>
-                avec un protocole IA personnalisé comme le tien
-              </p>
-
-              <button onClick={dismissSocialProof} style={{ width: "100%", height: 56, background: "#9BE84F", border: "none", borderRadius: 9999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 32px rgba(155,232,79,0.4)" }}>
-                Continuer →
-              </button>
-            </div>
-          </div>
-        );
-      })()}
-
-      {reaction && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", animation: "fadeIn 0.3s ease" }}>
-          <div style={{ width: 64, height: 64, borderRadius: 20, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 20, boxShadow: DS.shadow.primary, animation: "pop 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
-            ✓
-          </div>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 19, color: DS.colors.textPrimary, textAlign: "center", lineHeight: 1.4 }}>
-            {reaction}
-          </p>
-        </div>
-      )}
-
-      {loading && (() => {
-        const sportTheme = getSportTheme(data.sport);
-        const slides = [
-          {
-            emoji: "⚡",
-            tag: "GENERATION EN COURS",
-            title: "Ton programme\nest en creation",
-            desc: "L'IA analyse ton profil pour creer un programme sur mesure adapte a ton sport et tes objectifs.",
-            visual: (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-                {[
-                  { emoji: "🏋️", text: "Selection des exercices", delay: "0s" },
-                  { emoji: "📈", text: "Calcul des progressions", delay: "0.5s" },
-                  { emoji: "⚡", text: `Optimisation ${data.sport || "sport"}`, delay: "1s" },
-                  { emoji: "✓", text: "Finalisation", delay: "1.5s" },
-                ].map((item, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "10px 14px", opacity: 0, animation: `fadeIn 0.4s ease ${item.delay} forwards` }}>
-                    <span style={{ fontSize: 16 }}>{item.emoji}</span>
-                    <p style={{ color: DS.colors.textSec, fontSize: 13 }}>{item.text}</p>
-                  </div>
-                ))}
-              </div>
-            ),
-          },
-          {
-            emoji: "🏃",
-            tag: "SEANCES LIVE",
-            title: "Suis chaque\nexercice en temps reel",
-            desc: "Photos, chrono, series guidees. Chaque rep est tracee pour maximiser ta progression.",
-            visual: (
-              <div style={{ background: DS.colors.surface, border: `1px solid ${sportTheme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", width: "100%" }}>
-                <div style={{ height: 90, background: DS.colors.surfaceHigh, position: "relative", display: "flex", alignItems: "flex-end", padding: "10px 14px" }}>
-                  <div style={{ position: "absolute", top: 8, left: 10, background: DS.colors.isDark ? "rgba(6,6,14,0.8)" : "rgba(0,0,0,0.6)", borderRadius: 6, padding: "2px 8px" }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent }}>EX 1/5</p>
-                  </div>
-                  <div style={{ position: "absolute", top: 8, right: 10, background: sportTheme.accent + "20", border: `1px solid ${sportTheme.accent}40`, borderRadius: 6, padding: "2px 8px" }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: sportTheme.accent, fontWeight: 700 }}>12:34</p>
-                  </div>
-                  <div>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent, marginBottom: 2 }}>QUADRICEPS</p>
-                    <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 20, color: DS.colors.textPrimary }}>SQUAT BARRE</p>
-                  </div>
-                </div>
-                <div style={{ padding: "10px 14px" }}>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {[1,2,3,4].map(i => (
-                      <div key={i} style={{ flex: 1, background: i <= 2 ? sportTheme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${i <= 2 ? sportTheme.accent : DS.colors.border}`, borderRadius: 8, padding: "8px 4px", textAlign: "center" }}>
-                        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: i <= 2 ? sportTheme.accent : DS.colors.textSec }}>{i <= 2 ? "✓" : i}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ),
-          },
-          {
-            emoji: "🤖",
-            tag: "COACH IA",
-            title: "Un coach\ntoujours disponible",
-            desc: "Pendant chaque seance, ton coach IA repond a tes questions, adapte les charges et te motive.",
-            visual: (
-              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
-                {[
-                  { role: "user", text: "J'arrive pas a finir mes reps" },
-                  { role: "ai", text: "Reduis la charge de 10% et concentre-toi sur la forme. Tu fais du super travail !" },
-                  { role: "user", text: "Merci j'ai mal au genou" },
-                  { role: "ai", text: "Je remplace le squat par du leg press pour proteger ton genou. Continue !" },
-                ].map((msg, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", opacity: 0, animation: `fadeIn 0.3s ease ${i * 0.4}s forwards` }}>
-                    <div style={{ maxWidth: "78%", padding: "8px 12px", borderRadius: DS.radius.md, background: msg.role === "user" ? sportTheme.accent : DS.colors.surface, border: msg.role === "ai" ? `1px solid ${DS.colors.border}` : "none" }}>
-                      <p style={{ color: msg.role === "user" ? "#000" : DS.colors.textPrimary, fontSize: 12, lineHeight: 1.5 }}>{msg.text}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ),
-          },
-          {
-            emoji: "📈",
-            tag: "PROGRESSION",
-            title: "Vois tes records\nbattre semaine apres semaine",
-            desc: "Charges, series, temps — tout est tracé. Tu vois exactement ou tu en es et ce qui t'attend.",
-            visual: (
-              <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "14px 16px", width: "100%" }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 60, marginBottom: 8 }}>
-                  {[40, 55, 50, 70, 65, 85, 100].map((h, i) => (
-                    <div key={i} style={{ flex: 1, height: `${h}%`, background: i === 6 ? sportTheme.accent : `rgba(${sportTheme.accentRgb},${0.2 + i * 0.08})`, borderRadius: "3px 3px 0 0", boxShadow: i === 6 ? `0 0 10px ${sportTheme.accent}50` : "none" }} />
-                  ))}
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec }}>S1</p>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: sportTheme.accent }}>+60% EN 7 SEMAINES</p>
-                </div>
-              </div>
-            ),
-          },
-        ];
-        const currentSlide = slides[Math.min(slideIndex, slides.length - 1)];
-        return (
-          <div style={{ position: "fixed", inset: 0, background: DS.colors.bg, zIndex: 200, display: "flex", flexDirection: "column", padding: "0 24px 40px" }}>
-            {/* Glow */}
-            <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 300px 300px at 50% 30%, ${sportTheme.accent}06, transparent)`, pointerEvents: "none" }} />
-
-            {/* Dots navigation */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingTop: 52, marginBottom: 32, position: "relative", zIndex: 2 }}>
-              {slides.map((_, i) => (
-                <div key={i} style={{ width: i === slideIndex ? 20 : 6, height: 6, borderRadius: 3, background: i === slideIndex ? sportTheme.accent : DS.colors.surfaceHigh, transition: "all 0.3s ease", boxShadow: i === slideIndex ? `0 0 8px ${sportTheme.accent}` : "none" }} />
-              ))}
-            </div>
-
-            {genError ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", position: "relative", zIndex: 2 }}>
-                <div style={{ fontSize: 56, marginBottom: 20 }}>⚠️</div>
-                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 12, letterSpacing: "0.05em" }}>Generation lente...</h2>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, marginBottom: 32, lineHeight: 1.8, letterSpacing: "0.1em" }}>Le serveur prend du temps. Tu peux reessayer ou continuer — le programme se generera en arriere-plan.</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-                  <button onClick={retryGeneration} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer" }}>REESSAYER</button>
-                  <button onClick={skipGeneration} style={{ width: "100%", height: 52, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontFamily: "'Space Mono',monospace", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer" }}>CONTINUER SANS PROGRAMME</button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 2 }} key={slideIndex}>
-                {/* Tag */}
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: sportTheme.accent + "15", border: `1px solid ${sportTheme.accent}30`, borderRadius: 6, padding: "3px 10px", marginBottom: 16, alignSelf: "flex-start" }}>
-                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: sportTheme.accent, animation: "pulse 1.5s infinite" }} />
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent, letterSpacing: "0.2em" }}>{currentSlide.tag}</p>
-                </div>
-
-                {/* Title */}
-                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em", whiteSpace: "pre-line" }}>
-                  {currentSlide.title}
-                </h2>
-
-                {/* Desc */}
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em", marginBottom: 24 }}>{currentSlide.desc}</p>
-
-                {/* Visual */}
-                <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
-                  {currentSlide.visual}
-                </div>
-              </div>
-            )}
-
-            {/* Bottom nav */}
-            {!genError && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 2, paddingTop: 16 }}>
-                <button onClick={() => setSlideIndex(i => Math.max(0, i - 1))} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 44, height: 44, color: DS.colors.textSec, cursor: "pointer", fontSize: 18, opacity: slideIndex === 0 ? 0.3 : 1 }}>←</button>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{slideIndex + 1} / {slides.length}</p>
-                <button onClick={() => setSlideIndex(i => Math.min(slides.length - 1, i + 1))} style={{ background: slideIndex === slides.length - 1 ? sportTheme.accent : DS.colors.surfaceHigh, border: "none", borderRadius: slideIndex === slides.length - 1 ? DS.radius.full : DS.radius.full, padding: slideIndex === slides.length - 1 ? "0 20px" : "0", width: slideIndex === slides.length - 1 ? "auto" : 44, height: 44, color: slideIndex === slides.length - 1 ? "#000" : DS.colors.textSec, cursor: "pointer", fontSize: slideIndex === slides.length - 1 ? 13 : 18, fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.05em", boxShadow: slideIndex === slides.length - 1 ? `0 4px 20px ${sportTheme.accent}50` : "none" }}>
-                  {slideIndex === slides.length - 1 ? "VOIR MON PROGRAMME →" : "→"}
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      <div style={{ paddingTop: 60, paddingBottom: 24 }}>
-        <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-          {Array.from({ length: totalSteps }).map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 3, borderRadius: DS.radius.full, background: i <= step ? DS.colors.primary : DS.colors.surfaceHigh, transition: "background 0.4s ease", boxShadow: i === step ? `0 0 8px ${DS.colors.primary}` : "none" }} />
-          ))}
-        </div>
-        <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading }}>Etape {step + 1} sur {totalSteps}</p>
-      </div>
-
-      <div style={{ flex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(12px)", transition: "all 0.25s ease", overflowY: "auto" }}>
-
-        {/* ETAPE 1 - Sport */}
-        {contentStep === 0 && (
-          <div>
-            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: DS.colors.textPrimary, marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>{data.sport === "combat" ? "Choisis ta discipline" : "Quel est ton sport ?"}</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Le programme sera entierement adapte.</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-              {SPORTS.map(sport => (
-                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primary : DS.colors.surface, borderRadius: DS.radius.full, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.05)" : "scale(1)", boxShadow: data.sport === sport.id ? DS.shadow.primary : DS.colors.isDark ? "0 2px 12px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)" }}>
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>{sport.emoji}</div>
-                  <div style={{ color: data.sport === sport.id ? "#16181A" : DS.colors.textPrimary, fontSize: 12, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>{sport.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ETAPE 2 - Objectif */}
-        {contentStep === 1 && (
-          <div>
-            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: DS.colors.textPrimary, marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>{data.sport === "combat" ? "Ton objectif de combat ?" : "Quel est ton objectif ?"}</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>Les exercices et charges s'adapteront.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
-                <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
-                  <span style={{ fontSize: 26 }}>{obj.emoji}</span>
-                  <div>
-                    <div style={{ color: data.objectif === obj.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{obj.label}</div>
-                    <div style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>{obj.desc}</div>
-                  </div>
-                  {data.objectif === obj.id && <div style={{ marginLeft: "auto", width: 20, height: 20, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ETAPE 3 - Poste (sauf natation) */}
-        {contentStep === 2 && (
-          <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>{data.sport === "combat" ? "Ta discipline ?" : "Ton poste ?"}</h1>
-            <p style={{ color: DS.colors.textSec, fontSize: 15, ...s.body, marginBottom: 32 }}>{data.sport === "combat" ? "Le programme est adapte a ta discipline de combat." : "Le programme cible les qualites de ton poste."}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {(POSTES_PAR_SPORT[data.sport] || []).map(poste => (
-                <div key={poste.id} onClick={() => setData(d => ({ ...d, poste: poste.id }))} style={{ background: data.poste === poste.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.poste === poste.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
-                  <span style={{ fontSize: 26 }}>{poste.emoji}</span>
-                  <div>
-                    <div style={{ color: data.poste === poste.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{poste.label}</div>
-                    <div style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>{poste.desc}</div>
-                  </div>
-                  {data.poste === poste.id && <div style={{ marginLeft: "auto", width: 20, height: 20, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ETAPE 4 - Douleurs */}
-        {contentStep === 3 && (
-          <div>
-            <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: DS.colors.textPrimary, marginBottom: 8, letterSpacing: "0.02em", textTransform: "uppercase" }}>Des douleurs ?</h1>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 12 }}>Les exercices s'adapteront automatiquement.</p>
-            <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,107,53,0.2)", borderRadius: DS.radius.md, padding: "10px 14px", marginBottom: 24, display: "flex", gap: 10, alignItems: "center" }}>
-              <span style={{ fontSize: 16 }}>⚠️</span>
-              <p style={{ color: DS.colors.warning, fontSize: 12, ...s.body }}>Tu peux selectionner plusieurs zones. Les exercices a risque seront remplaces.</p>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {DOULEURS.map(d => {
-                const selected = data.douleurs.includes(d.id);
-                const solutions = {
-                  epaule: "On évite le développé militaire et privilégie les mouvements en amplitude contrôlée",
-                  genou: "On adapte les squats en amplitude partielle et priorise les mouvements à faible impact",
-                  dos: "On remplace le soulevé de terre par des variantes protégées, gainage renforcé",
-                  cheville: "On évite les sauts à fort impact, on privilégie les mouvements au sol",
-                  poignet: "On remplace les appuis directs par des prises neutres ou sangles",
-                };
-                return (
-                  <div key={d.id}>
-                    <div onClick={() => toggleDouleur(d.id)} style={{ background: selected ? (d.id === "aucune" ? DS.colors.successSoft : DS.colors.warningSoft) : DS.colors.surface, border: `1px solid ${selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "all 0.2s ease" }}>
-                      <span style={{ fontSize: 22 }}>{d.emoji}</span>
-                      <p style={{ color: selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.textPrimary, fontSize: 15, ...s.heading, flex: 1 }}>{d.label}</p>
-                      {selected && <div style={{ width: 20, height: 20, background: d.id === "aucune" ? DS.colors.success : DS.colors.warning, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
-                    </div>
-                    {selected && solutions[d.id] && (
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 14px 4px 18px", animation: "fadeIn 0.3s ease" }}>
-                        <span style={{ fontSize: 13, marginTop: 1 }}>🛡️</span>
-                        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, lineHeight: 1.5 }}>{solutions[d.id]}</p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ETAPE 5 - Equipement */}
-        {contentStep === 4 && (
-          <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Ton equipement ?</h1>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 32 }}>Les exercices seront adaptes a ce que tu as.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {EQUIPEMENTS.map(eq => (
-                <div key={eq.id} onClick={() => setData(d => ({ ...d, equipement: eq.id }))} style={{ background: data.equipement === eq.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.equipement === eq.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
-                  <span style={{ fontSize: 26 }}>{eq.emoji}</span>
-                  <div>
-                    <div style={{ color: data.equipement === eq.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{eq.label}</div>
-                    <div style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>{eq.desc}</div>
-                  </div>
-                  {data.equipement === eq.id && <div style={{ marginLeft: "auto", width: 20, height: 20, background: DS.colors.primary, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ETAPE 6 - Niveau + Frequence */}
-        {contentStep === 5 && (
-          <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Derniers reglages</h1>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 36 }}>Le programme se calibre sur ton profil.</p>
-            <div style={{ marginBottom: 36 }}>
-              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Niveau actuel</p>
-              <div style={{ display: "flex", gap: 10 }}>
-                {NIVEAUX.map(n => (
-                  <div key={n} onClick={() => setData(d => ({ ...d, niveau: n.toLowerCase() }))} style={{ flex: 1, padding: "12px 0", textAlign: "center", background: data.niveau === n.toLowerCase() ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, color: data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.textSec, fontSize: 14, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Seances par semaine</p>
-              <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 20 }}>
-                <div style={{ ...s.display, fontSize: 48, color: DS.colors.primary, textAlign: "center", marginBottom: 16 }}>{data.frequence}</div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  {[2, 3, 4, 5].map(n => (
-                    <div key={n} onClick={() => setData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "10px 0", textAlign: "center", background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: data.frequence === n ? "#000" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>
-                  ))}
-                </div>
-                <p style={{ color: DS.colors.textSec, fontSize: 13, textAlign: "center", marginTop: 12, ...s.body }}>jours / semaine</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {contentStep === 6 && (
-          <div>
-            <h1 style={{ ...s.display, fontSize: 30, color: DS.colors.textPrimary, marginBottom: 8 }}>Ton profil physique</h1>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 36 }}>Pour des charges vraiment adaptées à toi. (Optionnel)</p>
-
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Poids (kg)</p>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={data.poids || ""}
-                onChange={e => setData(d => ({ ...d, poids: e.target.value ? parseInt(e.target.value) : null }))}
-                placeholder="Ex: 72"
-                style={{ width: "100%", padding: "16px 18px", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 18, ...s.heading, outline: "none" }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Âge</p>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={data.age || ""}
-                onChange={e => setData(d => ({ ...d, age: e.target.value ? parseInt(e.target.value) : null }))}
-                placeholder="Ex: 24"
-                style={{ width: "100%", padding: "16px 18px", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 18, ...s.heading, outline: "none" }}
-              />
-            </div>
-
-            <div>
-              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Taille (cm) — facultatif</p>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={data.taille || ""}
-                onChange={e => setData(d => ({ ...d, taille: e.target.value ? parseInt(e.target.value) : null }))}
-                placeholder="Ex: 178"
-                style={{ width: "100%", padding: "16px 18px", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 18, ...s.heading, outline: "none" }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div style={{ paddingBottom: 48, paddingTop: 24 }}>
-        <PrimaryButton onClick={isLastStep ? () => setShowCoachDemo(true) : goNext} disabled={!canNext}>
-          {isLastStep ? "Generer mon programme" : "Continuer"}
-        </PrimaryButton>
-        {step > 0 && (
-          <button onClick={() => setStep(s => s - 1)} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", ...s.body }}>Retour</button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// ECRAN PRICING
-// ─────────────────────────────────────────────
-function PricingScreen({ onSelectPlan, programme, frequence, user }) {
-  const [selected, setSelected] = useState("annual");
-  const [timeLeft, setTimeLeft] = useState({ h: 23, m: 47, s: 12 });
-  const [showFeatures, setShowFeatures] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [stripeError, setStripeError] = useState("");
-
-  // Bouton "Plus tard" visible en haut à gauche
-  const SkipButton = () => (
-    <button onClick={() => onSelectPlan("free")} style={{
-      position: "fixed", top: 52, left: 16, zIndex: 200,
-      display: "flex", alignItems: "center", gap: 6,
-      background: DS.colors.surface,
-      border: `1px solid ${DS.colors.border}`,
-      borderRadius: DS.radius.full,
-      padding: "8px 14px",
-      color: DS.colors.textSec,
-      fontFamily: "'Inter',sans-serif",
-      fontSize: 13, fontWeight: 600,
-      cursor: "pointer",
-      boxShadow: DS.shadow.card,
-    }}>
-      ✕ <span>Plus tard</span>
-    </button>
-  );
-
-  const handleStripeCheckout = async (planId) => {
-    if (planId === "free") { onSelectPlan("free"); return; }
-    setLoading(true);
-    setStripeError("");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token}`,
-            "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({
-            plan: planId,
-            user_id: session?.user?.id,
-            email: session?.user?.email,
-            success_url: window.location.origin + window.location.pathname,
-            cancel_url: window.location.origin + window.location.pathname,
-          }),
-        }
-      );
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setStripeError("Erreur lors de la redirection. Réessaie.");
-      }
-    } catch (err) {
-      setStripeError("Erreur de connexion. Réessaie.");
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setTimeLeft(prev => {
-        let { h, m, s } = prev;
-        s--; if (s < 0) { s = 59; m--; } if (m < 0) { m = 59; h--; }
-        if (h < 0) return prev;
-        return { h, m, s };
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const pad = n => String(n).padStart(2, "0");
-  const currentPlan = PLANS.find(p => p.id === selected);
-  const featuresPro = ["Progression automatique des charges", "Nouveau programme IA genere a chaque cycle", "Adaptation si seance skippee", "Deload automatique intelligent", "Historique complet + graphiques", "Jusqu'a 5 seances / semaine", "Coach IA integre", "Export PDF du programme"];
-
-  return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40 }}>
-      <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>Programme pret</p>
-          <h1 style={{ ...s.display, fontSize: 28, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 16 }}>
-            {programme?.titre || "Ton programme est pret"}
-          </h1>
-          <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
-            {[
-              { val: programme?.data_json?.semaines?.length || 8, label: "semaines" },
-              { val: programme?.data_json?.semaines?.[0]?.seances?.[0]?.exercices?.length || 5, label: "exercices/seance" },
-              { val: frequence || programme?.data_json?.semaines?.[0]?.seances?.length || 3, label: "seances/sem" },
-            ].map((stat, i) => (
-              <div key={i} style={{ flex: 1, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center" }}>
-                <div style={{ ...s.mono, fontSize: 20, color: DS.colors.primary, fontWeight: 700 }}>{stat.val}</div>
-                <div style={{ color: DS.colors.textSec, fontSize: 10 }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>Debloque l'acces complet pour commencer.</p>
-        </div>
-        <div style={{ background: DS.colors.goldSoft, border: `1px solid rgba(255,209,102,0.25)`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <div>
-            <p style={{ color: DS.colors.gold, fontSize: 12, ...s.heading, marginBottom: 2 }}>Offre Lifetime - Prix de lancement</p>
-            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>Expire dans</p>
-          </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {[timeLeft.h, timeLeft.m, timeLeft.s].map((val, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.sm, padding: "4px 8px", ...s.mono, fontSize: 18, color: DS.colors.gold, fontWeight: 700, minWidth: 36, textAlign: "center" }}>{pad(val)}</div>
-                <span style={{ color: DS.colors.textDim, fontSize: 9, marginTop: 2 }}>{["h", "m", "s"][i]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
-          {PLANS.map(plan => (
-            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: selected === plan.id ? plan.colorSoft : DS.colors.surface, border: `1.5px solid ${selected === plan.id ? plan.colorBorder : DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", cursor: "pointer", transition: "all 0.2s ease" }}>
-              {selected === plan.id && <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 2, background: plan.color, borderRadius: DS.radius.full }} />}
-              {plan.badge && <div style={{ display: "inline-flex", padding: "3px 10px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: plan.color, fontSize: 11, ...s.heading, marginBottom: 10 }}>{plan.badge}</div>}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-                <div>
-                  <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 4 }}>{plan.label}</p>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span style={{ ...s.display, fontSize: 32, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
-                    <span style={{ color: DS.colors.textSec, fontSize: 14 }}>{plan.unit}</span>
-                  </div>
-                </div>
-                <div style={{ width: 24, height: 24, borderRadius: DS.radius.full, border: `2px solid ${selected === plan.id ? plan.color : DS.colors.textDim}`, background: selected === plan.id ? plan.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
-                  {selected === plan.id && <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: "white" }} />}
-                </div>
-              </div>
-              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                <p style={{ color: DS.colors.textSec, fontSize: 12 }}>{plan.priceDetail}</p>
-                {plan.savings && <span style={{ padding: "2px 8px", background: plan.colorSoft, borderRadius: DS.radius.full, color: plan.color, fontSize: 11, ...s.heading }}>{plan.savings}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-        {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>⚠ {stripeError}</p>}
-        <button onClick={() => handleStripeCheckout(selected)} disabled={loading} style={{ width: "100%", height: 58, background: loading ? DS.colors.surfaceHigh : currentPlan.highlight ? `linear-gradient(135deg, ${DS.colors.primary}, ${DS.colors.primaryDark})` : `linear-gradient(135deg, ${DS.colors.primary}, ${DS.colors.primaryDark})`, border: "none", borderRadius: DS.radius.full, color: "#000", fontSize: 16, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", boxShadow: DS.shadow.primary, fontFamily: "'Inter',sans-serif", marginBottom: 12 }}>
-          {loading ? "Redirection vers Stripe..." : `Commencer avec ${currentPlan.label} →`}
-        </button>
-        <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", marginBottom: 24, fontFamily: "'Inter',sans-serif" }}>🔒 Paiement sécurisé Stripe · Remboursement 7 jours</p>
-        <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 20px", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "'Inter',sans-serif", marginBottom: 8 }}>
-          <span>Voir ce qui est inclus</span>
-          <span style={{ transform: showFeatures ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>↓</span>
-        </button>
-        {showFeatures && (
-          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 16, marginBottom: 24 }}>
-            {featuresPro.map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < featuresPro.length - 1 ? `1px solid ${DS.colors.border}` : "none" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill={DS.colors.successSoft} /><path d="M7 12.5L10.5 16L17 9" stroke={DS.colors.success} strokeWidth="2.5" strokeLinecap="round" /></svg>
-                <span style={{ color: DS.colors.textSec, fontSize: 14 }}>{f}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", textDecoration: "none" }}>
-          Non merci, je veux juste essayer gratuitement
-        </button>
-      </div>
-      <SkipButton />
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// ECRAN MATCHS
-// ─────────────────────────────────────────────
-function MatchsScreen({ user, onBack }) {
-  const [matchs, setMatchs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ titre: "", date_match: "", adversaire: "", lieu: "" });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => { loadMatchs(); }, []);
-
-  const loadMatchs = async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from("matchs")
-      .select("*")
-      .eq("user_id", user.id)
-      .gte("date_match", new Date().toISOString().split("T")[0])
-      .order("date_match", { ascending: true });
-    if (data) setMatchs(data);
-    setLoading(false);
-  };
-
-  const saveMatch = async () => {
-    if (!form.titre || !form.date_match) return;
-    setSaving(true);
-    await supabase.from("matchs").insert({ ...form, user_id: user.id });
-    setForm({ titre: "", date_match: "", adversaire: "", lieu: "" });
-    setShowForm(false);
-    await loadMatchs();
-    setSaving(false);
-  };
-
-  const deleteMatch = async (id) => {
-    await supabase.from("matchs").delete().eq("id", id);
-    setMatchs(m => m.filter(x => x.id !== id));
-  };
-
-  const getDaysUntil = (dateStr) => {
-    const diff = new Date(dateStr) - new Date();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  };
-
-  const getMatchColor = (days) => {
-    if (days <= 1) return DS.colors.warning;
-    if (days <= 3) return DS.colors.gold;
-    return DS.colors.success;
-  };
-
-  const getMatchLabel = (days) => {
-    if (days === 0) return "Aujourd'hui";
-    if (days === 1) return "Demain";
-    return `Dans ${days} jours`;
-  };
-
-  return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "14px 20px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 26, color: DS.colors.textPrimary, letterSpacing: "0.1em" }}>MES MATCHS</h1>
-          <button onClick={() => setShowForm(v => !v)} style={{ background: DS.colors.primary, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: DS.shadow.primary }}>+</button>
-        </div>
-      </div>
-
-      <div style={{ padding: "24px 20px 0" }}>
-
-        {showForm && (
-          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.xl, padding: 20, marginBottom: 24 }}>
-            <p style={{ color: DS.colors.primary, fontSize: 14, ...s.heading, marginBottom: 16 }}>Nouveau match</p>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Titre *</label>
-              <input value={form.titre} onChange={e => setForm(f => ({ ...f, titre: e.target.value }))} placeholder="Match de championnat" style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", ...s.body }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Date *</label>
-              <input type="date" value={form.date_match} onChange={e => setForm(f => ({ ...f, date_match: e.target.value }))} style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", colorScheme: "dark" }} />
-            </div>
-            <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Adversaire</label>
-                <input value={form.adversaire} onChange={e => setForm(f => ({ ...f, adversaire: e.target.value }))} placeholder="Optionnel" style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", ...s.body }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Lieu</label>
-                <input value={form.lieu} onChange={e => setForm(f => ({ ...f, lieu: e.target.value }))} placeholder="Optionnel" style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", ...s.body }} />
-              </div>
-            </div>
-            <button onClick={saveMatch} disabled={saving || !form.titre || !form.date_match} style={{ width: "100%", height: 48, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, border: "none", borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, cursor: "pointer", ...s.heading, boxShadow: DS.shadow.primary }}>
-              {saving ? "Enregistrement..." : "Ajouter le match"}
-            </button>
-          </div>
-        )}
-
-        {loading ? (
-          <div style={{ textAlign: "center", padding: 40 }}>
-            <div style={{ width: 32, height: 32, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite", margin: "0 auto 12px" }} />
-          </div>
-        ) : matchs.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 20px" }}>
-            <p style={{ fontSize: 48, marginBottom: 16 }}>📅</p>
-            <p style={{ color: DS.colors.textPrimary, fontSize: 18, ...s.heading, marginBottom: 8 }}>Aucun match programme</p>
-            <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, lineHeight: 1.6 }}>Ajoute tes matchs pour que Voltra adapte automatiquement tes seances.</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {matchs.map(match => {
-              const days = getDaysUntil(match.date_match);
-              const color = getMatchColor(days);
-              return (
-                <div key={match.id} style={{ background: DS.colors.surface, border: `1px solid ${color}30`, borderRadius: DS.radius.xl, padding: 20, position: "relative", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: color }} />
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "inline-flex", padding: "3px 10px", background: color + "20", border: `1px solid ${color}40`, borderRadius: DS.radius.full, color, fontSize: 11, ...s.heading, marginBottom: 8 }}>
-                        {getMatchLabel(days)}
-                      </div>
-                      <p style={{ color: DS.colors.textPrimary, fontSize: 17, ...s.heading, marginBottom: 4 }}>{match.titre}</p>
-                      {match.adversaire && <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>vs {match.adversaire}</p>}
-                      {match.lieu && <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body }}>📍 {match.lieu}</p>}
-                    </div>
-                    <button onClick={() => deleteMatch(match.id)} style={{ background: "none", border: "none", color: DS.colors.textDim, fontSize: 18, cursor: "pointer", padding: 4 }}>✕</button>
-                  </div>
-                  <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px" }}>
-                    <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>
-                      {days <= 1 ? "⚡ Seance tres legere aujourd'hui - preserve ton energie" :
-                       days <= 3 ? "⚠️ Charges reduites - approche du match" :
-                       days <= 5 ? "💪 Programme normal - fin de cycle avant match" :
-                       "✅ Programme complet - match encore loin"}
-                    </p>
-                  </div>
-                  <p style={{ color: DS.colors.textDim, fontSize: 11, ...s.mono, marginTop: 8 }}>
-                    {new Date(match.date_match).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// DASHBOARD
-function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs, onResumeSession }) {
-  // Séance en pause récupérable (< 2h)
-  const [pausedSession] = useState(() => {
-    try {
-      const raw = localStorage.getItem("voltra_paused_session");
-      if (!raw) return null;
-      const data = JSON.parse(raw);
-      if (Date.now() - data.savedAt > 2 * 60 * 60 * 1000) {
-        localStorage.removeItem("voltra_paused_session");
-        return null;
-      }
-      return data;
-    } catch { return null; }
-  });
-  const sport = sportProp || "default";
-  const theme = getSportTheme(sport);
-  const progData = programme?.data_json;
-
-  // Determiner la vraie seance du jour selon la progression reelle
-  const [seanceIdxDansSemaine, setSeanceIdxDansSemaine] = useState(0);
-  useEffect(() => {
-    if (!programme?.id) return;
-    const freq = programme?.frequence || 1;
-    supabase
-      .from("seances")
-      .select("id", { count: "exact", head: true })
-      .eq("programme_id", programme.id)
-      .eq("statut", "faite")
-      .then(({ count }) => setSeanceIdxDansSemaine((count || 0) % freq));
-  }, [programme?.id, programme?.frequence]);
-
-  const semaineIdx = Math.max(0, Math.min((programme?.semaine_courante || 1) - 1, (progData?.semaines?.length || 1) - 1));
-  const seancesSemaine = progData?.semaines?.[semaineIdx]?.seances || progData?.semaines?.[0]?.seances || [];
-  const seance = seancesSemaine[seanceIdxDansSemaine] || seancesSemaine[0] || null;
-  const exercices = seance?.exercices || [];
-
-  const prog = {
-    titre: programme?.titre || null,
-    semaineCourante: programme?.semaine_courante || 1,
-    totalSemaines: programme?.total_semaines || 8,
-    progression: Math.round(((programme?.semaine_courante || 1) / (programme?.total_semaines || 8)) * 100),
-  };
-
-  const userName = user?.user_metadata?.name?.split(" ")[0] || user?.email?.split("@")[0] || "Athlète";
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
-  const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-
-  const currentCycle = programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
-  const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
-
-  return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
-
-      {/* Badge programme loading */}
-      {programmeLoading && (
-        <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", zIndex: 200, background: DS.colors.surface, border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "10px 20px", display: "flex", alignItems: "center", gap: 10, boxShadow: DS.shadow.card, whiteSpace: "nowrap" }}>
-          <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: theme.accent, animation: "pulse 1s infinite" }} />
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>Génération du programme...</p>
-        </div>
-      )}
-
-      {/* Header */}
-      <div style={{ background: DS.colors.surface, padding: "56px 24px 20px", borderBottom: `1px solid ${DS.colors.border}` }}>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, marginBottom: 4, fontWeight: 500 }}>
-          {today.charAt(0).toUpperCase() + today.slice(1)}
-        </p>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 32, color: DS.colors.textPrimary, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-            {greeting},<br />{userName} 👋
-          </h1>
-          <div style={{ width: 44, height: 44, borderRadius: 22, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, boxShadow: `0 4px 12px ${theme.accent}40` }}>
-            {SPORT_EMOJIS[sport] || "⚡"}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: "20px 16px 0" }}>
-
-        {/* Bannière reprise séance en pause */}
-        {pausedSession && (
-          <div onClick={() => onResumeSession && onResumeSession(pausedSession)} style={{ background: `linear-gradient(135deg, ${theme.accent}18, ${theme.accent}06)`, border: `1.5px solid ${theme.accent}50`, borderRadius: DS.radius.xl, padding: "16px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", boxShadow: `0 4px 20px ${theme.accent}20` }}>
-            <div style={{ width: 46, height: 46, borderRadius: 14, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, animation: "pulse 2s infinite" }}>⏸</div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 15, color: DS.colors.textPrimary, marginBottom: 2 }}>Séance en pause</p>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>
-                Tu en étais à l'exercice {(pausedSession.exIdx || 0) + 1}, série {(pausedSession.setIdx || 0) + 1} · {Object.keys(pausedSession.completedSets || {}).length} séries validées
-              </p>
-            </div>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 800, color: theme.accent, whiteSpace: "nowrap" }}>Reprendre →</p>
-          </div>
-        )}
-
-        {/* Séance du jour — card sombre */}
-        {!seance ? (
-          <div style={{ background: DS.colors.isDark ? "#1D1D1F" : DS.colors.surface, borderRadius: DS.radius.xl, padding: 24, marginBottom: 16, position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", right: -20, top: -20, fontSize: 120, opacity: 0.06 }}>{SPORT_EMOJIS[sport] || "⚡"}</div>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: theme.accent, fontWeight: 600, marginBottom: 8, letterSpacing: "0.04em" }}>PROGRAMME EN PRÉPARATION</p>
-            <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 24, color: DS.colors.textPrimary, margin: "0 0 8px", letterSpacing: "-0.01em" }}>Ton programme arrive...</h2>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, margin: 0 }}>L'IA construit ton programme personnalisé. Reviens dans quelques instants.</p>
-          </div>
-        ) : (
-          <div style={{ background: DS.colors.surfaceDark || "#1D1D1F", borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16, position: "relative" }}>
-            <div style={{ position: "absolute", right: -20, top: -20, fontSize: 140, opacity: 0.06 }}>{SPORT_EMOJIS[sport] || "⚡"}</div>
-            <div style={{ padding: "20px 20px 16px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-                <div>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: theme.accent, fontWeight: 700, marginBottom: 6, letterSpacing: "0.04em" }}>
-                    {seance.type?.toUpperCase() || "SÉANCE DU JOUR"}
-                  </p>
-                  <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 24, color: DS.colors.textPrimary, margin: 0, letterSpacing: "-0.01em" }}>
-                    {seance.titre || "Séance"}
-                  </h2>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 28, fontWeight: 800, color: DS.colors.textPrimary, margin: 0, lineHeight: 1 }}>{seance.dureeMin || 45}</p>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, margin: 0 }}>min</p>
-                </div>
-              </div>
-
-              {/* Progress dots */}
-              <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-                {exercices.slice(0, 6).map((_, i) => (
-                  <div key={i} style={{ height: 3, flex: 1, background: DS.colors.surfaceHigh, borderRadius: 2 }} />
-                ))}
-              </div>
-
-              {/* Exercices preview */}
-              {exercices.slice(0, 4).map((ex, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: `1px solid ${DS.colors.border}` }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: theme.accent, opacity: 0.7 }} />
-                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textPrimary, fontWeight: 500 }}>{ex.nom}</span>
-                  </div>
-                  <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec }}>{ex.sets}×{ex.reps}</span>
-                </div>
-              ))}
-              {exercices.length > 4 && (
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginTop: 8, marginBottom: 0 }}>+{exercices.length - 4} exercices</p>
-              )}
-            </div>
-
-            <div style={{ padding: "0 16px 16px" }}>
-              <button onClick={() => onStartSession(seance)} style={{ width: "100%", height: 50, background: theme.accent, border: "none", borderRadius: DS.radius.lg, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.01em" }}>
-                Démarrer la séance →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Progression cycle */}
-        <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 16, boxShadow: DS.shadow.card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, margin: "0 0 2px" }}>
-                {currentCycle === 1 ? "🌱 Fondations" : currentCycle === 2 ? "⚡ Intensification" : currentCycle === 3 ? "🔥 Puissance" : currentCycle === 4 ? "💎 Elite" : `🚀 Elite+${currentCycle - 4}`}
-              </p>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, margin: 0 }}>
-                Cycle {currentCycle} · Semaine {prog.semaineCourante} sur {prog.totalSemaines}
-              </p>
-            </div>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, color: theme.accent, margin: 0 }}>{prog.progression}%</p>
-          </div>
-          <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, height: 6, overflow: "hidden" }}>
-            <div style={{ width: `${prog.progression}%`, height: "100%", background: theme.accent, borderRadius: DS.radius.full, transition: "width 1s ease" }} />
-          </div>
-        </div>
-
-        {/* Parcours cycles */}
-        <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16, boxShadow: DS.shadow.card }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, marginBottom: 14 }}>Ton parcours</p>
-          <div style={{ display: "flex", gap: 0, position: "relative" }}>
-            <div style={{ position: "absolute", top: 20, left: 20, right: 20, height: 2, background: DS.colors.surfaceHigh, zIndex: 0 }} />
-            <div style={{ position: "absolute", top: 20, left: 20, height: 2, width: `${Math.min(100, (1/4)*100)}%`, background: theme.accent, zIndex: 0 }} />
-            {(() => {
-              const getLabel = (n) => n === 1 ? "BASES" : n === 2 ? "INTENSITÉ" : n === 3 ? "PUISSANCE" : n === 4 ? "ELITE" : `E+${n-4}`;
-              const start = Math.max(1, currentCycle - 1);
-              return Array.from({ length: 4 }, (_, i) => ({ num: start + i, label: getLabel(start + i) })).map((c, i) => {
-                const isDone = currentCycle > c.num && c.num >= startCycle;
-                const isSkipped = c.num < startCycle;
-                const isCurrent = currentCycle === c.num;
-                return (
-                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative", zIndex: 1 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: DS.radius.full, background: isDone ? theme.accent : isCurrent ? theme.accent + "20" : DS.colors.surfaceHigh, border: `2px solid ${isDone || isCurrent ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isCurrent ? `0 0 12px ${theme.accent}50` : "none" }}>
-                      {isDone ? <span style={{ color: "#000", fontSize: 14, fontWeight: 700 }}>✓</span>
-                        : isSkipped ? <span style={{ color: DS.colors.textDim, fontSize: 12 }}>—</span>
-                        : <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: isCurrent ? theme.accent : DS.colors.textSec, fontWeight: 700 }}>{c.num}</span>}
-                    </div>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, color: isCurrent ? theme.accent : DS.colors.textSec, fontWeight: isCurrent ? 700 : 400, letterSpacing: "0.05em", textAlign: "center" }}>{c.label}</p>
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        </div>
-
-        {/* Dernière séance */}
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, marginBottom: 12 }}>Dernière séance</p>
-          {derniereSeance ? (
-            <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14, boxShadow: DS.shadow.card }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: theme.accent + "15", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
-                {derniereSeance.feedback === "good" ? "💪" : derniereSeance.feedback === "easy" ? "😤" : "🔥"}
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 15, color: DS.colors.textPrimary, marginBottom: 3 }}>{derniereSeance.titre}</p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, margin: 0 }}>
-                  {new Date(derniereSeance.date_realisee).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} · {derniereSeance.duree_min || 0} min
-                </p>
-              </div>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: theme.accent, fontWeight: 700 }}>
-                {derniereSeance.exercices?.length || 0} exo
-              </p>
-            </div>
-          ) : (
-            <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "20px", textAlign: "center", boxShadow: DS.shadow.card }}>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec }}>Aucune séance encore. C'est l'heure de commencer ! 💪</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-// ─────────────────────────────────────────────
-function HistoriqueScreen() {
-  const [seancesReelles, setSeancesReelles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [totalSeances, setTotalSeances] = useState(0);
-  const [selectedSeance, setSelectedSeance] = useState(null);
-  const [selectedExo, setSelectedExo] = useState(null);
-  const [logsPerf, setLogsPerf] = useState([]);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { setLoading(false); return; }
-      const { data } = await supabase
-        .from("seances")
-        .select("*, exercices(*)")
-        .eq("user_id", session.user.id)
-        .eq("statut", "faite")
-        .order("date_realisee", { ascending: false })
-        .limit(30);
-      if (data) { setSeancesReelles(data); setTotalSeances(data.length); }
-      const { data: logs } = await supabase
-        .from("logs_performance")
-        .select("*, exercices(nom)")
-        .eq("user_id", session.user.id)
-        .order("charge_kg", { ascending: false })
-        .limit(100);
-      if (logs) setLogsPerf(logs);
-      setLoading(false);
-    });
-  }, []);
-
-  // Stats
-  const dureeTotal = seancesReelles.reduce((acc, s) => acc + (s.duree_min || 0), 0);
-  const dureeAvg = totalSeances > 0 ? Math.round(dureeTotal / totalSeances) : 0;
-  const streak = (() => {
-    let count = 0;
-    const today = new Date();
-    const sorted = [...seancesReelles].sort((a, b) => new Date(b.date_realisee) - new Date(a.date_realisee));
-    for (const sc of sorted) {
-      const diff = Math.floor((today - new Date(sc.date_realisee)) / (1000 * 60 * 60 * 24));
-      if (diff <= count + 2) count++;
-      else break;
-    }
-    return count;
-  })();
-
-  // Records
-  const records = {};
-  logsPerf.forEach(log => {
-    const nom = log.exercices?.nom;
-    if (!nom || !log.charge_kg) return;
-    if (!records[nom] || log.charge_kg > records[nom]) records[nom] = log.charge_kg;
-  });
-  const topRecords = Object.entries(records).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-  // Progression charges
-  const exosDispos = [...new Set(logsPerf.map(l => l.exercices?.nom).filter(Boolean))];
-  const exoSelectionne = selectedExo || exosDispos[0];
-  const progressionExo = logsPerf
-    .filter(l => l.exercices?.nom === exoSelectionne)
-    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-    .slice(-8);
-
-  // Calendrier
-  const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const seanceDates = new Set(seancesReelles.map(s => new Date(s.date_realisee).getDate()));
-
-  // Séances par semaine (8 dernières)
-  const seancesParSemaine = (() => {
-    const buckets = Array(8).fill(0);
-    seancesReelles.forEach(sc => {
-      const diff = Math.floor((now - new Date(sc.date_realisee)) / (1000 * 60 * 60 * 24 * 7));
-      if (diff < 8) buckets[7 - diff]++;
-    });
-    return buckets;
-  })();
-  const maxSemaine = Math.max(...seancesParSemaine, 1);
-
-  const feedbackColor = (f) => f === "easy" ? DS.colors.primary : f === "good" ? DS.colors.success : DS.colors.warning;
-  const feedbackLabel = (f) => f === "easy" ? "Facile" : f === "good" ? "Parfait" : "Dur";
-  const feedbackEmoji = (f) => f === "easy" ? "😤" : f === "good" ? "💪" : "🔥";
-
-  const accentColor = "#FF2D55";
-
-  return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
-
-      {/* Drawer detail seance */}
-      {selectedSeance && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-          <div onClick={() => setSelectedSeance(null)} style={{ position: "absolute", inset: 0, background: DS.colors.surfaceHigh, backdropFilter: "blur(4px)" }} />
-          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "24px 20px 48px", maxHeight: "70vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <div>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 4 }}>
-                  {new Date(selectedSeance.date_realisee).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }).toUpperCase()}
-                </p>
-                <h3 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 22, color: DS.colors.textPrimary }}>{selectedSeance.titre}</h3>
-              </div>
-              <button onClick={() => setSelectedSeance(null)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
-            </div>
-            <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-              {[
-                { val: `${selectedSeance.duree_min || 0}m`, label: "DUREE", color: accentColor },
-                { val: selectedSeance.exercices?.length || 0, label: "EXO", color: DS.colors.success },
-              ].map((stat, i) => (
-                <div key={i} style={{ flex: 1, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "12px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 20, color: stat.color, fontWeight: 700 }}>{stat.val}</div>
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, marginTop: 2, letterSpacing: "0.1em" }}>{stat.label}</div>
-                </div>
-              ))}
-              {selectedSeance.feedback && (
-                <div style={{ flex: 1, background: feedbackColor(selectedSeance.feedback) + "15", borderRadius: DS.radius.md, padding: "12px 8px", textAlign: "center", border: `1px solid ${feedbackColor(selectedSeance.feedback)}30` }}>
-                  <div style={{ fontSize: 20, marginBottom: 2 }}>{feedbackEmoji(selectedSeance.feedback)}</div>
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: feedbackColor(selectedSeance.feedback), letterSpacing: "0.08em" }}>{feedbackLabel(selectedSeance.feedback).toUpperCase()}</div>
-                </div>
-              )}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {(selectedSeance.exercices || []).map((ex, i) => (
-                <div key={i} style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{ex.nom}</p>
-                    <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{ex.muscles?.split(" ")[0]}</p>
-                  </div>
-                  <p style={{ fontFamily: "'Space Mono',monospace", color: accentColor, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}{ex.charge_kg > 0 ? ` @ ${ex.charge_kg}kg` : ""}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(10px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, color: DS.colors.textPrimary, letterSpacing: "0.1em" }}>PROGRESSION</h1>
-        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 6, padding: "5px 10px" }}>CE MOIS</div>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 60 }}>
-          <div style={{ width: 32, height: 32, borderRadius: DS.radius.full, background: accentColor, animation: "pulse 1s infinite", margin: "0 auto 12px" }} />
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: DS.colors.textSec }}>Chargement...</p>
-        </div>
-      ) : (
-        <div style={{ padding: "20px 20px 0" }}>
-
-          {/* Hero stat */}
-          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, boxShadow: DS.shadow.card, padding: "24px 20px", marginBottom: 16, position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: accentColor }} />
-            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: accentColor, letterSpacing: "0.25em", marginBottom: 8 }}>VOLUME TOTAL</div>
-            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 72, color: DS.colors.textPrimary, lineHeight: 0.9, letterSpacing: "-0.02em" }}>{totalSeances}</div>
-            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em", marginTop: 8 }}>SEANCES COMPLETEES</div>
-            {streak > 0 && (
-              <div style={{ position: "absolute", top: 20, right: 20, background: "rgba(0,255,135,0.15)", border: "1px solid rgba(0,255,135,0.3)", borderRadius: 8, padding: "6px 12px", fontFamily: "'Space Mono',monospace", fontSize: 11, color: "#00FF87", fontWeight: 700 }}>
-                🔥 {streak} JOURS
-              </div>
-            )}
-          </div>
-
-          {/* 4 stats grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-            {[
-              { val: streak, label: "STREAK ACTUEL", color: accentColor },
-              { val: `${dureeAvg}m`, label: "DUREE MOY.", color: "#00FF87" },
-              { val: topRecords[0] ? `${topRecords[0][1]}kg` : "—", label: `RECORD ${(topRecords[0]?.[0] || "").split(" ")[0].toUpperCase()}`, color: "#FFE500" },
-              { val: seancesReelles.filter(s => s.feedback === "good" || s.feedback === "easy").length, label: "SEANCES REUSSIES", color: "#00C8FF" },
-            ].map((stat, i) => (
-              <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 16, padding: "16px 14px", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: stat.color, lineHeight: 1, marginBottom: 6 }}>{stat.val}</div>
-                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.12em" }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Graphique séances par semaine — cliquable */}
-          <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16 }}>
-            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 14 }}>SEANCES SUR 8 SEMAINES · APPUIE POUR DETAIL</div>
-            <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 100 }}>
-              {seancesParSemaine.map((count, i) => {
-                const isLast = i === 7;
-                const h = count > 0 ? Math.max(12, (count / maxSemaine) * 100) : 8;
-                const isEmpty = count === 0;
-                const seancesOfWeek = seancesReelles.filter(sc => {
-                  const diff = Math.floor((now - new Date(sc.date_realisee)) / (1000 * 60 * 60 * 24 * 7));
-                  return diff === 7 - i;
-                });
-                return (
-                  <div key={i} onClick={() => seancesOfWeek.length > 0 && setSelectedSeance(seancesOfWeek[0])} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, cursor: seancesOfWeek.length > 0 ? "pointer" : "default" }}>
-                    {count > 0 && <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: isLast ? accentColor : "rgba(255,255,255,0.3)" }}>{count}</div>}
-                    <div style={{ width: "100%", height: h, background: isEmpty ? "rgba(255,255,255,0.04)" : isLast ? accentColor : `rgba(255,45,85,${0.2 + (count/maxSemaine)*0.6})`, borderRadius: "4px 4px 0 0", border: isEmpty ? "1px dashed rgba(255,255,255,0.08)" : "none", boxShadow: isLast && count > 0 ? `0 0 12px rgba(255,45,85,0.5)` : "none", transition: "opacity 0.2s" }} />
-                    <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: isLast ? accentColor : "rgba(255,255,255,0.2)" }}>S{i + 1}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Calendrier du mois */}
-          <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "16px", marginBottom: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: DS.colors.textPrimary, letterSpacing: "0.08em" }}>{now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }).toUpperCase()}</div>
-              {streak > 0 && <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.1em" }}>🔥 {streak} JOURS</div>}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, marginBottom: 4 }}>
-              {["L","M","M","J","V","S","D"].map((d, i) => (
-                <div key={i} style={{ textAlign: "center", fontFamily: "'Space Mono',monospace", fontSize: 7, color: DS.colors.textSec, paddingBottom: 4 }}>{d}</div>
-              ))}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
-              {Array.from({ length: firstDay === 0 ? 6 : firstDay - 1 }).map((_, i) => <div key={`e${i}`} />)}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const isToday = day === now.getDate();
-                const hasSeance = seanceDates.has(day);
-                return (
-                  <div key={day} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 4, background: hasSeance ? accentColor : isToday ? DS.colors.surfaceHigh : "transparent", border: isToday && !hasSeance ? `1px solid ${accentColor}` : "none", boxShadow: hasSeance ? `0 0 8px rgba(255,45,85,0.4)` : "none" }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: hasSeance ? "white" : isToday ? accentColor : "rgba(255,255,255,0.25)" }}>{day}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Records personnels */}
-          {topRecords.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 12 }}>RECORDS PERSONNELS</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 0, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, overflow: "hidden" }}>
-                {topRecords.map(([nom, charge], i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderBottom: i < topRecords.length - 1 ? `1px solid rgba(255,255,255,0.04)` : "none" }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: i === 0 ? "rgba(255,229,0,0.1)" : "rgba(255,255,255,0.04)", border: `1px solid ${i === 0 ? "rgba(255,229,0,0.3)" : "rgba(255,255,255,0.06)"}`, flexShrink: 0 }}>
-                      {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
-                    </div>
-                    <div style={{ flex: 1, fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: DS.colors.textPrimary, fontWeight: 500 }}>{nom}</div>
-                    <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 14, color: "#00FF87", fontWeight: 700 }}>{charge} kg</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Historique séances récentes */}
-          {seancesReelles.length > 0 && (
-            <div>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 12 }}>DERNIERES SEANCES</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {seancesReelles.slice(0, 6).map((sc, i) => (
-                  <div key={i} onClick={() => setSelectedSeance(sc)} style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "14px 16px", cursor: "pointer" }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: sc.feedback ? feedbackColor(sc.feedback) + "15" : "rgba(255,255,255,0.05)", border: `1px solid ${sc.feedback ? feedbackColor(sc.feedback) + "30" : "rgba(255,255,255,0.06)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
-                      {feedbackEmoji(sc.feedback) || "🏋️"}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading, marginBottom: 2 }}>{sc.titre}</p>
-                      <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.08em" }}>
-                        {new Date(sc.date_realisee).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }).toUpperCase()} · {sc.duree_min || 0}min
-                      </p>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: accentColor, fontWeight: 700 }}>{sc.exercices?.length || 0} EXO</p>
-                      {sc.feedback && <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: feedbackColor(sc.feedback), marginTop: 2 }}>{feedbackLabel(sc.feedback).toUpperCase()}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {seancesReelles.length === 0 && (
-            <div style={{ textAlign: "center", padding: "40px 20px" }}>
-              <p style={{ fontSize: 48, marginBottom: 16 }}>🏋️</p>
-              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: DS.colors.textPrimary, letterSpacing: "0.08em", marginBottom: 8 }}>AUCUNE SEANCE ENCORE</p>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em" }}>Complete ta premiere seance pour voir ta progression ici.</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-// ─────────────────────────────────────────────
-// PROFIL
-// ─────────────────────────────────────────────
-function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, onThemeChange, onLogout, onRegenerateProgram }) {
-  const [notifOn, setNotifOn] = useState(false);
-  const [notifHeure, setNotifHeure] = useState("08:00");
-  const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const [editData, setEditData] = useState({ sport: null, objectif: null, frequence: 3 });
-  const [saving, setSaving] = useState(false);
-  const [seancesCount, setSeancesCount] = useState(0);
-  const [programmeLoading, setProgrammeLoading] = useState(false);
-  const [paidPlan, setPaidPlan] = useState(null);
-  const [lastSessionStats, setLastSessionStats] = useState(null);
-  const [cycleComplete, setCycleComplete] = useState(false);
-  const [streak, setStreak] = useState(0);
-  const [recordKg, setRecordKg] = useState(0);
-  const [seancesFaitesSemaine, setSeancesFaitesSemaine] = useState([]);
-  const [totalSeancesAllTime, setTotalSeancesAllTime] = useState(0);
-  const memberSinceDays = user?.created_at ? Math.floor((Date.now() - new Date(user.created_at)) / (1000 * 60 * 60 * 24)) : 0;
-  const [avatarUrl, setAvatarUrl] = useState(user?.user_metadata?.avatar_url || null);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const fileInputRef = useRef(null);
-
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert("Image trop lourde (max 5Mo)"); return; }
-    setUploadingAvatar(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const ext = file.name.split(".").pop();
-      const fileName = `${session.user.id}-${Date.now()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage
-        .from("avatars")
-        .upload(fileName, file, { upsert: true });
-      if (uploadErr) throw uploadErr;
-      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(fileName);
-      await supabase.auth.updateUser({ data: { avatar_url: pub.publicUrl } });
-      await supabase.from("profiles").upsert({ id: session.user.id, avatar_url: pub.publicUrl }, { onConflict: "id" });
-      setAvatarUrl(pub.publicUrl);
-    } catch (err) {
-      console.error("Erreur upload avatar:", err.message);
-      alert("Erreur lors de l'envoi de la photo");
-    }
-    setUploadingAvatar(false);
-  };
-
-  const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Toi";
-  const progData = programme?.data_json;
-  const semaineCourante = programme?.semaine_courante || 1;
-  const totalSemaines = programme?.total_semaines || 8;
-  const progression = Math.round((semaineCourante / totalSemaines) * 100);
-  const sport = sportActifProp || progData?.sport || user?.user_metadata?.sport || "default";
-  const objectif = progData?.objectif || "Non defini";
-  const frequence = progData?.frequence || 3;
-  const theme = getSportTheme(sport);
-  const currentCycle = progData?.cycle || getNiveauCycle(progData?.niveau) || 1;
-  const startCycle = progData?.startCycle || getNiveauCycle(progData?.niveau) || 1;
-
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) return;
-      const { data } = await supabase.from("seances").select("date_realisee").eq("user_id", session.user.id).eq("statut", "faite").order("date_realisee", { ascending: false }).limit(30);
-      if (data) {
-        setSeancesCount(data.length);
-        let s = 0, today = new Date();
-        for (const sc of data) {
-          const diff = Math.floor((today - new Date(sc.date_realisee)) / (1000 * 60 * 60 * 24));
-          if (diff <= s + 2) s++;
-          else break;
-        }
-        setStreak(s);
-      }
-      // Record de kg soulevés en une seule seance + total seances toutes periodes
-      const { data: allSeances, count: totalCount } = await supabase
-        .from("seances")
-        .select("id, exercices(charge_kg, sets, reps)", { count: "exact" })
-        .eq("user_id", session.user.id)
-        .eq("statut", "faite");
-      if (allSeances) {
-        setTotalSeancesAllTime(totalCount || allSeances.length);
-        let maxKg = 0;
-        allSeances.forEach(sc => {
-          const kgSeance = (sc.exercices || []).reduce((acc, ex) => {
-            if (!(ex.charge_kg > 0)) return acc;
-            return acc + ex.charge_kg * (ex.sets || 1) * (parseInt(ex.reps) || 1);
-          }, 0);
-          if (kgSeance > maxKg) maxKg = kgSeance;
-        });
-        setRecordKg(Math.round(maxKg));
-      }
-      // Seances faites cette semaine (pour le calendrier)
-      const now = new Date();
-      const dayOfWeek = (now.getDay() + 6) % 7; // lundi=0
-      const monday = new Date(now); monday.setDate(now.getDate() - dayOfWeek); monday.setHours(0, 0, 0, 0);
-      const { data: weekData } = await supabase
-        .from("seances")
-        .select("date_realisee")
-        .eq("user_id", session.user.id)
-        .eq("statut", "faite")
-        .gte("date_realisee", monday.toISOString());
-      if (weekData) {
-        setSeancesFaitesSemaine(weekData.map(d => new Date(d.date_realisee).getDay()));
-      }
-    });
-  }, []);
-
-  const openEdit = () => {
-    setEditData({ sport, objectif: objectif !== "Non defini" ? objectif : null, frequence });
-    setShowEditDrawer(true);
-  };
-
-  const saveEdit = async () => {
-    setSaving(true);
-    const sportChanged = editData.sport !== sport;
-    // Seulement regenerer si le SPORT change — objectif et frequence = mise a jour simple
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await supabase.from("profiles").upsert({ id: session.user.id, sport: editData.sport }, { onConflict: "id" });
-        if (sportChanged && programme?.id) {
-          // Sport change → nouveau programme
-          if (onRegenerateProgram) await onRegenerateProgram(editData, true);
-        } else if (programme?.id) {
-          // Juste mettre a jour objectif + frequence sans regenerer ni remettre a zero
-          const updatedJson = { ...(programme.data_json || {}), objectif: editData.objectif, frequence: editData.frequence };
-          await supabase.from("programmes").update({ data_json: updatedJson }).eq("id", programme.id);
-          if (onRegenerateProgram) await onRegenerateProgram(editData, false);
-        }
-      }
-    } catch (err) { console.error(err); }
-    setSaving(false);
-    setShowEditDrawer(false);
-  };
-
-  return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100, position: "relative", overflow: "hidden" }}>
-
-      {/* Sport bg */}
-      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
-        {SPORT_EMOJIS[sport] || "⚡"}
-      </div>
-
-      {/* Drawer edition */}
-      {showEditDrawer && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-          <div onClick={() => setShowEditDrawer(false)} style={{ position: "absolute", inset: 0, background: DS.colors.surfaceHigh, backdropFilter: "blur(4px)" }} />
-          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "24px 20px 48px", maxHeight: "88vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-              <p style={{ ...s.display, fontSize: 20, color: DS.colors.textPrimary }}>Modifier mon profil</p>
-              <button onClick={() => setShowEditDrawer(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
-            </div>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Sport</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 24 }}>
-              {SPORTS.map(sp => (
-                <div key={sp.id} onClick={() => setEditData(d => ({ ...d, sport: sp.id, objectif: null }))} style={{ background: editData.sport === sp.id ? theme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${editData.sport === sp.id ? theme.accent : DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 6px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
-                  <div style={{ fontSize: 24, marginBottom: 4 }}>{sp.emoji}</div>
-                  <div style={{ color: editData.sport === sp.id ? theme.accent : DS.colors.textSec, fontSize: 10, ...s.heading }}>{sp.label}</div>
-                </div>
-              ))}
-            </div>
-            {editData.sport && (
-              <>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Objectif</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-                  {(OBJECTIFS_PAR_SPORT[editData.sport] || []).map(obj => (
-                    <div key={obj.id} onClick={() => setEditData(d => ({ ...d, objectif: obj.id }))} style={{ background: editData.objectif === obj.id ? theme.accent + "15" : DS.colors.surfaceHigh, border: `1px solid ${editData.objectif === obj.id ? theme.accent : DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                      <span style={{ fontSize: 20 }}>{obj.emoji}</span>
-                      <div>
-                        <p style={{ color: editData.objectif === obj.id ? theme.accent : DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{obj.label}</p>
-                        <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{obj.desc}</p>
-                      </div>
-                      {editData.objectif === obj.id && <div style={{ marginLeft: "auto", width: 18, height: 18, background: theme.accent, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#000" strokeWidth="3" strokeLinecap="round" /></svg></div>}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Seances / semaine</p>
-            <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
-              {[2, 3, 4, 5].map(n => (
-                <div key={n} onClick={() => setEditData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "14px 0", textAlign: "center", background: editData.frequence === n ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: editData.frequence === n ? "#000" : DS.colors.textSec, fontSize: 18, cursor: "pointer", ...s.display }}>{n}</div>
-              ))}
-            </div>
-            <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,140,0,0.2)", borderRadius: DS.radius.md, padding: "10px 14px", marginBottom: 16 }}>
-              <p style={{ color: DS.colors.warning, fontSize: 12 }}>⚠️ Un nouveau programme IA sera genere.</p>
-            </div>
-            <button onClick={saveEdit} disabled={saving || !editData.sport || !editData.objectif} style={{ width: "100%", height: 52, background: editData.sport && editData.objectif ? `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: editData.sport && editData.objectif ? "#000" : DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading, fontWeight: 700, letterSpacing: "0.05em" }}>
-              {saving ? (editData.sport !== sport || editData.objectif !== objectif ? "Generation en cours..." : "Sauvegarde...") : (editData.sport !== sport || editData.objectif !== objectif ? "Sauvegarder et regenerer ⚡" : "Sauvegarder les changements")}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Header hero */}
-      <div style={{ padding: "60px 24px 32px", position: "relative", zIndex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: "none" }} />
-          <div onClick={() => fileInputRef.current?.click()} style={{ position: "relative", width: 72, height: 72, flexShrink: 0, cursor: "pointer" }}>
-            <div style={{ width: 72, height: 72, background: avatarUrl ? "transparent" : theme.accent + "20", border: `2px solid ${theme.accent}50`, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, ...s.display, color: theme.accent, overflow: "hidden", boxShadow: `0 0 30px ${theme.accent}20` }}>
-              {uploadingAvatar ? (
-                <div style={{ width: 20, height: 20, border: `2px solid ${theme.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-              ) : avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                userName[0].toUpperCase()
-              )}
-            </div>
-            {/* Bouton camera */}
-            <div style={{ position: "absolute", bottom: -4, right: -4, width: 26, height: 26, borderRadius: "50%", background: theme.accent, border: `2px solid ${DS.colors.bg}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="13" r="4" stroke="#000" strokeWidth="2"/></svg>
-            </div>
-          </div>
-          <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "2px 8px", marginBottom: 6 }}>
-              <span style={{ fontSize: 12 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
-              <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>{sport !== "default" ? sport : "Sport"}</span>
-            </div>
-            <p style={{ ...s.display, fontSize: 24, color: DS.colors.textPrimary, letterSpacing: "0.05em", lineHeight: 1, marginBottom: 4 }}>{userName.toUpperCase()}</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec }}>{user?.email}</p>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: "0 20px", position: "relative", zIndex: 1 }}>
-
-        {/* Stats rapides */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
-          {[
-            { val: totalSeancesAllTime || seancesCount, label: "Seances", color: theme.accent },
-            { val: streak, label: "Streak", color: DS.colors.success },
-            { val: `${progression}%`, label: "Progres", color: DS.colors.warning },
-          ].map((stat, i) => (
-            <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 22, fontWeight: 700, color: stat.color, lineHeight: 1, marginBottom: 4 }}>{stat.val}</p>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em", textTransform: "uppercase" }}>{stat.label}</p>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
-          {[
-            { val: recordKg > 0 ? `${recordKg}` : "—", label: "Record kg", color: "#FF8C00" },
-            { val: memberSinceDays, label: "Jours actif", color: "#00C8FF" },
-            { val: `${seancesCount}`, label: "Ce mois", color: DS.colors.textSec },
-          ].map((stat, i) => (
-            <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 22, fontWeight: 700, color: stat.color, lineHeight: 1, marginBottom: 4 }}>{stat.val}</p>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em", textTransform: "uppercase" }}>{stat.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Programme actif */}
-        <div style={{ background: DS.colors.surface, border: `1px solid ${theme.accent}25`, borderRadius: DS.radius.xl, padding: 20, marginBottom: 14, position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-            <div>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 6 }}>Programme actif</p>
-              <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading }}>{programme?.titre || "Aucun programme"}</p>
-            </div>
-            <div style={{ background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "4px 10px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent }}>CYCLE {currentCycle}</p>
-            </div>
-          </div>
-          <ProgressBar value={progression} />
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>{frequence}x / semaine</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>Semaine {semaineCourante}/{totalSemaines} · {progression}%</p>
-          </div>
-          {objectif && objectif !== "Non defini" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${DS.colors.border}` }}>
-              <span style={{ fontSize: 16 }}>🎯</span>
-              <div>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.1em", textTransform: "uppercase" }}>Ton objectif</p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, textTransform: "capitalize" }}>{objectif}</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Calendrier de la semaine */}
-        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase" }}>Cette semaine</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>{seancesFaitesSemaine.length}/{frequence} séances</p>
-          </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {(() => {
-              const jours = ["L", "M", "M", "J", "V", "S", "D"];
-              const joursIdx = [1, 2, 3, 4, 5, 6, 0]; // getDay() index: L=1..D=0
-              const todayIdx = new Date().getDay();
-              const planPositions = {
-                1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5],
-              }[Math.min(frequence, 4)] || [1, 2, 3, 4, 5];
-              return jours.map((j, i) => {
-                const dayNum = joursIdx[i];
-                const isPlanned = planPositions.includes(dayNum);
-                const isDone = seancesFaitesSemaine.includes(dayNum);
-                const isToday = dayNum === todayIdx;
-                return (
-                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: isToday ? theme.accent : DS.colors.textDim, fontWeight: isToday ? 700 : 400 }}>{j}</p>
-                    <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, background: isDone ? theme.accent : isPlanned ? theme.accent + "15" : DS.colors.surfaceHigh, border: `1.5px solid ${isDone ? theme.accent : isPlanned ? theme.accent + "40" : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isToday ? `0 0 0 2px ${theme.accent}30` : "none" }}>
-                      {isDone ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#000" strokeWidth="3" strokeLinecap="round" /></svg>
-                      ) : isPlanned ? (
-                        <span style={{ fontSize: 12 }}>💪</span>
-                      ) : (
-                        <span style={{ fontSize: 10, color: DS.colors.textDim }}>·</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        </div>
-
-        {/* Historique des cycles — badges */}
-        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 14 }}>Parcours de cycles</p>
-          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
-            {(() => {
-              const cycleInfo = (n) => n === 1 ? { label: "Fondations", emoji: "🌱" } : n === 2 ? { label: "Intensification", emoji: "⚡" } : n === 3 ? { label: "Puissance", emoji: "🔥" } : n === 4 ? { label: "Elite", emoji: "💎" } : { label: `Elite+${n - 4}`, emoji: "🚀" };
-              const maxDisplay = Math.max(currentCycle, 4);
-              return Array.from({ length: maxDisplay }, (_, i) => i + 1).map(n => {
-                const info = cycleInfo(n);
-                const isDone = currentCycle > n && n >= startCycle;
-                const isSkipped = n < startCycle;
-                const isCurrent = currentCycle === n;
-                return (
-                  <div key={n} style={{ flexShrink: 0, width: 72, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, opacity: isSkipped ? 0.35 : 1 }}>
-                    <div style={{ width: 52, height: 52, borderRadius: 16, background: isDone ? theme.accent : isCurrent ? theme.accent + "20" : DS.colors.surfaceHigh, border: `2px solid ${isDone || isCurrent ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: isCurrent ? `0 0 16px ${theme.accent}50` : "none" }}>
-                      {isSkipped ? "—" : info.emoji}
-                    </div>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, fontWeight: isCurrent ? 700 : 500, color: isCurrent ? theme.accent : DS.colors.textSec, textAlign: "center", lineHeight: 1.2 }}>{info.label}</p>
-                    {isDone && <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: theme.accent }}>✓ FAIT</p>}
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        </div>
-
-        {/* Modifier profil — 1 seul bouton clair */}
-        <div onClick={openEdit} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 40, height: 40, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>✏️</div>
-            <div>
-              <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Modifier mon profil</p>
-              <p style={{ color: DS.colors.textSec, fontSize: 12, fontFamily: "'Space Mono',monospace" }}>{sport !== "default" ? sport : "?"} · {objectif !== "Non defini" ? objectif : "?"} · {frequence}x/sem</p>
-            </div>
-          </div>
-          <span style={{ color: theme.accent, fontSize: 18 }}>→</span>
-        </div>
-
-        {/* Notifications */}
-        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: notifOn ? 14 : 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 40, height: 40, background: "rgba(255,229,0,0.1)", border: "1px solid rgba(255,229,0,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔔</div>
-              <div>
-                <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Rappels seance</p>
-                <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{notifOn ? `TOUS LES JOURS A ${notifHeure}` : "DESACTIVE"}</p>
-              </div>
-            </div>
-            <div onClick={() => {
-              if (!notifOn) {
-                if ("Notification" in window) {
-                  Notification.requestPermission().then(p => { if (p === "granted") setNotifOn(true); });
-                } else { setNotifOn(true); }
-              } else { setNotifOn(false); }
-            }} style={{ width: 50, height: 28, background: notifOn ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", flexShrink: 0 }}>
-              <div style={{ position: "absolute", top: 3, left: notifOn ? 25 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
-            </div>
-          </div>
-          {notifOn && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em", flex: 1 }}>HEURE DU RAPPEL</p>
-              <input type="time" value={notifHeure} onChange={e => setNotifHeure(e.target.value)}
-                style={{ background: "transparent", border: `1px solid ${theme.accent}40`, borderRadius: 8, padding: "6px 10px", color: theme.accent, fontFamily: "'Space Mono',monospace", fontSize: 14, outline: "none", colorScheme: "dark", cursor: "pointer" }} />
-            </div>
-          )}
-        </div>
-
-        {/* Theme */}
-        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 40, height: 40, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{DS.colors.isDark ? "🌙" : "☀️"}</div>
-            <div>
-              <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Apparence</p>
-              <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{DS.colors.isDark ? "THEME SOMBRE" : "THEME LUMINEUX"}</p>
-            </div>
-          </div>
-          <div onClick={() => { const next = DS.colors.isDark ? "light" : "dark"; DS.colors = THEMES[next]; DS.shadow = THEMES[next].shadow; localStorage.setItem("voltra_theme", next); onThemeChange && onThemeChange(next); }} style={{ width: 50, height: 28, background: DS.colors.isDark ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", border: `1px solid ${DS.colors.border}` }}>
-            <div style={{ position: "absolute", top: 3, left: DS.colors.isDark ? 25 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>
-              {DS.colors.isDark ? "🌙" : "☀️"}
-            </div>
-          </div>
-        </div>
-
-        {/* Deconnexion */}
-        <div onClick={onLogout} style={{ background: "rgba(255,45,85,0.06)", border: "1px solid rgba(255,45,85,0.15)", borderRadius: DS.radius.xl, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
-          <div style={{ width: 40, height: 40, background: "rgba(255,45,85,0.1)", border: "1px solid rgba(255,45,85,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚪</div>
-          <p style={{ color: "#FF2D55", fontSize: 15, ...s.heading }}>Se deconnecter</p>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// PROGRAMME PREVIEW — avant inscription
-// ─────────────────────────────────────────────
-// ─────────────────────────────────────────────
-// PROJECTION SCREEN — la transformation concrète
-// ─────────────────────────────────────────────
-function ProjectionScreen({ sport, onboardingData, onContinue }) {
-  const theme = getSportTheme(sport);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => { setTimeout(() => setVisible(true), 100); }, []);
-
-  const frequence = onboardingData?.frequence || 3;
-  const totalSeances = frequence * 8; // 8 semaines
-  const isBodyweight = onboardingData?.equipement === "maison" || onboardingData?.equipement === "terrain";
-  const kgTotal = Math.round(totalSeances * (18 + Math.random() * 6)); // estimation tonnage (materiel avec charges)
-  const totalReps = Math.round(totalSeances * (85 + Math.random() * 25)); // estimation repetitions (poids du corps)
-
-  // Projection spécifique par objectif
-  const projections = {
-    explosivite: { metric: "+18%", label: "de détente verticale estimée", icon: "🚀" },
-    force: { metric: "+22%", label: "de force maximale estimée", icon: "🏋️" },
-    endurance: { metric: "+30%", label: "d'endurance cardio estimée", icon: "🔥" },
-    masse: { metric: "+2,5kg", label: "de masse musculaire estimée", icon: "📈" },
-    detente: { metric: "+15%", label: "de détente verticale estimée", icon: "🚀" },
-  };
-  const proj = projections[onboardingData?.objectif] || { metric: "+20%", label: "de performance estimée", icon: "⚡" };
-
-  const stats = [
-    { val: totalSeances, label: "SÉANCES · CYCLE 1", sub: "puis ça continue", icon: "📅" },
-    isBodyweight
-      ? { val: `${totalReps}`, label: "RÉPÉTITIONS", sub: "sur ce premier cycle", icon: "💪" }
-      : { val: `${(kgTotal/1000).toFixed(1)}T`, label: "SOULEVÉES", sub: "sur ce premier cycle", icon: "💪" },
-    { val: proj.metric, label: proj.label.toUpperCase(), sub: "à ce rythme", icon: proj.icon },
-  ];
-
-  return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 20%, ${theme.accent}10, transparent)`, pointerEvents: "none" }} />
-
-      <div style={{ padding: "56px 24px 0", maxWidth: 430, margin: "0 auto", width: "100%", position: "relative", zIndex: 1, opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(20px)", transition: "all 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
-
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12, color: theme.accent, letterSpacing: "0.15em", marginBottom: 12 }}>DÈS TON PREMIER CYCLE (8 SEMAINES)</p>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 34, color: "white", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
-            Voici ta<br />transformation
-          </h1>
-        </div>
-
-        {/* Stats projetées */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
-          {stats.map((s, i) => (
-            <div key={i} style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${theme.accent}25`, borderRadius: 20, padding: "18px 20px", display: "flex", alignItems: "center", gap: 16, opacity: visible ? 1 : 0, transform: visible ? "translateX(0)" : "translateX(-20px)", transition: `all 0.5s ease ${i * 0.15 + 0.2}s` }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: `${theme.accent}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{s.icon}</div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 28, color: theme.accent, lineHeight: 1, marginBottom: 4 }}>{s.val}</p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{s.label}</p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{s.sub}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Continuité — pas juste 8 semaines */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 16px", marginBottom: 16 }}>
-          <span style={{ fontSize: 22 }}>♾️</span>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
-            Et ce n'est que le <strong style={{ color: "white" }}>premier cycle</strong>. Ton programme évolue ensuite automatiquement — <strong style={{ color: theme.accent }}>progression continue toute l'année</strong>.
-          </p>
-        </div>
-
-        {/* Preuve sociale */}
-        <div style={{ background: `${theme.accent}10`, border: `1px solid ${theme.accent}25`, borderRadius: 16, padding: "14px 18px", marginBottom: 28, textAlign: "center" }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>
-            <strong style={{ color: theme.accent }}>87% des athlètes</strong> avec un profil similaire progressent visiblement en 6 semaines
-          </p>
-        </div>
-
-        <button onClick={onContinue} style={{ width: "100%", height: 58, background: theme.accent, border: "none", borderRadius: 9999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}45` }}>
-          Voir mon programme complet →
-        </button>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "center", paddingBottom: 32 }}>
-          Estimations basées sur des profils similaires
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// PROGRAMME PREVIEW
-// ─────────────────────────────────────────────
-function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
-  const theme = getSportTheme(sport);
-  const progData = programme?.data_json;
-  const seance = progData?.semaines?.[0]?.seances?.[0];
-  const exercices = seance?.exercices || [];
-  const frequence = onboardingData?.frequence || 3;
-
-  const [timeLeft, setTimeLeft] = useState({ m: 59, s: 59 });
-  useEffect(() => {
-    const t = setInterval(() => {
-      setTimeLeft(prev => {
-        let { m, s } = prev;
-        s--;
-        if (s < 0) { s = 59; m--; }
-        if (m < 0) return { m: 0, s: 0 };
-        return { m, s };
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, []);
-  const pad = n => String(n).padStart(2, "0");
-
-  const nomsProgramme = {
-    basketball: { explosivite: "Protocole Meneur Elite", detente: "Jump Performance", force: "Power Basketball", endurance: "Cardio Court" },
-    football: { explosivite: "Sprint & Power", endurance: "Endurance Football", force: "Physical Domination" },
-    tennis: { explosivite: "Reactive Tennis", force: "Power Serve", endurance: "Court Endurance" },
-    rugby: { force: "Force Brute", masse: "Mass & Power", explosivite: "Impact Rugby", endurance: "Iron Endurance" },
-    natation: { endurance: "Aqua Endurance Elite", force: "Power Swimmer", masse: "Swimmer Physique" },
-    sprint: { explosivite: "Speed Demon", force: "Power Sprint", detente: "Explosive Athlete" },
-    combat: { explosivite: "Combat Power", endurance: "Fight Conditioning", force: "Warrior Strength", masse: "Combat Mass" },
-  };
-  const nomProg = nomsProgramme[sport]?.[onboardingData?.objectif] || programme?.titre || "Performance Elite";
-  const [inscrits] = useState(() => Math.floor(Math.random() * 80 + 250));
-
-  return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 48, position: "relative" }}>
-      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none", opacity: 0.4 }} />
-
-      <div style={{ padding: "48px 22px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
-
-        {/* Bandeau urgence */}
-        <div style={{ background: "rgba(255,45,85,0.12)", border: "1px solid rgba(255,45,85,0.35)", borderRadius: DS.radius.lg, padding: "12px 16px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 13, color: "#FF2D55", marginBottom: 2 }}>🔥 -30% sur le premier mois</p>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, lineHeight: 1.4 }}>Offre valable uniquement dans ce delai</p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
-            <div style={{ background: "#FF2D55", borderRadius: 6, padding: "5px 9px", textAlign: "center" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 17, color: DS.colors.textPrimary, fontWeight: 700, lineHeight: 1 }}>{pad(timeLeft.m)}</p>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: DS.colors.textPrimary, marginTop: 1 }}>MIN</p>
-            </div>
-            <p style={{ color: "#FF2D55", fontSize: 18, fontWeight: 700, marginBottom: 10 }}>:</p>
-            <div style={{ background: "#FF2D55", borderRadius: 6, padding: "5px 9px", textAlign: "center" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 17, color: DS.colors.textPrimary, fontWeight: 700, lineHeight: 1 }}>{pad(timeLeft.s)}</p>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: DS.colors.textPrimary, marginTop: 1 }}>SEC</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Header programme */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "18", border: `1px solid ${theme.accent}35`, borderRadius: 20, padding: "4px 12px", marginBottom: 12 }}>
-            <div style={{ width: 5, height: 5, borderRadius: "50%", background: theme.accent, animation: "pulse 1.5s infinite" }} />
-            <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 11, color: theme.accent, letterSpacing: "0.05em" }}>Ton programme est prêt</span>
-          </div>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 8, letterSpacing: "0.02em" }}>
-            {nomProg.toUpperCase()}
-          </h1>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, letterSpacing: "0.02em" }}>
-            {frequence}x par semaine · Progression continue · IA
-          </p>
-        </div>
-
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-          {[
-            { val: exercices.length || "5+", label: "Exos / séance", color: theme.accent },
-            { val: frequence * 8, label: "Séances / cycle", color: "#00FF87" },
-            { val: "∞", label: "Progression", color: "#FF8C00" },
-          ].map((stat, i) => (
-            <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 28, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 5 }}>{stat.val}</p>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, fontWeight: 500 }}>{stat.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Aperçu séance */}
-        <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16, position: "relative" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
-          <div style={{ padding: "14px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${DS.colors.border}` }}>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 13, color: DS.colors.textPrimary }}>Aperçu — Séance 1</p>
-            <div style={{ background: "rgba(255,45,85,0.15)", border: "1px solid rgba(255,45,85,0.3)", borderRadius: DS.radius.full, padding: "3px 10px" }}>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 600, color: "#FF2D55" }}>🔒 Accès restreint</p>
-            </div>
-          </div>
-          <div style={{ padding: "8px 16px 14px" }}>
-            {/* 2 exercices visibles */}
-            {(exercices.length > 0 ? exercices.slice(0, 2) : [{nom: "Squat Barre", muscles: "Quadriceps", sets: 4, reps: "8"}, {nom: "Deadlift Roumain", muscles: "Ischios", sets: 3, reps: "10"}]).map((ex, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                <div style={{ width: 30, height: 30, borderRadius: 9, background: theme.accent + "20", border: `1px solid ${theme.accent}30`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: theme.accent, fontWeight: 700 }}>{i + 1}</p>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: "white", marginBottom: 2 }}>{ex.nom}</p>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{(ex.muscles || "").split(" ")[0]}</p>
-                </div>
-                <p style={{ fontFamily: "'Space Mono',monospace", color: theme.accent, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}</p>
-              </div>
-            ))}
-
-            {/* Exercices floutés avec vrai contenu */}
-            <div style={{ position: "relative", marginTop: 4 }}>
-              {[
-                {nom: exercices[2]?.nom || "Box Jump Explosif", muscles: exercices[2]?.muscles || "Mollets", sets: exercices[2]?.sets || 4, reps: exercices[2]?.reps || "6"},
-                {nom: exercices[3]?.nom || "Hip Thrust Barre", muscles: exercices[3]?.muscles || "Fessiers", sets: exercices[3]?.sets || 3, reps: exercices[3]?.reps || "12"},
-                {nom: exercices[4]?.nom || "Fentes Bulgares", muscles: exercices[4]?.muscles || "Quadriceps", sets: exercices[4]?.sets || 3, reps: exercices[4]?.reps || "10"},
-              ].map((ex, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.08)" : "none", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 700 }}>{i + 3}</p>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: "white", marginBottom: 2 }}>{ex.nom}</p>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{ex.muscles}</p>
-                  </div>
-                  <p style={{ fontFamily: "'Space Mono',monospace", color: "rgba(255,255,255,0.5)", fontSize: 12 }}>{ex.sets}×{ex.reps}</p>
-                </div>
-              ))}
-              {/* Overlay cadenas */}
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(6,6,14,0.6)", backdropFilter: "blur(3px)", borderRadius: DS.radius.md }}>
-                <span style={{ fontSize: 28, marginBottom: 8 }}>🔒</span>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 13, color: "white", marginBottom: 4 }}>
-                  {Math.max(exercices.length > 2 ? exercices.length - 2 : 3, 3)} exercices bloqués
-                </p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Inscris-toi pour tout débloquer</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Social proof */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "11px 14px", marginBottom: 16 }}>
-          <div style={{ display: "flex" }}>
-            {["🏀","⚽","🥊","🏊"].map((e, i) => (
-              <div key={i} style={{ width: 26, height: 26, borderRadius: "50%", background: DS.colors.surfaceHigh, border: "1.5px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, marginLeft: i > 0 ? -7 : 0 }}>{e}</div>
-            ))}
-          </div>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, flex: 1 }}>
-            <span style={{ color: DS.colors.textPrimary, fontWeight: 700 }}>{inscrits} athlètes</span> ont rejoint Voltra cette semaine
-          </p>
-        </div>
-
-        {/* Bloc réduction */}
-        <div style={{ background: `linear-gradient(135deg, ${theme.accent}12, ${theme.accent}04)`, border: `1px solid ${theme.accent}25`, borderRadius: DS.radius.xl, padding: "16px 18px", marginBottom: 22 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 15, color: DS.colors.textPrimary }}>Offre de bienvenue</p>
-            <div style={{ background: theme.accent, borderRadius: DS.radius.full, padding: "3px 12px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: "#000", fontWeight: 700 }}>-30%</p>
-            </div>
-          </div>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, lineHeight: 1.6 }}>
-            Inscris-toi maintenant et obtiens <span style={{ color: DS.colors.textPrimary, fontWeight: 600 }}>-30% sur ton premier mois</span>. Offre valable uniquement pendant le compte à rebours.
-          </p>
-        </div>
-
-        {/* CTA */}
-        <button onClick={onContinue} style={{ width: "100%", height: 58, background: theme.accent, border: "none", borderRadius: DS.radius.full, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: "0.02em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}45` }}>
-          Sauvegarder mon programme →
-        </button>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, textAlign: "center" }}>
-          Inscription gratuite · 30 secondes · Sans carte bancaire
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// POST SESSION UPSELL
-// ─────────────────────────────────────────────
-function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
-  const [selected, setSelected] = useState("annual");
-  const theme = getSportTheme(sportActif);
-  const currentPlan = PLANS.find(p => p.id === selected);
-  const totalSemaines = programme?.total_semaines || 8;
-  const semaineCourante = programme?.semaine_courante || 1;
-
-  const feedbackMsg = stats?.feedback === "easy" ? "Tu as gere facilement —" :
-    stats?.feedback === "good" ? "Seance parfaite —" : "Tu t'es vraiment donne —";
-
-  return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40, position: "relative" }}>
-      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
-        {SPORT_EMOJIS[sportActif] || "⚡"}
-      </div>
-
-      <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
-
-        {/* Header celebratoire */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 80, height: 80, borderRadius: 22, background: theme.accent + "20", border: `2px solid ${theme.accent}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 20px", boxShadow: `0 0 60px ${theme.accent}30`, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
-            🏆
-          </div>
-          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 10 }}>SEANCE TERMINEE</div>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 8, letterSpacing: "0.02em" }}>
-            {feedbackMsg}<br />tu progresses !
-          </h1>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.12em" }}>{stats?.titre?.toUpperCase()}</p>
-        </div>
-
-        {/* Stats personnalisées de la séance */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-          {[
-            { val: stats?.exercices || 0, label: "EXERCICES", color: theme.accent },
-            { val: `${stats?.duree || 0}min`, label: "DUREE", color: "#00FF87" },
-            stats?.totalKg > 0
-              ? { val: `${stats.totalKg}kg`, label: "SOULEVE", color: "#FF8C00" }
-              : { val: `${stats?.totalReps || 0}`, label: "REPETITIONS", color: "#FF8C00" },
-          ].map((stat, i) => (
-            <div key={i} style={{ flex: 1, background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 20, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Message accrocheur */}
-        <div style={{ background: `linear-gradient(135deg, ${theme.accent}12, ${theme.accent}04)`, border: `1px solid ${theme.accent}25`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 24, position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
-          <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 18, color: DS.colors.textPrimary, marginBottom: 6 }}>
-            Ta progression vient de commencer.
-          </p>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
-            {stats?.totalKg > 0 ? `Tu viens de soulever ${stats.totalKg}kg. ` : stats?.totalReps > 0 ? `Tu viens de faire ${stats.totalReps} répétitions. ` : ""}La vraie transformation commence maintenant — continue avec Pro pour débloquer toutes tes séances.
-          </p>
-        </div>
-
-        {/* Ce qu'il rate */}
-        <div style={{ marginBottom: 24 }}>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 12 }}>CE QUE TU DEBLOQUES</p>
-          {[
-            { emoji: "📈", title: "Progression automatique", desc: "Tes charges augmentent intelligemment chaque semaine" },
-            { emoji: "🤖", title: "Coach IA illimite", desc: "Adaptation en temps reel pendant chaque seance" },
-            { emoji: "🏆", title: "Suivi des records", desc: "Visualise tes progres et bats tes records" },
-            { emoji: "⚡", title: "Progression sans fin", desc: "Nouveau programme genere automatiquement a chaque cycle" },
-          ].map((f, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < 3 ? `1px solid ${DS.colors.border}` : "none" }}>
-              <div style={{ width: 36, height: 36, background: theme.accent + "12", border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{f.emoji}</div>
-              <div>
-                <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading, marginBottom: 2 }}>{f.title}</p>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Plans */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-          {PLANS.map(plan => (
-            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: selected === plan.id ? plan.colorSoft : DS.colors.surface, border: `1.5px solid ${selected === plan.id ? plan.colorBorder : DS.colors.border}`, borderRadius: DS.radius.xl, padding: "16px 20px", cursor: "pointer", transition: "all 0.2s" }}>
-              {selected === plan.id && <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 2, background: plan.color, borderRadius: DS.radius.full }} />}
-              {plan.badge && <div style={{ display: "inline-flex", padding: "2px 8px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: plan.color, fontSize: 10, ...s.heading, marginBottom: 8 }}>{plan.badge}</div>}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-                <div>
-                  <p style={{ color: DS.colors.textSec, fontSize: 12, marginBottom: 4 }}>{plan.label}</p>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
-                    <span style={{ color: DS.colors.textSec, fontSize: 13 }}>{plan.unit}</span>
-                  </div>
-                </div>
-                <div style={{ width: 22, height: 22, borderRadius: DS.radius.full, border: `2px solid ${selected === plan.id ? plan.color : DS.colors.textDim}`, background: selected === plan.id ? plan.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
-                  {selected === plan.id && <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: "white" }} />}
-                </div>
-              </div>
-              {plan.savings && (
-                <div style={{ marginTop: 6 }}>
-                  <span style={{ padding: "2px 8px", background: plan.colorSoft, borderRadius: DS.radius.full, color: plan.color, fontSize: 10, ...s.heading }}>{plan.savings}</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <button onClick={() => onSelectPlan(selected)} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}40` }}>
-          {loading ? "Redirection..." : "CONTINUER MA PROGRESSION →"}
-        </button>
-        {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>{stripeError}</p>}
-        <p style={{ color: DS.colors.textDim, fontSize: 11, textAlign: "center", marginBottom: 16, fontFamily: "'Space Mono',monospace", letterSpacing: "0.06em" }}>🔒 Paiement sécurisé Stripe · Annulation en 1 clic</p>
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", marginTop: 4 }}>
-          Non merci, je reste sur le plan gratuit
-        </button>
-        {/* Bouton plus tard visible */}
-        <button onClick={() => onSelectPlan("free")} style={{ position: "fixed", top: 52, left: 16, zIndex: 200, display: "flex", alignItems: "center", gap: 6, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, padding: "8px 14px", color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-          ✕ <span>Plus tard</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// BOTTOM NAV
-// ─────────────────────────────────────────────
-function BottomNav({ activeTab, setTab }) {
-  const tabs = [
-    { id: "dashboard", label: "Aujourd'hui", icon: Icons.home },
-    { id: "historique", label: "Progression", icon: Icons.chart },
-    { id: "profil", label: "Profil", icon: Icons.user },
-  ];
-  return (
-    <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", zIndex: 100, background: DS.colors.navBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${DS.colors.border}`, padding: "10px 0 28px", display: "flex", width: "100%", maxWidth: 430, boxShadow: DS.colors.isDark ? "none" : "0 -4px 20px rgba(0,0,0,0.06)" }}>
-      {tabs.map(tab => {
-        const isActive = activeTab === tab.id;
-        return (
-          <button key={tab.id} onClick={() => setTab(tab.id)} style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, cursor: "pointer", padding: "4px 0", transition: "transform 0.15s ease", transform: isActive ? "scale(1.05)" : "scale(1)" }}>
-            {tab.icon(isActive)}
-            <span style={{ color: isActive ? DS.colors.primaryDark : DS.colors.textSec, fontSize: 10, fontFamily: "'Inter',sans-serif", fontWeight: isActive ? 700 : 500, letterSpacing: "0.02em", transition: "color 0.2s ease" }}>{tab.label}</span>
-            {isActive && <div style={{ width: 20, height: 3, borderRadius: DS.radius.full, background: DS.colors.primary, marginTop: -2 }} />}
+function TabBar({screen,setScreen,hasScores,hasProgramme}){
+  const tabs=[
+    {id:"home",icon:"🏠",label:"Accueil",always:true},
+    {id:"tests",icon:"📊",label:"Tests",always:true},
+    {id:"card",icon:"🎴",label:"Carte",show:hasScores},
+    {id:"program",icon:"💪",label:"Programme",show:hasProgramme},
+  ].filter(t=>t.always||t.show);
+  const hidden=["home","generating"].includes(screen);
+  if(hidden)return null;
+  return(
+    <div style={{position:"fixed",bottom:0,left:0,right:0,background:C.surf,borderTop:`1px solid ${C.border}`,display:"flex",justifyContent:"space-around",alignItems:"center",height:64,zIndex:200,paddingBottom:"env(safe-area-inset-bottom)"}}>
+      {tabs.map(t=>{
+        const active=screen===t.id;
+        return(
+          <button key={t.id} onClick={()=>setScreen(t.id)} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,cursor:"pointer",padding:"8px 0",opacity:active?1:.5,transition:"opacity .2s"}}>
+            <span style={{fontSize:20}}>{t.icon}</span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.5,color:active?C.gold:C.muted}}>{t.label}</span>
+            {active&&<div style={{width:20,height:2,background:C.gold,borderRadius:1}}/>}
           </button>
         );
       })}
@@ -4191,516 +231,791 @@ function BottomNav({ activeTab, setTab }) {
   );
 }
 
-// ─────────────────────────────────────────────
-// APP ROOT
-// ─────────────────────────────────────────────
-export default function VoltraApp() {
-  const [screen, setScreen] = useState("splash");
-  const [appTheme, setAppTheme] = useState(() => localStorage.getItem("voltra_theme") || "light");
-  const [themeChosen, setThemeChosen] = useState(() => !!localStorage.getItem("voltra_theme"));
-  const [sessionChecked, setSessionChecked] = useState(false);
-  const [splashDone, setSplashDone] = useState(false);
-  const userRef = useRef(null);
-  const sessionCheckedRef = useRef(false);
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [user, setUser] = useState(null);
-  const [seanceActive, setSeanceActive] = useState(null);
-  const [resumeState, setResumeState] = useState(null);
-  const [programmeActif, setProgrammeActif] = useState(null);
-  const [sportActif, setSportActif] = useState(null);
-  const [onboardingData, setOnboardingData] = useState(null);
-  const [matchs, setMatchs] = useState([]);
-  const [showMatchs, setShowMatchs] = useState(false);
-  const [derniereSeance, setDerniereSeance] = useState(null);
-  const [isPro, setIsPro] = useState(false);
-  const [showDoubleSessionWarning, setShowDoubleSessionWarning] = useState(false);
-  const [pendingSeance, setPendingSeance] = useState(null);
-
-  const launchSeance = (rawSeance) => {
-    const seance = {
-      ...rawSeance,
-      exercices: (rawSeance.exercices || []).map((ex, i) => ({
-        id: ex.id || `ex_${i}`,
-        nom: ex.nom || "Exercice",
-        nomEn: ex.nomEn || ex.nom_en || "",
-        muscles: ex.muscles || "",
-        sets: ex.sets || 3,
-        reps: ex.reps || "8",
-        chargeKg: ex.chargeKg || ex.charge_kg || 0,
-        reposSec: ex.reposSec || ex.repos_sec || 90,
-        conseil: ex.conseil || "",
-        ordre: ex.ordre || i + 1,
-      }))
-    };
-    setResumeState(null);
-    localStorage.removeItem("voltra_paused_session");
-    setSeanceActive(seance);
-  };
-  const [showUpsell, setShowUpsell] = useState(false);
-  const [seancesCount, setSeancesCount] = useState(0);
-  const [programmeLoading, setProgrammeLoading] = useState(false);
-  const [paidPlan, setPaidPlan] = useState(null);
-  const [lastSessionStats, setLastSessionStats] = useState(null);
-  const [cycleComplete, setCycleComplete] = useState(false);
-
-  useEffect(() => {
-    applyTheme(appTheme);
-    document.body.style.background = DS.colors.bg;
-    document.body.style.color = DS.colors.textPrimary;
-  }, [appTheme]);
-
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Bebas+Neue&display=swap');
-      * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-      body { background: ${DS.colors.bg}; color: ${DS.colors.textPrimary}; font-family: 'Inter', system-ui, sans-serif; }
-      ::-webkit-scrollbar { display: none; }
-      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-      @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-      @keyframes fillCircle { from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      @keyframes pop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
-      @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-      @keyframes splashPulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(0,255,135,0.5)); } 50% { transform: scale(1.08); filter: drop-shadow(0 0 40px rgba(0,255,135,0.8)); } }
-      @keyframes celebrate { 0% { transform: scale(0) rotate(-10deg); opacity: 0; } 50% { transform: scale(1.2) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
-      @keyframes floatUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-60px); opacity: 0; } }
-    `;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        userRef.current = session.user;
-      }
-      setSessionChecked(true);
-      sessionCheckedRef.current = true;
-    });
-
-    // Detecter confirmation email via hash URL
-    if (window.location.hash.includes("access_token")) {
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) {
-          setUser(user);
-          userRef.current = user;
-        }
-      });
-    }
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (_event === "SIGNED_OUT") {
-        setUser(null);
-        userRef.current = null;
-        setScreen("onboarding");
-      } else if (_event === "TOKEN_REFRESHED" && session?.user) {
-        setUser(session.user);
-        userRef.current = session.user;
-      } else if (_event === "SIGNED_IN" && session?.user) {
-        setUser(session.user);
-        userRef.current = session.user;
-        const fromEmail = window.location.hash.includes("access_token") || window.location.search.includes("confirmed=true");
-        if (fromEmail) {
-          window.history.replaceState({}, document.title, window.location.pathname);
-          if (onboardingData) {
-            setScreen("pricing");
-            setProgrammeLoading(true);
-            generateProgramIA(onboardingData).then(prog => {
-              if (prog) setProgrammeActif(prog);
-              setProgrammeLoading(false);
-            }).catch(() => setProgrammeLoading(false));
-          } else {
-            setScreen("app");
-          }
-        }
-        // Ne pas rediriger vers app ici — onAuth ou splashDone s'en charge
-      } else if (_event === "PASSWORD_RECOVERY") {
-        // Laisser AuthScreen gérer via isPasswordRecovery
-        setScreen("auth");
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Router proprement quand splash + session sont prêts
-  useEffect(() => {
-    if (!splashDone) return;
-    const themeOk = !!localStorage.getItem("voltra_theme");
-    const doRoute = () => {
-      const params = new URLSearchParams(window.location.search);
-      const isConfirmed = params.get("confirmed") === "true";
-      const hasToken = window.location.hash.includes("access_token");
-      const isPaid = params.get("paid") === "true";
-      const paidPlanParam = params.get("plan") || "monthly";
-      if (isPaid && userRef.current) {
-        supabase.from("profiles").upsert({ id: userRef.current.id, is_pro: true }, { onConflict: "id" });
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setIsPro(true);
-        setPaidPlan(paidPlanParam);
-        setScreen("payment-success");
-        return;
-      }
-      if (!themeOk) {
-        setScreen("theme-choice");
-      } else if (userRef.current) {
-        setScreen("app");
-      } else if (isConfirmed || hasToken) {
-        // Vient de la confirmation email → aller à la connexion
-        setScreen("auth");
-      } else {
-        setScreen("onboarding");
-      }
-    };
-    if (sessionCheckedRef.current) {
-      doRoute();
-    } else {
-      const interval = setInterval(() => {
-        if (sessionCheckedRef.current) {
-          clearInterval(interval);
-          doRoute();
-        }
-      }, 50);
-      const fallback = setTimeout(() => { clearInterval(interval); doRoute(); }, 3000);
-      return () => { clearInterval(interval); clearTimeout(fallback); };
-    }
-  }, [splashDone]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setProgrammeActif(null);
-    setSportActif(null);
-    setOnboardingData(null);
-    setIsPro(false);
-    setUser(null);
-    setScreen("onboarding");
-  };
-
-  useEffect(() => {
-    if (screen !== "app" || !user) return;
-    supabase
-      .from("programmes")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("statut", "actif")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single()
-      .then(({ data }) => {
-        if (data) setProgrammeActif(data);
-      });
-    supabase
-      .from("matchs")
-      .select("*")
-      .eq("user_id", user.id)
-      .gte("date_match", new Date().toISOString().split("T")[0])
-      .order("date_match", { ascending: true })
-      .limit(5)
-      .then(({ data }) => { if (data) setMatchs(data); });
-    // Charger le sport et is_pro depuis le profil
-    supabase
-      .from("profiles")
-      .select("sport, is_pro")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data?.sport) setSportActif(data.sport);
-        if (data?.is_pro) setIsPro(true);
-      });
-    supabase
-      .from("seances")
-      .select("*, exercices(*)")
-      .eq("user_id", user.id)
-      .eq("statut", "faite")
-      .order("date_realisee", { ascending: false })
-      .limit(1)
-      .single()
-      .then(({ data }) => { if (data) setDerniereSeance(data); });
-    supabase
-      .from("seances")
-      .select("id", { count: "exact" })
-      .eq("user_id", user.id)
-      .eq("statut", "faite")
-      .then(({ count }) => { if (count) setSeancesCount(count); });
-  }, [screen, user]);
-
-  if (screen === "theme-choice") return <ThemeChoiceScreen key={appTheme} onChoose={(theme) => {
-    DS.colors = THEMES[theme];
-    DS.shadow = THEMES[theme].shadow;
-    setAppTheme(theme);
-    setThemeChosen(true);
-    localStorage.setItem("voltra_theme", theme);
-    setScreen("welcome");
-  }} />;
-  if (screen === "welcome") return <div key={appTheme}><WelcomeScreen onStart={() => setScreen("onboarding")} /></div>;
-  if (screen === "splash") return <SplashScreen onDone={() => setSplashDone(true)} />;
-  if (screen === "payment-success") return <PaymentSuccessScreen
-    plan={paidPlan}
-    onContinue={() => {
-      if (programmeLoading || !programmeActif) {
-        setScreen("programme-generating");
-      } else {
-        setScreen("app");
-      }
-    }}
-  />;
-
-  if (screen === "programme-generating") return <ProgrammeGeneratingScreen
-    sport={sportActif}
-    programmeActif={programmeActif}
-    onboardingData={onboardingData}
-    onDone={() => setScreen("app")}
-  />;
-
-  if (screen === "cycle-complete") return <CycleCompleteScreen
-    programme={programmeActif}
-    sport={sportActif}
-    cycleLoading={cycleComplete}
-    onContinue={() => setScreen("app")}
-  />;
-  if (screen === "projection") return <ProjectionScreen
-    sport={sportActif}
-    onboardingData={onboardingData}
-    onContinue={() => setScreen("preview")}
-  />;
-  if (screen === "preview") return <ProgrammePreview
-    programme={programmeActif}
-    sport={sportActif}
-    onboardingData={onboardingData}
-    onContinue={() => setScreen("auth")}
-  />;
-  if (screen === "auth") return <AuthScreen onAuth={async (u) => {
-    setUser(u);
-    userRef.current = u;
-    // Sauvegarder le sport dans le profil
-    if (onboardingData?.sport) {
-      await supabase.from("profiles").upsert({ id: u.id, sport: onboardingData.sport, poids: onboardingData.poids || null, age: onboardingData.age || null, taille: onboardingData.taille || null }, { onConflict: "id" });
-    }
-    if (onboardingData) {
-      // Toujours regenerer apres auth — maintenant on a une session valide
-      setScreen("pricing");
-      setProgrammeLoading(true);
-      generateProgramIA(onboardingData).then(prog => {
-        if (prog) setProgrammeActif(prog);
-        setProgrammeLoading(false);
-      }).catch(() => setProgrammeLoading(false));
-    } else {
-      setScreen("app");
-    }
-  }} />;
-  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => {
-    if (programme) setProgrammeActif(programme);
-    setSportActif(data.sport);
-    setOnboardingData(data);
-    if (user) {
-      setScreen("pricing");
-    } else {
-      setScreen("projection");
-    }
-  }} />;
-  if (screen === "post-session-upsell") return <PostSessionUpsell
-    stats={lastSessionStats}
-    programme={programmeActif}
-    sportActif={sportActif}
-    onSelectPlan={async (plan) => {
-      if (plan !== "free") {
-        setIsPro(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true }, { onConflict: "id" });
-      }
-      setScreen("app");
-    }}
-  />;
-if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} user={user} onSelectPlan={async (plan) => {
-    if (plan === "free") {
-      // Plan gratuit → écran de génération si programme pas encore prêt
-      if (!programmeActif && onboardingData) {
-        setScreen("programme-generating");
-        setProgrammeLoading(true);
-        generateProgramIA(onboardingData).then(prog => {
-          if (prog) setProgrammeActif(prog);
-          setProgrammeLoading(false);
-        }).catch(() => setProgrammeLoading(false));
-      } else {
-        setScreen("app");
-      }
-    } else {
-      setIsPro(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true }, { onConflict: "id" });
-      setScreen("app");
-    }
-  }} />;
-
-  return (
-    <div key={`${appTheme}-${screen}`} style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
-
-      {/* Avertissement 2eme seance dans la journee (Pro uniquement) */}
-      {showDoubleSessionWarning && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
-          <div style={{ width: "100%", maxWidth: 360, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 24, padding: "28px 24px", textAlign: "center" }}>
-            <p style={{ fontSize: 40, marginBottom: 12 }}>💪</p>
-            <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 20, color: DS.colors.textPrimary, marginBottom: 8, lineHeight: 1.15 }}>Tu as déjà fait une séance aujourd'hui</h2>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, lineHeight: 1.6, marginBottom: 20 }}>
-              Le repos fait partie de la progression. Es-tu sûr de vouloir enchaîner une 2ème séance ?
-            </p>
-            <button onClick={() => { setShowDoubleSessionWarning(false); if (pendingSeance) launchSeance(pendingSeance); setPendingSeance(null); }} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: 999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 800, cursor: "pointer", marginBottom: 10 }}>
-              Oui, je continue
-            </button>
-            <button onClick={() => { setShowDoubleSessionWarning(false); setPendingSeance(null); }} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textSec, fontFamily: "'Inter',sans-serif", fontSize: 13, cursor: "pointer" }}>
-              Non, à demain
-            </button>
+function PlayerCard({scores,ovr,playerName,sport,compact=false,cardRef=null}){
+  const w=window.innerWidth;
+  const isMob=w<640;
+  const cardW=compact?220:isMob?Math.min(w-48,340):320;
+  const ovrColor=getOVRColor(ovr);
+  const tier=getTier(ovr);
+  const sp=SPORTS.find(s=>s.id===sport)||SPORTS[0];
+  const attrs=[{key:"force",label:"FOR"},{key:"detente",label:"DET"},{key:"sprint30",label:"VIT"},{key:"sprint10",label:"ACC"},{key:"endurance",label:"END"},{key:"gainage",label:"GAI"}];
+  return(
+    <div ref={cardRef} style={{position:"relative",width:cardW,background:"linear-gradient(145deg,#0d0e18 0%,#1a1520 40%,#0d0e18 100%)",border:`1.5px solid ${C.gold}50`,borderRadius:compact?16:20,overflow:"hidden",boxShadow:`0 0 60px ${ovrColor}25,inset 0 0 80px ${ovrColor}05`}}>
+      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:1,background:`linear-gradient(135deg,${ovrColor}08 0%,transparent 40%,${C.gold}06 60%,transparent 80%,${ovrColor}05 100%)`,backgroundSize:"200% 200%",animation:"holo 4s ease infinite"}}/>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:4,background:`linear-gradient(90deg,transparent,${ovrColor},${C.gold},${ovrColor},transparent)`}}/>
+      <div style={{padding:compact?"14px 14px 8px":"18px 18px 10px",position:"relative",zIndex:2}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:compact?60:84,lineHeight:1,color:ovrColor,textShadow:`0 0 30px ${ovrColor}80`}}>{ovr||"—"}</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:compact?10:13,letterSpacing:3,color:C.gold,marginTop:-4}}>OVR</div>
+            <div style={{background:tier.bg,border:`1px solid ${tier.color}50`,borderRadius:6,padding:"3px 8px",marginTop:5,fontFamily:"'Bebas Neue'",fontSize:compact?12:15,letterSpacing:2,color:tier.color}}>{tier.label} · {tier.name}</div>
+          </div>
+          <div style={{flex:1,paddingLeft:compact?10:14}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:compact?18:24,letterSpacing:2,color:sp.color,lineHeight:1}}>{sp.name.toUpperCase()}</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:compact?12:16,color:C.muted,letterSpacing:1,marginBottom:6}}>VOLTRA</div>
+            {!compact&&<div style={{width:90,height:72,opacity:.85}}>{ATHLETE_SVG[sport]||ATHLETE_SVG.mma}</div>}
+            <div style={{marginTop:4}}><span style={{fontFamily:"'Bebas Neue'",fontSize:compact?14:18,color:C.goldLight,letterSpacing:1}}>{playerName||"ATHLÈTE"}</span></div>
           </div>
         </div>
-      )}
-
-      {showMatchs ? (
-        <MatchsScreen user={user} onBack={() => {
-          setShowMatchs(false);
-          supabase.from("matchs").select("*").eq("user_id", user.id)
-            .gte("date_match", new Date().toISOString().split("T")[0])
-            .order("date_match", { ascending: true }).limit(5)
-            .then(({ data }) => { if (data) setMatchs(data); });
-        }} />
-      ) : seanceActive ? (
-        <SeanceScreen
-          isPro={isPro}
-          resumeState={resumeState}
-          seance={seanceActive}
-          sport={sportActif}
-          onBack={() => setSeanceActive(null)}
-          onFinish={async (feedback, completedSetsData, exercices, durationMin) => {
-            try {
-              if (programmeActif?.id && feedback) {
-                await saveCompleteSession(programmeActif.id, seanceActive, completedSetsData, feedback, durationMin);
-                const { data } = await supabase.from("programmes").select("*").eq("id", programmeActif.id).single();
-                if (data) setProgrammeActif(data);
-              }
-              // Verifier si le cycle est termine
-              const updatedProg = await supabase.from("programmes").select("*").eq("id", programmeActif?.id).single();
-              const prog = updatedProg.data;
-              if (prog && prog.semaine_courante >= prog.total_semaines) {
-                // Cycle termine → generer nouveau programme plus intense
-                setCycleComplete(true);
-                setScreen("cycle-complete");
-                const newData = {
-                  sport: sportActif,
-                  objectif: prog.data_json?.objectif,
-                  niveau: "avance",
-                  frequence: prog.data_json?.frequence || 3,
-                  cycle: (prog.data_json?.cycle || 1) + 1,
-                };
-                generateProgramIA(newData).then(async newProg => {
-                  if (newProg) {
-                    setProgrammeActif(newProg);
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session) {
-                      await supabase.from("programmes")
-                        .update({ statut: "termine" })
-                        .eq("id", prog.id);
-                    }
-                  }
-                  setCycleComplete(false);
-                }).catch(err => {
-                  console.error("Cycle regen error:", err);
-                  setCycleComplete(false);
-                });
-                return;
-              }
-
-              // Si gratuit → paywall après la 1ère séance avec vraies stats
-              if (!isPro) {
-                const exos = seanceActive?.exercices || [];
-                const totalKg = exos.reduce((acc, ex) => {
-                  if (!(ex.chargeKg > 0)) return acc;
-                  return acc + ex.chargeKg * (ex.sets || 3) * (parseInt(ex.reps) || 8);
-                }, 0);
-                const totalReps = exos.reduce((acc, ex) => acc + (ex.sets || 3) * (parseInt(ex.reps) || 8), 0);
-                setLastSessionStats({
-                  titre: seanceActive?.titre || "Seance",
-                  exercices: exos.length || 0,
-                  duree: durationMin,
-                  totalKg: Math.round(totalKg),
-                  totalReps,
-                  feedback,
-                });
-                setScreen("post-session-upsell");
-                return;
-              }
-            } catch (err) {
-              console.error("onFinish error:", err);
-            } finally {
-              setSeancesCount(prev => prev + 1);
-              setSeanceActive(null);
-              setActiveTab("dashboard");
-              setScreen("app");
-            }
-          }}
-        />
-      ) : (
-        <>
-          {activeTab === "dashboard" && (
-            <DashboardScreen
-              user={user}
-              programme={programmeActif}
-              programmeLoading={programmeLoading}
-              matchs={matchs}
-              derniereSeance={derniereSeance}
-              sport={sportActif}
-              onOpenMatchs={() => setShowMatchs(true)}
-              onResumeSession={(paused) => {
-                setResumeState({ exIdx: paused.exIdx, setIdx: paused.setIdx, completedSets: paused.completedSets, elapsed: paused.elapsed });
-                localStorage.removeItem("voltra_paused_session");
-                setSeanceActive(paused.seance);
-              }}
-              onStartSession={async (rawSeance) => {
-                if (!rawSeance) {
-                  console.warn("Pas de séance disponible");
-                  return;
-                }
-                // Verifier si une seance a deja ete faite aujourd'hui
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-                  const { count: doneToday } = await supabase
-                    .from("seances")
-                    .select("id", { count: "exact", head: true })
-                    .eq("user_id", session.user.id)
-                    .eq("statut", "faite")
-                    .gte("date_realisee", todayStart.toISOString());
-
-                  if (!isPro && (doneToday || 0) >= 1) {
-                    // Plan gratuit strict : 1 seule seance, point final
-                    setLastSessionStats({ titre: rawSeance.titre || "Seance", exercices: 0, duree: 0, totalKg: 0, totalReps: 0, feedback: null });
-                    setScreen("post-session-upsell");
-                    return;
-                  }
-                  if (isPro && (doneToday || 0) >= 1) {
-                    setPendingSeance(rawSeance);
-                    setShowDoubleSessionWarning(true);
-                    return;
-                  }
-                }
-                launchSeance(rawSeance);
-              }}
-            />
-          )}
-          {activeTab === "historique" && <HistoriqueScreen />}
-          {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} sportActif={sportActif} appTheme={appTheme} onThemeChange={setAppTheme} onLogout={handleLogout} onRegenerateProgram={async (data, shouldRegen = true) => {
-            try {
-              if (shouldRegen) {
-                const prog = await generateProgramIA(data);
-                if (prog) { setProgrammeActif(prog); setSportActif(data.sport); }
-              } else {
-                // Juste rafraichir le programme depuis la base
-                setSportActif(data.sport);
-                const { data: prog } = await supabase.from("programmes").select("*").eq("id", programmeActif?.id).single();
-                if (prog) setProgrammeActif(prog);
-              }
-            } catch (err) { console.error(err); }
-          }} />}
-          <BottomNav activeTab={activeTab} setTab={setActiveTab} />
-        </>
-      )}
+      </div>
+      <div style={{height:1,background:`linear-gradient(90deg,transparent,${C.gold}50,transparent)`,margin:"0 14px"}}/>
+      <div style={{padding:compact?"10px 14px 12px":"13px 18px 18px",position:"relative",zIndex:2}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:compact?5:7}}>
+          {attrs.map(({key,label})=>{
+            const val=scores[key]||0;const t=getTier(val);
+            return(
+              <div key={key} style={{display:"flex",alignItems:"center",gap:5}}>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:compact?17:21,color:t.color,width:compact?26:32,textAlign:"right"}}>{val||"—"}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:compact?8:10,color:C.muted,letterSpacing:1.5,marginBottom:2}}>{label}</div>
+                  <div style={{height:3,background:C.surf3,borderRadius:2,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${val}%`,background:t.color,borderRadius:2,transition:"width 1.2s ease"}}/>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{background:`${C.gold}08`,borderTop:`1px solid ${C.gold}20`,padding:compact?"5px 14px":"7px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative",zIndex:2}}>
+        <span style={{fontFamily:"'DM Mono'",fontSize:compact?8:10,color:C.muted}}>VOLTRA.APP</span>
+        <span style={{fontSize:compact?15:19}}>{sp.icon}</span>
+        <span style={{fontFamily:"'Bebas Neue'",fontSize:compact?9:11,color:C.gold,letterSpacing:2}}>2026</span>
+      </div>
     </div>
   );
+}
+
+export default function App(){
+  const w=useWindowWidth();
+  const isMob=w<640;
+
+  const[user,setUser]=useState(null);
+  const[authLoading,setAuthLoading]=useState(true);
+  const[screen,setScreen]=useState("home");
+  const[testValues,setTestValues]=useState({});
+  const[forceInputs,setForceInputs]=useState({squat:"",bench:"",traction:"",poids:""});
+  const[scores,setScores]=useState({});
+  const[ovr,setOvr]=useState(0);
+  const[playerName,setPlayerName]=useState("");
+  const[selSport,setSelSport]=useState(null);
+  const[athlete,setAthlete]=useState({niveau:"Intermédiaire (1-3 ans)",objectif:"Performance sportive",jours:"3",saison:"Préparation générale",blessures:""});
+  const[programme,setProgramme]=useState(null);
+  const[genProgress,setGenProgress]=useState(0);
+  const[genMsg,setGenMsg]=useState("");
+  const[activeSeance,setActiveSeance]=useState(0);
+  const[expandedExo,setExpandedExo]=useState(null);
+  const[liveMode,setLiveMode]=useState(false);
+  const[liveBloc,setLiveBloc]=useState(0);
+  const[liveExo,setLiveExo]=useState(0);
+  const[liveSerie,setLiveSerie]=useState(1);
+  const[restTimer,setRestTimer]=useState(0);
+  const[restActive,setRestActive]=useState(false);
+  const[sharing,setSharing]=useState(false);
+  const[error,setError]=useState("");
+  const progRef=useRef(null);
+  const timerRef=useRef(null);
+  const cardRef=useRef(null);
+
+  // ══ CSS ══
+  useEffect(()=>{
+    const st=document.createElement("style");st.textContent=CSS;document.head.appendChild(st);
+    return()=>document.head.removeChild(st);
+  },[]);
+
+  // ══ AUTH SUPABASE ══
+  useEffect(()=>{
+    supabase.auth.getSession().then(({data:{session}})=>{
+      setUser(session?.user||null);
+      setAuthLoading(false);
+    });
+    const{data:{subscription}}=supabase.auth.onAuthStateChange((_,session)=>{
+      setUser(session?.user||null);
+    });
+    return()=>subscription.unsubscribe();
+  },[]);
+
+  // ══ LOCALSTORAGE LOAD ══
+  useEffect(()=>{
+    try{
+      const tv=localStorage.getItem("v_testValues");
+      const fi=localStorage.getItem("v_forceInputs");
+      const pn=localStorage.getItem("v_playerName");
+      const sp=localStorage.getItem("v_selSport");
+      const at=localStorage.getItem("v_athlete");
+      const pr=localStorage.getItem("v_programme");
+      if(tv)setTestValues(JSON.parse(tv));
+      if(fi)setForceInputs(JSON.parse(fi));
+      if(pn)setPlayerName(pn);
+      if(sp)setSelSport(SPORTS.find(s=>s.id===JSON.parse(sp))||null);
+      if(at)setAthlete(JSON.parse(at));
+      if(pr)setProgramme(JSON.parse(pr));
+    }catch(e){}
+  },[]);
+
+  // ══ LOCALSTORAGE SAVE ══
+  useEffect(()=>{ try{localStorage.setItem("v_testValues",JSON.stringify(testValues));}catch(e){} },[testValues]);
+  useEffect(()=>{ try{localStorage.setItem("v_forceInputs",JSON.stringify(forceInputs));}catch(e){} },[forceInputs]);
+  useEffect(()=>{ try{localStorage.setItem("v_playerName",playerName);}catch(e){} },[playerName]);
+  useEffect(()=>{ try{localStorage.setItem("v_selSport",JSON.stringify(selSport?.id));}catch(e){} },[selSport]);
+  useEffect(()=>{ try{localStorage.setItem("v_athlete",JSON.stringify(athlete));}catch(e){} },[athlete]);
+  useEffect(()=>{ try{if(programme)localStorage.setItem("v_programme",JSON.stringify(programme));}catch(e){} },[programme]);
+
+  // ══ FORCE CALC ══
+  useEffect(()=>{
+    const s=parseFloat(forceInputs.squat);
+    const b=parseFloat(forceInputs.bench);
+    const t=parseFloat(forceInputs.traction)||0;
+    const p=parseFloat(forceInputs.poids);
+    if(!isNaN(s)&&!isNaN(b)&&!isNaN(p)&&p>0){
+      const ratio=((s+b+(p+t))/3)/p;
+      setTestValues(prev=>({...prev,force:ratio.toFixed(2)}));
+    }
+  },[forceInputs]);
+
+  // ══ SCORES CALC ══
+  useEffect(()=>{
+    const s={};
+    TESTS.forEach(t=>{const v=parseFloat(testValues[t.id]);if(!isNaN(v)&&v>0)s[t.id]=clamp(calcScore(t.id,v),35,99);});
+    setScores(s);setOvr(calcOVR(s));
+  },[testValues]);
+
+  // ══ REST TIMER ══
+  useEffect(()=>{
+    if(restActive&&restTimer>0){timerRef.current=setTimeout(()=>setRestTimer(t=>t-1),1000);}
+    else if(restTimer===0&&restActive){setRestActive(false);}
+    return()=>clearTimeout(timerRef.current);
+  },[restActive,restTimer]);
+
+  const startRest=secs=>{setRestTimer(secs);setRestActive(true);};
+  const TAB_H=64;
+  const HEADER_H=56;
+  const hasScores=Object.keys(scores).length>=3;
+  const hasProgramme=!!programme;
+  const pb=isMob?TAB_H+8:8;
+
+  // ══ SHARE ══
+  const shareCard=async()=>{
+    if(!cardRef.current||sharing)return;
+    setSharing(true);
+    try{
+      const canvas=await html2canvas(cardRef.current,{backgroundColor:"#050608",scale:2,useCORS:true,logging:false});
+      canvas.toBlob(async(blob)=>{
+        if(!blob){setSharing(false);return;}
+        const file=new File([blob],"ma-carte-voltra.png",{type:"image/png"});
+        const txt=`⚡ Ma carte VOLTRA — OVR ${ovr} ${getTier(ovr).name}\n💪 Sport: ${selSport?.name||"—"}\n\n${APP_URL}`;
+        if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+          await navigator.share({title:"Ma carte VOLTRA",text:txt,files:[file]}).catch(()=>{});
+        }else if(navigator.share){
+          await navigator.share({title:"Ma carte VOLTRA",text:txt,url:APP_URL}).catch(()=>{});
+        }else{
+          const link=document.createElement("a");link.href=URL.createObjectURL(blob);link.download="ma-carte-voltra.png";link.click();
+        }
+        setSharing(false);
+      },"image/png");
+    }catch(e){setSharing(false);}
+  };
+
+  // ══ GENERATE ══
+  const GEN_MSGS=["Analyse du profil biomécanique…","Calcul des faiblesses prioritaires…","Création des exercices sur-mesure…","Construction des blocs cardio…","Calibration des intensités…","Intégration de la périodisation…","Finalisation du programme…"];
+
+  const generateProgram=async()=>{
+    setScreen("generating");setGenProgress(0);setError("");
+    let idx=0;setGenMsg(GEN_MSGS[0]);
+    progRef.current=setInterval(()=>{idx++;if(idx<GEN_MSGS.length){setGenMsg(GEN_MSGS[idx]);}},1800);
+    const weak=TESTS.filter(t=>scores[t.id]&&scores[t.id]<70).map(t=>`${t.label}:${scores[t.id]}`).join(",");
+    try{
+      const nbJours=parseInt(athlete.jours)||3;
+      const seances=[];
+      for(let i=1;i<=nbJours;i++){
+        setGenProgress(Math.round(((i-1)/nbJours)*90));
+        const res=await fetch("/api/generate",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            sport:selSport.name,ovr,
+            weak:weak||"aucune",
+            jours:athlete.jours,
+            niveau:athlete.niveau,
+            saison:athlete.saison,
+            blessures:athlete.blessures||"aucune",
+            contexte:selSport.contexte.slice(0,100),
+            cardioVolume:selSport.cardio.volume,
+            cardioType:selSport.cardio.type,
+            numSeance:i,
+          })
+        });
+        const data=await res.json();
+        if(data.error)throw new Error(data.error);
+        seances.push(data.seance);
+      }
+      clearInterval(progRef.current);setGenProgress(100);
+      const prog={
+        programme_titre:`PROGRAMME VOLTRA — ${selSport.name.toUpperCase()}`,
+        programme_sous_titre:`OVR ${ovr} · ${athlete.jours} séances · ${athlete.niveau}`,
+        logique_programme:`Programme calibré sur tes faiblesses : ${weak||"profil équilibré"}`,
+        strategie_cardio:`Cardio ${selSport.cardio.volume}/100 — ${selSport.cardio.type}`,
+        seances,
+        conseils_specifiques:["Reste hydraté tout au long de la séance","Respecte les temps de récupération","Échauffe-toi 10 min avant chaque séance"],
+        conseils_cardio:["Adapte l'intensité à ta forme du jour","Surveille ta fréquence cardiaque"],
+      };
+      setTimeout(()=>{setProgramme(prog);setScreen("program");setActiveSeance(0);},600);
+    }catch(e){
+      clearInterval(progRef.current);
+      setError("Erreur: "+e.message);
+      setScreen("profile");
+    }
+  };
+
+  // ══ AUTH LOADING ══
+  if(authLoading)return(
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{width:50,height:50,border:`3px solid ${C.border}`,borderTop:`3px solid ${C.gold}`,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+    </div>
+  );
+
+  // ══ AUTH GATE ══
+  if(!user)return <Auth onAuth={setUser}/>;
+
+  // ══════════════════════════════
+  // ══ SCREENS ══
+  // ══════════════════════════════
+
+  if(screen==="home")return(
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:isMob?"20px 16px":"24px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:"20%",left:"50%",transform:"translateX(-50%)",width:500,height:500,background:`radial-gradient(circle,${C.gold}08 0%,transparent 70%)`,pointerEvents:"none"}}/>
+
+      {/* Bouton déconnexion */}
+      <div style={{position:"absolute",top:16,right:16,zIndex:10}}>
+        <button onClick={async()=>{await supabase.auth.signOut();setUser(null);}} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",color:C.muted,fontSize:12,cursor:"pointer",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>
+          DÉCONNEXION
+        </button>
+      </div>
+
+      <div className="fu" style={{marginBottom:isMob?20:36}}>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:isMob?64:80,letterSpacing:8,lineHeight:.9,marginBottom:10}}>
+          <span style={{color:C.gold}}>⚡</span>VOL<span style={{color:C.gold}}>TRA</span>
+        </div>
+        <div style={{fontFamily:"'DM Mono'",fontSize:isMob?10:12,color:C.muted,letterSpacing:3}}>AI ATHLETIC PERFORMANCE SYSTEM</div>
+        <div style={{fontSize:13,color:C.muted,marginTop:6}}>👋 Bienvenue {user?.user_metadata?.pseudo||user?.email?.split("@")[0]}</div>
+      </div>
+      <div className="fu1" style={{marginBottom:isMob?20:36,animation:"float 3s ease-in-out infinite"}}>
+        <PlayerCard scores={{force:85,detente:78,sprint30:82,sprint10:79,endurance:71,gainage:76}} ovr={80} playerName="EXEMPLE" sport="football"/>
+      </div>
+      <div className="fu2" style={{marginBottom:20,maxWidth:460,padding:"0 8px"}}>
+        <div style={{fontSize:isMob?16:18,color:"#aaa",lineHeight:1.7}}>
+          Passe les tests physiques. Obtiens ta <span style={{color:C.gold,fontWeight:700}}>carte athlète</span>. Reçois un programme IA calibré sur tes faiblesses réelles.
+        </div>
+      </div>
+      <div className="fu3" style={{display:"flex",gap:12,flexWrap:"wrap",justifyContent:"center",marginBottom:28}}>
+        <Btn onClick={()=>setScreen("tests")} style={{fontSize:isMob?16:18,padding:isMob?"12px 28px":"14px 40px",animation:"glow 2s infinite"}}>⚡ DÉCOUVRIR MON OVR</Btn>
+        {hasProgramme&&<Btn onClick={()=>setScreen("program")} variant="outline" style={{fontSize:isMob?14:16}}>💪 MON PROGRAMME</Btn>}
+      </div>
+      <div className="fu4" style={{display:"flex",gap:isMob?16:32,flexWrap:"wrap",justifyContent:"center"}}>
+        {[["🏆","Système OVR","Comme NBA 2K"],["🤖","Programme IA","100% personnalisé"],["📊","6 Attributs","Force, Vitesse…"],["🔥","Cardio IA","Adapté à ton sport"]].map(([icon,title,sub])=>(
+          <div key={title} style={{textAlign:"center"}}>
+            <div style={{fontSize:isMob?22:28,marginBottom:4}}>{icon}</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:isMob?13:16,letterSpacing:2,color:C.gold}}>{title}</div>
+            <div style={{fontSize:isMob?11:12,color:C.muted}}>{sub}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if(screen==="tests"){
+    const filled=Object.keys(scores).length;
+    return(
+      <div style={{minHeight:"100vh",background:C.bg,paddingBottom:pb}}>
+        <header style={{background:C.surf,borderBottom:`1px solid ${C.border}`,padding:"0 16px",height:HEADER_H,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
+          <VoltraLogo/>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{fontFamily:"'DM Mono'",fontSize:12,color:C.muted}}>{filled}/6</div>
+            {filled>=3&&<Btn onClick={()=>setScreen("card")} style={{fontSize:13,padding:"7px 14px"}}>Voir ma carte →</Btn>}
+          </div>
+        </header>
+        <div style={{maxWidth:640,margin:"0 auto",padding:isMob?"16px":"28px 24px"}}>
+          <div className="fu" style={{marginBottom:16}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:isMob?32:40,letterSpacing:2,lineHeight:1}}>TESTS<span style={{color:C.gold}}> PHYSIQUES</span></div>
+            <div style={{color:C.muted,marginTop:4,fontSize:14}}>Entre tes résultats — laisse vide si tu ne sais pas</div>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:C.muted,marginBottom:5}}>TON PRÉNOM</label>
+            <input value={playerName} onChange={e=>setPlayerName(e.target.value.toUpperCase())} placeholder="ex: LUCAS"
+              style={{background:C.surf2,border:`1px solid ${C.border}`,borderRadius:8,padding:"11px 14px",color:C.text,fontSize:16,width:"100%",fontFamily:"'Bebas Neue'",letterSpacing:2}}/>
+          </div>
+          <div style={{background:C.surf,border:`1px solid ${scores.force?getTier(scores.force).color+"40":C.border}`,borderRadius:12,padding:14,marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:22}}>💪</span>
+                <div>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:scores.force?getTier(scores.force).color:C.text}}>FORCE MAXIMALE</div>
+                  <div style={{fontSize:11,color:C.muted}}>Calculé automatiquement</div>
+                </div>
+              </div>
+              {scores.force&&<div style={{textAlign:"right"}}>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:32,color:getTier(scores.force).color,lineHeight:1}}>{scores.force}</div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:12,color:getTier(scores.force).color}}>{getTier(scores.force).label}</div>
+              </div>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              {[
+                {key:"squat",label:"🦵 SQUAT 1RM (kg)",ph:"ex: 100"},
+                {key:"bench",label:"🏋️ BENCH 1RM (kg)",ph:"ex: 80"},
+                {key:"traction",label:"⬆️ LEST TRACTION (kg)",ph:"0 si poids corps"},
+                {key:"poids",label:"⚖️ POIDS DE CORPS (kg)",ph:"ex: 80"},
+              ].map(f=>(
+                <div key={f.key}>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1.5,color:C.muted,marginBottom:3}}>{f.label}</div>
+                  <input type="number" inputMode="decimal" value={forceInputs[f.key]} onChange={e=>setForceInputs(p=>({...p,[f.key]:e.target.value}))}
+                    placeholder={f.ph} style={{width:"100%",background:C.surf2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:16}}/>
+                </div>
+              ))}
+            </div>
+            {testValues.force&&<div style={{background:`${C.gold}10`,border:`1px solid ${C.gold}30`,borderRadius:8,padding:"8px 12px",fontSize:12,color:C.gold}}>⚡ Ratio = <strong>{testValues.force}</strong></div>}
+            {scores.force&&<div style={{height:5,background:C.surf3,borderRadius:3,overflow:"hidden",marginTop:8}}><div style={{height:"100%",width:`${scores.force}%`,background:getTier(scores.force).color,borderRadius:3,transition:"width 1s ease"}}/></div>}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:isMob?"1fr":"1fr 1fr",gap:10}}>
+            {TESTS.slice(1).map((t,i)=>{
+              const v=parseFloat(testValues[t.id]);
+              const sc=!isNaN(v)&&v>0?clamp(calcScore(t.id,v),35,99):null;
+              const tier=sc?getTier(sc):null;
+              return(
+                <div key={t.id} style={{background:C.surf,border:`1px solid ${sc?tier.color+"40":C.border}`,borderRadius:12,padding:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:20}}>{t.icon}</span>
+                      <div>
+                        <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1.5,color:sc?tier.color:C.text}}>{t.label}</div>
+                        <div style={{fontSize:10,color:C.muted}}>{t.unit}</div>
+                      </div>
+                    </div>
+                    {sc&&<div style={{textAlign:"right"}}>
+                      <div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:tier.color,lineHeight:1}}>{sc}</div>
+                      <div style={{fontFamily:"'Bebas Neue'",fontSize:11,color:tier.color}}>{tier.label}</div>
+                    </div>}
+                  </div>
+                  <input type="number" inputMode="decimal" value={testValues[t.id]||""} onChange={e=>setTestValues(p=>({...p,[t.id]:e.target.value}))}
+                    placeholder={t.placeholder} min={t.min} max={t.max} step={t.step}
+                    style={{width:"100%",background:C.surf2,border:`1px solid ${sc?tier.color+"50":C.border}`,borderRadius:8,padding:"10px 12px",color:C.text,fontSize:16}}/>
+                  {sc&&<div style={{height:4,background:C.surf3,borderRadius:2,overflow:"hidden",marginTop:8}}><div style={{height:"100%",width:`${sc}%`,background:tier.color,borderRadius:2,transition:"width 1s ease"}}/></div>}
+                  <div style={{fontSize:10,color:C.muted,marginTop:4}}>{t.hint}</div>
+                </div>
+              );
+            })}
+          </div>
+          {ovr>0&&(
+            <div className="fu" style={{marginTop:16,background:C.surf,border:`1px solid ${getOVRColor(ovr)}40`,borderRadius:14,padding:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+              <div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:13,color:C.muted,letterSpacing:2}}>TON OVR</div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:52,color:getOVRColor(ovr),lineHeight:1}}>{ovr}</div>
+                <div style={{fontSize:13,color:C.muted}}>{getTier(ovr).name}</div>
+              </div>
+              <div style={{flex:1}}>
+                {TESTS.filter(t=>scores[t.id]&&scores[t.id]<70).slice(0,3).map(t=>(
+                  <div key={t.id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${C.border}`}}>
+                    <span style={{fontSize:12}}>{t.icon} {t.label}</span>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:getTier(scores[t.id]).color}}>{scores[t.id]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{marginTop:16}}>
+            <Btn onClick={()=>setScreen("card")} full disabled={filled<3} style={{fontSize:17,padding:"14px"}}>
+              {filled<3?`Remplis encore ${3-filled} test(s) minimum`:"VOIR MA CARTE VOLTRA →"}
+            </Btn>
+          </div>
+        </div>
+        <TabBar screen={screen} setScreen={setScreen} hasScores={hasScores} hasProgramme={hasProgramme}/>
+      </div>
+    );
+  }
+
+  if(screen==="card")return(
+    <div style={{minHeight:"100vh",background:C.bg,paddingBottom:pb}}>
+      <header style={{background:C.surf,borderBottom:`1px solid ${C.border}`,padding:"0 16px",height:HEADER_H,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
+        <VoltraLogo/>
+        <Tag color={getOVRColor(ovr)}>OVR {ovr}</Tag>
+      </header>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:isMob?"16px":"24px"}}>
+        <div className="fu" style={{marginBottom:8,textAlign:"center"}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:3,color:C.muted}}>TA CARTE VOLTRA</div>
+        </div>
+        <div className="fu1" style={{display:"flex",justifyContent:"center",marginBottom:20}}>
+          <PlayerCard scores={scores} ovr={ovr} playerName={playerName||"ATHLÈTE"} sport={selSport?.id||"football"} cardRef={cardRef}/>
+        </div>
+        <div className="fu2" style={{textAlign:"center",marginBottom:16,maxWidth:400,width:"100%"}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:isMob?22:26,color:getOVRColor(ovr)}}>
+            {ovr>=85?"🔥 NIVEAU ÉLITE !":ovr>=75?"💪 TRÈS BON ATHLÈTE":ovr>=65?"📈 BON NIVEAU":ovr>=55?"🎯 EN PROGRESSION":"🌱 FORT POTENTIEL"}
+          </div>
+        </div>
+        <div className="fu3" style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:16,width:"100%",maxWidth:400}}>
+          <Btn onClick={shareCard} variant="outline" style={{fontSize:13,flex:1}} disabled={sharing}>{sharing?"⏳ CAPTURE...":"📸 PARTAGER"}</Btn>
+          <Btn onClick={()=>setScreen("sport")} style={{fontSize:14,flex:2}}>GÉNÉRER MON PROGRAMME →</Btn>
+        </div>
+        <div className="fu4" style={{width:"100%",maxWidth:400}}>
+          <div style={{background:C.surf,border:`1px solid ${C.border}`,borderRadius:14,padding:16}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:C.muted,marginBottom:10}}>DÉTAIL DES 6 ATTRIBUTS</div>
+            {TESTS.map(t=>{
+              const sc=scores[t.id]||0;const tier=getTier(sc);
+              return(
+                <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:9}}>
+                  <span style={{width:20,textAlign:"center",fontSize:14}}>{t.icon}</span>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:11,color:C.muted,width:110}}>{t.label}</div>
+                  <div style={{flex:1,height:5,background:C.surf3,borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${sc}%`,background:tier.color,borderRadius:3,transition:"width 1s ease"}}/>
+                  </div>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:tier.color,width:30,textAlign:"right"}}>{sc||"—"}</div>
+                  <div style={{background:tier.bg,border:`1px solid ${tier.color}40`,borderRadius:4,padding:"2px 6px",fontFamily:"'Bebas Neue'",fontSize:11,color:tier.color,minWidth:20,textAlign:"center"}}>{tier.label}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <TabBar screen={screen} setScreen={setScreen} hasScores={hasScores} hasProgramme={hasProgramme}/>
+    </div>
+  );
+
+  if(screen==="sport"){
+    const recommended=SPORTS.map(sp=>{
+      const wt=Object.entries(sp.weights).reduce((sum,[k,v])=>sum+(scores[k]||60)*v,0)/Object.values(sp.weights).reduce((a,b)=>a+b,0);
+      return{...sp,match:Math.round(wt)};
+    }).sort((a,b)=>b.match-a.match);
+    return(
+      <div style={{minHeight:"100vh",background:C.bg,paddingBottom:pb}}>
+        <header style={{background:C.surf,borderBottom:`1px solid ${C.border}`,padding:"0 16px",height:HEADER_H,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
+          <button onClick={()=>setScreen("card")} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",color:C.muted,fontSize:13}}>← Retour</button>
+          <VoltraLogo/>
+          <Tag color={getOVRColor(ovr)}>OVR {ovr}</Tag>
+        </header>
+        <div style={{maxWidth:640,margin:"0 auto",padding:isMob?"16px":"28px 24px"}}>
+          <div className="fu" style={{marginBottom:16}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:isMob?32:40,letterSpacing:2}}>CHOISIS<span style={{color:C.gold}}> TON SPORT</span></div>
+            <div style={{color:C.muted,fontSize:14}}>Programme calibré sur tes faiblesses réelles</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:isMob?"1fr 1fr":"repeat(4,1fr)",gap:10}}>
+            {recommended.map((sp,i)=>{
+              const sel=selSport?.id===sp.id;
+              return(
+                <button key={sp.id} onClick={()=>setSelSport(sp)} style={{background:sel?`${sp.color}18`:C.surf,border:`2px solid ${sel?sp.color:C.border}`,borderRadius:14,padding:"14px 10px",textAlign:"center",transition:"all .2s",cursor:"pointer",boxShadow:sel?`0 0 20px ${sp.color}40`:"none"}}>
+                  <div style={{fontSize:28,marginBottom:6}}>{sp.icon}</div>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:1,color:sel?sp.color:C.text}}>{sp.name}</div>
+                  {i===0&&<div style={{marginTop:5,fontSize:9,color:C.gold,fontFamily:"'Bebas Neue'",letterSpacing:1}}>⭐ POUR TOI</div>}
+                </button>
+              );
+            })}
+          </div>
+          {selSport&&(
+            <div className="fu" style={{marginTop:16}}>
+              <Btn onClick={()=>setScreen("profile")} full style={{fontSize:16,padding:"14px"}}>
+                CONTINUER AVEC {selSport.name.toUpperCase()} →
+              </Btn>
+            </div>
+          )}
+        </div>
+        <TabBar screen={screen} setScreen={setScreen} hasScores={hasScores} hasProgramme={hasProgramme}/>
+      </div>
+    );
+  }
+
+  if(screen==="profile"){
+    const inp={width:"100%",background:C.surf2,border:`1px solid ${C.border}`,borderRadius:8,padding:"11px 14px",color:C.text,fontSize:16,appearance:"none"};
+    return(
+      <div style={{minHeight:"100vh",background:C.bg,paddingBottom:pb}}>
+        <header style={{background:C.surf,borderBottom:`1px solid ${C.border}`,padding:"0 16px",height:HEADER_H,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
+          <button onClick={()=>setScreen("sport")} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",color:C.muted,fontSize:13}}>← Retour</button>
+          <VoltraLogo/>
+          <span style={{fontSize:20}}>{selSport?.icon}</span>
+        </header>
+        <div style={{maxWidth:640,margin:"0 auto",padding:isMob?"16px":"28px 24px"}}>
+          <div className="fu" style={{marginBottom:16}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:isMob?28:32,letterSpacing:2,color:selSport?.color}}>{selSport?.name?.toUpperCase()} — PROFIL</div>
+            <div style={{color:C.muted,fontSize:14}}>Dernière étape avant la génération IA</div>
+          </div>
+          {[
+            {label:"Niveau musculation",key:"niveau",opts:["Débutant (< 1 an)","Intermédiaire (1-3 ans)","Avancé (3-5 ans)","Expert (5+ ans)"]},
+            {label:"Objectif",key:"objectif",opts:["Performance sportive","Prévention blessures","Puissance explosive","Endurance de force"]},
+            {label:"Jours / semaine",key:"jours",opts:["2","3","4","5"]},
+            {label:"Phase de saison",key:"saison",opts:["Hors-saison","Préparation générale","Préparation spécifique","Pré-compétition","En compétition","Récupération"]},
+          ].map(f=>(
+            <div key={f.key} style={{marginBottom:12}}>
+              <label style={{display:"block",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:C.muted,marginBottom:5}}>{f.label.toUpperCase()}</label>
+              <select value={athlete[f.key]} onChange={e=>setAthlete(p=>({...p,[f.key]:e.target.value}))} style={inp}>
+                {f.opts.map(o=><option key={o}>{o}</option>)}
+              </select>
+            </div>
+          ))}
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:C.muted,marginBottom:5}}>BLESSURES / CONTRAINTES</label>
+            <textarea value={athlete.blessures} onChange={e=>setAthlete(p=>({...p,blessures:e.target.value}))} placeholder="Ex: ancienne entorse cheville…" style={{...inp,height:80,resize:"vertical"}}/>
+          </div>
+          {Object.keys(scores).length>0&&(
+            <div style={{background:C.surf,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:14}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:C.muted,marginBottom:8}}>🎯 FAIBLESSES CIBLÉES PAR L'IA</div>
+              {TESTS.filter(t=>scores[t.id]&&scores[t.id]<70).length>0
+                ?TESTS.filter(t=>scores[t.id]&&scores[t.id]<70).map(t=>(
+                  <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.border}`}}>
+                    <span style={{fontSize:13}}>{t.icon} {t.label}</span>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <span style={{fontFamily:"'Bebas Neue'",fontSize:20,color:getTier(scores[t.id]).color}}>{scores[t.id]}</span>
+                      <Tag color={C.red}>À AMÉLIORER</Tag>
+                    </div>
+                  </div>
+                ))
+                :<div style={{fontSize:13,color:C.gold}}>✅ Profil équilibré</div>
+              }
+            </div>
+          )}
+          {error&&<div style={{background:"#F4433618",border:"1px solid #F4433640",borderRadius:8,padding:12,color:"#F44336",fontSize:13,marginBottom:12}}>{error}</div>}
+          <Btn onClick={generateProgram} full style={{fontSize:17,padding:"15px"}}>⚡ GÉNÉRER MON PROGRAMME VOLTRA</Btn>
+        </div>
+        <TabBar screen={screen} setScreen={setScreen} hasScores={hasScores} hasProgramme={hasProgramme}/>
+      </div>
+    );
+  }
+
+  if(screen==="generating")return(
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{textAlign:"center",maxWidth:380,padding:24}}>
+        <div style={{width:72,height:72,border:`3px solid ${C.border}`,borderTop:`3px solid ${C.gold}`,borderRadius:"50%",margin:"0 auto 24px",animation:"spin 1s linear infinite"}}/>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:30,letterSpacing:3,color:C.gold,marginBottom:8}}>⚡ VOLTRA GÉNÈRE</div>
+        <div style={{color:C.muted,fontSize:15,marginBottom:20,minHeight:22}}>{genMsg}</div>
+        <div style={{height:6,background:C.surf2,borderRadius:3,overflow:"hidden",marginBottom:8}}>
+          <div style={{height:"100%",background:`linear-gradient(90deg,${C.gold},#a07830)`,width:`${genProgress}%`,borderRadius:3,transition:"width .8s ease"}}/>
+        </div>
+        <div style={{fontFamily:"'DM Mono'",fontSize:12,color:C.muted,marginBottom:16}}>{genProgress}%</div>
+        <div style={{fontSize:13,color:C.muted}}>OVR {ovr} · {selSport?.name} · {athlete.jours}j/semaine</div>
+      </div>
+    </div>
+  );
+
+  if(screen==="program"&&programme){
+    const seance=programme.seances?.[activeSeance];
+    const CARDIO_COLORS={CARDIO_ACTIVATION:"#FFC107",CARDIO_SPECIFIQUE:"#FF6D00",CARDIO_FINISHER:"#F44336",CARDIO_RECUPERATION:"#4CAF50"};
+    const CARDIO_LABELS={CARDIO_ACTIVATION:"🔥 ACTIVATION",CARDIO_SPECIFIQUE:"❤️ CARDIO",CARDIO_FINISHER:"💥 FINISHER",CARDIO_RECUPERATION:"🌿 RÉCUP",MUSCU:"💪 MUSCULATION"};
+
+    if(liveMode&&seance){
+      const bloc=seance.blocs?.[liveBloc];
+      const exo=bloc?.exercices?.[liveExo];
+      const totalExos=seance.blocs?.reduce((a,b)=>a+(b.exercices?.length||0),0)||0;
+      let exoCount=0,currentTotal=0;
+      seance.blocs?.forEach((b,bi)=>b.exercices?.forEach((_,ei)=>{exoCount++;if(bi<liveBloc||(bi===liveBloc&&ei<=liveExo))currentTotal=exoCount;}));
+      const nextExo=()=>{
+        const b=seance.blocs?.[liveBloc];
+        if(liveExo<(b?.exercices?.length||0)-1){setLiveExo(liveExo+1);setLiveSerie(1);}
+        else if(liveBloc<(seance.blocs?.length||0)-1){setLiveBloc(liveBloc+1);setLiveExo(0);setLiveSerie(1);}
+        else setLiveMode(false);
+        setRestActive(false);setRestTimer(0);
+      };
+      const getRestSecs=()=>{const m=(exo?.recuperation||"90s").match(/(\d+)/);return m?parseInt(m[1]):90;};
+      return(
+        <div style={{minHeight:"100vh",background:C.bg,display:"flex",flexDirection:"column"}}>
+          <div style={{background:selSport.color,padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <button onClick={()=>setLiveMode(false)} style={{background:"rgba(0,0,0,.3)",border:"none",borderRadius:6,padding:"6px 14px",color:"#fff",fontSize:13,fontWeight:700}}>⏹ STOP</button>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#fff"}}>⚡ VOLTRA LIVE</div>
+            <div style={{fontFamily:"'DM Mono'",fontSize:12,color:"rgba(255,255,255,.8)"}}>{currentTotal}/{totalExos}</div>
+          </div>
+          <div style={{height:4,background:"rgba(255,255,255,.2)"}}>
+            <div style={{height:"100%",background:"white",width:`${(currentTotal/totalExos)*100}%`,transition:"width .4s"}}/>
+          </div>
+          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
+            {restActive?(
+              <div className="fu" style={{textAlign:"center"}}>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:C.muted,marginBottom:8,letterSpacing:2}}>REPOS</div>
+                <div style={{position:"relative",width:160,height:160,margin:"0 auto 20px"}}>
+                  <svg viewBox="0 0 180 180" width="160" height="160">
+                    <circle cx="90" cy="90" r="70" fill="none" stroke={C.surf3} strokeWidth="8"/>
+                    <circle cx="90" cy="90" r="70" fill="none" stroke={C.gold} strokeWidth="8"
+                      strokeDasharray="440" strokeDashoffset={440-(restTimer/getRestSecs())*440}
+                      strokeLinecap="round" transform="rotate(-90 90 90)" style={{transition:"stroke-dashoffset 1s linear"}}/>
+                  </svg>
+                  <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                    <div style={{fontFamily:"'Bebas Neue'",fontSize:52,color:C.gold,lineHeight:1}}>{restTimer}</div>
+                    <div style={{fontFamily:"'Bebas Neue'",fontSize:12,color:C.muted,letterSpacing:2}}>SEC</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:12,justifyContent:"center"}}>
+                  <Btn variant="ghost" onClick={()=>{setRestActive(false);setRestTimer(0);}} style={{fontSize:14}}>Passer</Btn>
+                  <Btn onClick={nextExo} style={{fontSize:14}}>Suivant →</Btn>
+                </div>
+              </div>
+            ):exo?(
+              <div className="fu" style={{maxWidth:480,width:"100%",textAlign:"center"}}>
+                <div style={{marginBottom:8}}><Tag color={CARDIO_COLORS[bloc.bloc_type]||selSport.color}>{CARDIO_LABELS[bloc.bloc_type]||bloc.bloc_nom}</Tag></div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:isMob?28:34,letterSpacing:2,color:selSport.color,lineHeight:1.1,marginBottom:5}}>{exo.nom}</div>
+                <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:14}}>
+                  {Array.from({length:parseInt(exo.series_reps?.split("x")[0]||exo.series_reps?.split("×")[0])||3}).map((_,i)=>(
+                    <div key={i} style={{width:34,height:34,borderRadius:"50%",background:i<liveSerie-1?C.gold:i===liveSerie-1?`${C.gold}30`:C.surf3,border:`2px solid ${i===liveSerie-1?C.gold:"transparent"}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue'",fontSize:15,color:i<liveSerie-1?"#000":i===liveSerie-1?C.gold:C.muted}}>
+                      {i<liveSerie-1?"✓":i+1}
+                    </div>
+                  ))}
+                </div>
+                <div style={{background:C.surf,border:`1px solid ${C.border}`,borderRadius:12,padding:16,marginBottom:12,textAlign:"left"}}>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:C.muted,marginBottom:4}}>EXÉCUTION</div>
+                  <div style={{fontSize:14,color:"#ccc",lineHeight:1.6}}>{exo.execution}</div>
+                </div>
+                <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:14}}>
+                  <Tag color={selSport.color}>{exo.series_reps}</Tag>
+                  <Tag color={C.gold}>{exo.recuperation}</Tag>
+                </div>
+                <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+                  {liveSerie<(parseInt(exo.series_reps?.split("x")[0]||exo.series_reps?.split("×")[0])||3)
+                    ?<Btn onClick={()=>{setLiveSerie(s=>s+1);startRest(getRestSecs());}} style={{fontSize:14}}>✅ SÉRIE {liveSerie} FAITE → REPOS</Btn>
+                    :<Btn onClick={nextExo} style={{fontSize:14,padding:"12px 28px"}}>✅ EXERCICE TERMINÉ →</Btn>
+                  }
+                </div>
+              </div>
+            ):(
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:56,marginBottom:12}}>🏆</div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:38,color:C.gold}}>SÉANCE TERMINÉE !</div>
+                <Btn onClick={()=>setLiveMode(false)} style={{marginTop:16,fontSize:15}}>Voir le programme</Btn>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return(
+      <div style={{minHeight:"100vh",background:C.bg,paddingBottom:pb}}>
+        <header style={{background:C.surf,borderBottom:`1px solid ${C.border}`,padding:"0 16px",height:HEADER_H,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <VoltraLogo size={18}/>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <span style={{fontSize:16}}>{selSport.icon}</span>
+            <Tag color={selSport.color}>{selSport.name}</Tag>
+            <Tag color={getOVRColor(ovr)}>OVR {ovr}</Tag>
+          </div>
+        </header>
+        <div style={{maxWidth:760,margin:"0 auto",padding:isMob?"12px":"20px 24px"}}>
+          <div className="fu" style={{marginBottom:14}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:isMob?24:32,letterSpacing:2,lineHeight:1}}>{programme.programme_titre}</div>
+            <div style={{color:C.muted,fontSize:13,marginTop:2}}>{programme.programme_sous_titre}</div>
+            <div style={{display:"grid",gridTemplateColumns:isMob?"1fr":"1fr 1fr",gap:8,marginTop:10}}>
+              {programme.logique_programme&&<div style={{background:C.surf,borderLeft:`3px solid ${selSport.color}`,borderRadius:8,padding:"10px 12px",fontSize:12,color:"#bbb",lineHeight:1.6}}>💪 {programme.logique_programme}</div>}
+              {programme.strategie_cardio&&<div style={{background:C.surf,borderLeft:"3px solid #FF6D00",borderRadius:8,padding:"10px 12px",fontSize:12,color:"#bbb",lineHeight:1.6}}>❤️ {programme.strategie_cardio}</div>}
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:14,scrollSnapType:"x mandatory"}}>
+            {programme.seances?.map((s,i)=>(
+              <button key={i} onClick={()=>{setActiveSeance(i);setExpandedExo(null);setLiveBloc(0);setLiveExo(0);setLiveSerie(1);}}
+                style={{flexShrink:0,background:activeSeance===i?`${selSport.color}18`:C.surf,border:`2px solid ${activeSeance===i?selSport.color:C.border}`,borderRadius:12,padding:"10px 14px",textAlign:"left",transition:"all .18s",cursor:"pointer",scrollSnapAlign:"start",minWidth:isMob?130:150}}>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1,color:activeSeance===i?selSport.color:C.text}}>SÉANCE {s.num}</div>
+                <div style={{fontSize:11,color:C.muted,marginTop:2,lineHeight:1.3}}>{s.titre}</div>
+                <div style={{fontSize:10,color:C.muted,marginTop:2}}>⏱ {s.duree_min} min</div>
+              </button>
+            ))}
+          </div>
+          {seance&&(
+            <div className="fu" key={activeSeance}>
+              <div style={{background:C.surf,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:12,borderTop:`3px solid ${selSport.color}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+                  <div>
+                    <div style={{fontFamily:"'Bebas Neue'",fontSize:isMob?20:24,letterSpacing:2,color:selSport.color}}>SÉANCE {seance.num} — {seance.titre}</div>
+                    <div style={{color:C.muted,fontSize:12,marginTop:2}}>🎯 {seance.focus_sportif}</div>
+                    {seance.focus_faiblesse&&<div style={{color:C.gold,fontSize:12,marginTop:1}}>📈 {seance.focus_faiblesse}</div>}
+                  </div>
+                  <Btn onClick={()=>{setLiveMode(true);setLiveBloc(0);setLiveExo(0);setLiveSerie(1);setRestActive(false);}} variant="gold" style={{fontSize:13,padding:"8px 16px"}}>▶ MODE LIVE</Btn>
+                </div>
+              </div>
+              {seance.blocs?.map((bloc,bi)=>{
+                const isCardio=bloc.bloc_type&&bloc.bloc_type!=="MUSCU";
+                const bColor=isCardio?(CARDIO_COLORS[bloc.bloc_type]||"#FF6D00"):selSport.color;
+                return(
+                  <div key={bi} style={{background:C.surf,borderLeft:`4px solid ${bColor}`,borderRadius:12,padding:14,marginBottom:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                      <div>
+                        <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:bColor}}>{CARDIO_LABELS[bloc.bloc_type]||"BLOC"}</div>
+                        <div style={{fontSize:14,fontWeight:700,color:C.text}}>{bloc.bloc_nom}</div>
+                      </div>
+                      {bloc.duree_min&&<Tag color={bColor}>⏱ {bloc.duree_min} min</Tag>}
+                    </div>
+                    {bloc.bloc_desc&&<div style={{fontSize:12,color:C.muted,marginBottom:10,lineHeight:1.5}}>{bloc.bloc_desc}</div>}
+                    {bloc.exercices?.map((exo,ei)=>{
+                      const key=`${bi}-${ei}`;
+                      const open=expandedExo===key;
+                      const isC=exo.type_exercice==="CARDIO";
+                      const eColor=isC?bColor:selSport.color;
+                      return(
+                        <div key={ei} style={{background:C.surf2,border:`1px solid ${open?eColor+"50":C.border}`,borderRadius:10,marginBottom:7,overflow:"hidden"}}>
+                          <button onClick={()=>setExpandedExo(open?null:key)} style={{width:"100%",background:"transparent",border:"none",padding:"12px 13px",display:"flex",alignItems:"center",justifyContent:"space-between",color:C.text,textAlign:"left",cursor:"pointer"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:9,flex:1}}>
+                              <div style={{width:24,height:24,background:`${eColor}20`,border:`1px solid ${eColor}40`,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Bebas Neue'",fontSize:12,color:eColor,flexShrink:0}}>{isC?"♥":ei+1}</div>
+                              <div style={{flex:1}}>
+                                <div style={{fontWeight:700,fontSize:14}}>{exo.nom}</div>
+                                {exo.geste_sportif&&<div style={{fontSize:11,color:C.muted,marginTop:1}}>🎯 {exo.geste_sportif}</div>}
+                              </div>
+                            </div>
+                            <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
+                              <Tag color={eColor}>{exo.series_reps}</Tag>
+                              <span style={{color:C.muted,fontSize:12}}>{open?"▲":"▼"}</span>
+                            </div>
+                          </button>
+                          {open&&(
+                            <div className="fi" style={{padding:"0 13px 13px",borderTop:`1px solid ${C.border}`}}>
+                              {exo.execution&&(
+                                <div style={{marginTop:10,background:C.surf3,borderRadius:8,padding:"10px 12px"}}>
+                                  <div style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:1.5,marginBottom:4}}>⚡ EXÉCUTION</div>
+                                  <div style={{fontSize:13,color:"#ccc",lineHeight:1.6}}>{exo.execution}</div>
+                                </div>
+                              )}
+                              {exo.focus_technique?.length>0&&(
+                                <div style={{marginTop:8}}>
+                                  <div style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:1.5,marginBottom:4}}>🔍 FOCUS</div>
+                                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                                    {exo.focus_technique.map((f,fi)=><span key={fi} style={{background:C.surf3,border:`1px solid ${C.border}`,borderRadius:4,padding:"3px 8px",fontSize:11,color:"#ccc"}}>→ {f}</span>)}
+                                  </div>
+                                </div>
+                              )}
+                              {exo.intention&&(
+                                <div style={{marginTop:8,background:`${eColor}0d`,border:`1px solid ${eColor}25`,borderRadius:8,padding:"8px 10px"}}>
+                                  <div style={{fontSize:10,fontWeight:700,color:eColor,letterSpacing:1.5,marginBottom:3}}>🏆 POURQUOI</div>
+                                  <div style={{fontSize:12,color:"#bbb",lineHeight:1.5}}>{exo.intention}</div>
+                                </div>
+                              )}
+                              <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+                                <Tag color={eColor}>{exo.series_reps}</Tag>
+                                {exo.recuperation&&<Tag color={C.gold}>⏸ {exo.recuperation}</Tag>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+              <button onClick={async()=>{
+                const weak=TESTS.filter(t=>scores[t.id]&&scores[t.id]<70).map(t=>`${t.label}:${scores[t.id]}`).join(",");
+                try{
+                  const res=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sport:selSport.name,ovr,weak:weak||"aucune",jours:athlete.jours,niveau:athlete.niveau,saison:athlete.saison,blessures:athlete.blessures||"aucune",contexte:selSport.contexte.slice(0,100),cardioVolume:selSport.cardio.volume,cardioType:selSport.cardio.type,numSeance:activeSeance+1})});
+                  const data=await res.json();
+                  if(data.seance){
+                    const newSeances=[...programme.seances];
+                    newSeances[activeSeance]=data.seance;
+                    setProgramme(p=>({...p,seances:newSeances}));
+                  }
+                }catch(e){}
+              }} style={{width:"100%",background:"transparent",border:`1px dashed ${C.border}`,borderRadius:10,padding:"10px",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"'Bebas Neue'",letterSpacing:1,marginTop:4}}>
+                🔄 RÉGÉNÉRER CETTE SÉANCE
+              </button>
+            </div>
+          )}
+          {programme.conseils_specifiques?.length>0&&(
+            <div style={{background:C.surf,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginTop:10}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:C.gold,marginBottom:8}}>⭐ CONSEILS</div>
+              {programme.conseils_specifiques.map((c,i)=><div key={i} style={{fontSize:12,color:"#aaa",marginBottom:5,paddingBottom:5,borderBottom:i<programme.conseils_specifiques.length-1?`1px solid ${C.border}`:"none"}}>→ {c}</div>)}
+            </div>
+          )}
+        </div>
+        <TabBar screen={screen} setScreen={setScreen} hasScores={hasScores} hasProgramme={hasProgramme}/>
+      </div>
+    );
+  }
+
+  return null;
 }
