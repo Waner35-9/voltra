@@ -103,75 +103,23 @@ function getOVRColor(ovr){
 }
 
 const TESTS=[
-  {id:"force",label:"FORCE MAXIMALE",unit:"ratio / poids corps",icon:"💪",
-   placeholder:"calculé auto",desc:"Squat + Bench + Traction — calculé automatiquement",
-   hint:"1.0 = débutant · 1.4 = bon · 1.8 = élite",min:0.3,max:3.5,step:0.05},
-  {id:"detente",label:"DÉTENTE VERTICALE",unit:"centimètres",icon:"🦘",
-   placeholder:"ex: 45",desc:"Hauteur saut vertical pieds décollés",
-   hint:"30 cm = moyen · 50 cm = bon · 70 cm = élite",min:5,max:100,step:1},
-  {id:"sprint30",label:"VITESSE 30 M",unit:"secondes",icon:"💨",
-   placeholder:"ex: 4.5",desc:"Temps sur 30 m départ arrêté",
-   hint:"5.0 s = moyen · 4.5 s = bon · 4.0 s = élite",min:3.5,max:8,step:0.1},
-  {id:"sprint10",label:"ACCÉLÉRATION 10 M",unit:"secondes",icon:"⚡",
-   placeholder:"ex: 1.7",desc:"Temps sur 10 m départ arrêté",
-   hint:"2.0 s = moyen · 1.8 s = bon · 1.5 s = élite",min:1.3,max:3,step:0.05},
-  {id:"endurance",label:"TEST DE COOPER",unit:"mètres en 12 min",icon:"🏃",
-   placeholder:"ex: 2400",desc:"Sur tapis : cours le plus loin en 12 minutes",
-   hint:"1600 m = débutant · 2400 m = bon · 3200 m = élite",min:800,max:4000,step:50},
-  {id:"gainage",label:"GAINAGE CORE",unit:"secondes (planche)",icon:"🧱",
-   placeholder:"ex: 120",desc:"Temps tenu en planche avant",
-   hint:"60 s = moyen · 120 s = bon · 200 s = élite",min:10,max:300,step:5},
+  {id:"force",label:"FORCE MAXIMALE",unit:"ratio / poids corps",icon:"💪",placeholder:"calculé auto",desc:"Squat + Bench + Traction — calculé automatiquement",hint:"1.0 = débutant · 1.4 = bon · 1.8 = élite",min:0.3,max:3.5,step:0.05},
+  {id:"detente",label:"DÉTENTE VERTICALE",unit:"centimètres",icon:"🦘",placeholder:"ex: 45",desc:"Hauteur saut vertical pieds décollés",hint:"30 cm = moyen · 50 cm = bon · 70 cm = élite",min:5,max:100,step:1},
+  {id:"sprint30",label:"VITESSE 30 M",unit:"secondes",icon:"💨",placeholder:"ex: 4.5",desc:"Temps sur 30 m départ arrêté",hint:"5.0 s = moyen · 4.5 s = bon · 4.0 s = élite",min:3.5,max:8,step:0.1},
+  {id:"sprint10",label:"ACCÉLÉRATION 10 M",unit:"secondes",icon:"⚡",placeholder:"ex: 1.7",desc:"Temps sur 10 m départ arrêté",hint:"2.0 s = moyen · 1.8 s = bon · 1.5 s = élite",min:1.3,max:3,step:0.05},
+  {id:"endurance",label:"TEST DE COOPER",unit:"mètres en 12 min",icon:"🏃",placeholder:"ex: 2400",desc:"Sur tapis : cours le plus loin en 12 minutes",hint:"1600 m = débutant · 2400 m = bon · 3200 m = élite",min:800,max:4000,step:50},
+  {id:"gainage",label:"GAINAGE CORE",unit:"secondes (planche)",icon:"🧱",placeholder:"ex: 120",desc:"Temps tenu en planche avant",hint:"60 s = moyen · 120 s = bon · 200 s = élite",min:10,max:300,step:5},
 ];
 
 const SPORTS=[
-  {id:"football",name:"Football",icon:"⚽",color:"#4CAF50",
-   weights:{force:0.8,detente:0.9,sprint30:1.2,sprint10:1.1,endurance:1.0,gainage:0.9},
-   contexte:"Le footballeur effectue 150-200 sprints/match, frappes rotatives, dribbles explosifs.",
-   patterns:["triple_extension","rotation_hanche","frappe_balistique","deceleration_excentrique"],
-   cardio:{volume:85,type:"Intervalles courts 85-95% FCmax"},
-   equipement:["Barre olympique","Haltères","Kettlebell","Médecine ball","Box pliométrique"]},
-  {id:"tennis",name:"Tennis",icon:"🎾",color:"#CDDC39",
-   weights:{force:0.8,detente:0.8,sprint30:0.9,sprint10:1.0,endurance:1.0,gainage:1.1},
-   contexte:"Le tennisman réalise 400-500 frappes/match avec chaîne cinétique complète.",
-   patterns:["chaine_cinetique_frappe","service_overhead","rotation_differentielle","split_step"],
-   cardio:{volume:82,type:"Intermittent aléatoire 78-95% FCmax"},
-   equipement:["Haltères","Médecine ball","Câble poulie","Élastiques","Kettlebell"]},
-  {id:"mma",name:"MMA",icon:"🥊",color:"#F44336",
-   weights:{force:1.1,detente:0.9,sprint30:0.8,sprint10:0.9,endurance:1.2,gainage:1.3},
-   contexte:"Le combattant MMA intègre frappes rotation, wrestling, sol isométrique sur 3-5 rounds.",
-   patterns:["frappe_rotation","projection_wrestling","gainage_multidirectionnel","explosion_releve"],
-   cardio:{volume:92,type:"Rounds 3-5 min 85-100% FCmax"},
-   equipement:["Barre olympique","Haltères","Kettlebell","Battle ropes","Médecine ball"]},
-  {id:"sprint",name:"Sprint",icon:"💨",color:"#FFD600",
-   weights:{force:1.1,detente:1.2,sprint30:1.5,sprint10:1.3,endurance:0.5,gainage:0.9},
-   contexte:"Le sprinter produit 5x le poids du corps à l'impulsion, 4.5-5 Hz fréquence de pas.",
-   patterns:["triple_extension_maximale","mecanique_bras_sprint","frequence_pas","depart_blocs"],
-   cardio:{volume:50,type:"Lactique pur 95-100% FCmax repos long"},
-   equipement:["Barre olympique","Sled","Élastiques","Box pliométrique","Haltères"]},
-  {id:"basket",name:"Basketball",icon:"🏀",color:"#FF7043",
-   weights:{force:0.9,detente:1.3,sprint30:1.0,sprint10:1.1,endurance:0.9,gainage:0.9},
-   contexte:"Le basketteur enchaîne accélérations/décélérations, sauts répétés, changements direction.",
-   patterns:["detente_verticale","deceleration_excentrique","crossover_lateral","tir_stability"],
-   cardio:{volume:72,type:"Intervalles courts 82-95% FCmax"},
-   equipement:["Barre olympique","Haltères","Box pliométrique","Élastiques","Médecine ball"]},
-  {id:"rugby",name:"Rugby",icon:"🏉",color:"#A1887F",
-   weights:{force:1.3,detente:0.9,sprint30:1.1,sprint10:1.0,endurance:1.1,gainage:1.3},
-   contexte:"Le rugbyman réalise placages, mêlées isométriques, rucks sur 80 min.",
-   patterns:["poussee_horizontale","absorption_choc","mele_isometrique","rotation_tronc_charge"],
-   cardio:{volume:78,type:"Intervals longs sprints 80-92% FCmax"},
-   equipement:["Barre olympique","Haltères","Sled","Battle ropes","Kettlebell"]},
-  {id:"crossfit",name:"CrossFit",icon:"🏋️",color:"#E91E63",
-   weights:{force:1.1,detente:1.0,sprint30:0.8,sprint10:0.8,endurance:1.2,gainage:1.1},
-   contexte:"Le crossfitter développe puissance globale: arraché, épaulé-jeté, gymnastics.",
-   patterns:["arrachee_epaule","muscle_up","kb_swing_hinge","clean_and_jerk"],
-   cardio:{volume:88,type:"Métabolique intégré 80-100% FCmax"},
-   equipement:["Barre olympique","Kettlebell","Anneaux","Haltères","Box"]},
-  {id:"natation",name:"Natation",icon:"🏊",color:"#0288D1",
-   weights:{force:0.9,detente:0.7,sprint30:0.6,sprint10:0.6,endurance:1.3,gainage:1.2},
-   contexte:"Le nageur réalise jusqu'à 1 million de cycles/an. Gainage et endurance dominent.",
-   patterns:["rotation_corps_nage","pull_adduction_epaule","kick_cheville","virage_culbute"],
-   cardio:{volume:88,type:"Aérobie soutenu intervalles 70-88% FCmax"},
-   equipement:["Câble poulie","Haltères","Élastiques","TRX","Médecine ball"]},
+  {id:"football",name:"Football",icon:"⚽",color:"#4CAF50",weights:{force:0.8,detente:0.9,sprint30:1.2,sprint10:1.1,endurance:1.0,gainage:0.9},contexte:"Le footballeur effectue 150-200 sprints/match, frappes rotatives, dribbles explosifs.",patterns:["triple_extension","rotation_hanche","frappe_balistique","deceleration_excentrique"],cardio:{volume:85,type:"Intervalles courts 85-95% FCmax"},equipement:["Barre olympique","Haltères","Kettlebell","Médecine ball","Box pliométrique"]},
+  {id:"tennis",name:"Tennis",icon:"🎾",color:"#CDDC39",weights:{force:0.8,detente:0.8,sprint30:0.9,sprint10:1.0,endurance:1.0,gainage:1.1},contexte:"Le tennisman réalise 400-500 frappes/match avec chaîne cinétique complète.",patterns:["chaine_cinetique_frappe","service_overhead","rotation_differentielle","split_step"],cardio:{volume:82,type:"Intermittent aléatoire 78-95% FCmax"},equipement:["Haltères","Médecine ball","Câble poulie","Élastiques","Kettlebell"]},
+  {id:"mma",name:"MMA",icon:"🥊",color:"#F44336",weights:{force:1.1,detente:0.9,sprint30:0.8,sprint10:0.9,endurance:1.2,gainage:1.3},contexte:"Le combattant MMA intègre frappes rotation, wrestling, sol isométrique sur 3-5 rounds.",patterns:["frappe_rotation","projection_wrestling","gainage_multidirectionnel","explosion_releve"],cardio:{volume:92,type:"Rounds 3-5 min 85-100% FCmax"},equipement:["Barre olympique","Haltères","Kettlebell","Battle ropes","Médecine ball"]},
+  {id:"sprint",name:"Sprint",icon:"💨",color:"#FFD600",weights:{force:1.1,detente:1.2,sprint30:1.5,sprint10:1.3,endurance:0.5,gainage:0.9},contexte:"Le sprinter produit 5x le poids du corps à l'impulsion, 4.5-5 Hz fréquence de pas.",patterns:["triple_extension_maximale","mecanique_bras_sprint","frequence_pas","depart_blocs"],cardio:{volume:50,type:"Lactique pur 95-100% FCmax repos long"},equipement:["Barre olympique","Sled","Élastiques","Box pliométrique","Haltères"]},
+  {id:"basket",name:"Basketball",icon:"🏀",color:"#FF7043",weights:{force:0.9,detente:1.3,sprint30:1.0,sprint10:1.1,endurance:0.9,gainage:0.9},contexte:"Le basketteur enchaîne accélérations/décélérations, sauts répétés, changements direction.",patterns:["detente_verticale","deceleration_excentrique","crossover_lateral","tir_stability"],cardio:{volume:72,type:"Intervalles courts 82-95% FCmax"},equipement:["Barre olympique","Haltères","Box pliométrique","Élastiques","Médecine ball"]},
+  {id:"rugby",name:"Rugby",icon:"🏉",color:"#A1887F",weights:{force:1.3,detente:0.9,sprint30:1.1,sprint10:1.0,endurance:1.1,gainage:1.3},contexte:"Le rugbyman réalise placages, mêlées isométriques, rucks sur 80 min.",patterns:["poussee_horizontale","absorption_choc","mele_isometrique","rotation_tronc_charge"],cardio:{volume:78,type:"Intervals longs sprints 80-92% FCmax"},equipement:["Barre olympique","Haltères","Sled","Battle ropes","Kettlebell"]},
+  {id:"crossfit",name:"CrossFit",icon:"🏋️",color:"#E91E63",weights:{force:1.1,detente:1.0,sprint30:0.8,sprint10:0.8,endurance:1.2,gainage:1.1},contexte:"Le crossfitter développe puissance globale: arraché, épaulé-jeté, gymnastics.",patterns:["arrachee_epaule","muscle_up","kb_swing_hinge","clean_and_jerk"],cardio:{volume:88,type:"Métabolique intégré 80-100% FCmax"},equipement:["Barre olympique","Kettlebell","Anneaux","Haltères","Box"]},
+  {id:"natation",name:"Natation",icon:"🏊",color:"#0288D1",weights:{force:0.9,detente:0.7,sprint30:0.6,sprint10:0.6,endurance:1.3,gainage:1.2},contexte:"Le nageur réalise jusqu'à 1 million de cycles/an. Gainage et endurance dominent.",patterns:["rotation_corps_nage","pull_adduction_epaule","kick_cheville","virage_culbute"],cardio:{volume:88,type:"Aérobie soutenu intervalles 70-88% FCmax"},equipement:["Câble poulie","Haltères","Élastiques","TRX","Médecine ball"]},
 ];
 
 const ATHLETE_SVG={
@@ -317,13 +265,11 @@ export default function App(){
   const timerRef=useRef(null);
   const cardRef=useRef(null);
 
-  // ══ CSS ══
   useEffect(()=>{
     const st=document.createElement("style");st.textContent=CSS;document.head.appendChild(st);
     return()=>document.head.removeChild(st);
   },[]);
 
-  // ══ AUTH SUPABASE ══
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>{
       setUser(session?.user||null);
@@ -335,7 +281,6 @@ export default function App(){
     return()=>subscription.unsubscribe();
   },[]);
 
-  // ══ LOCALSTORAGE LOAD ══
   useEffect(()=>{
     try{
       const tv=localStorage.getItem("v_testValues");
@@ -353,7 +298,6 @@ export default function App(){
     }catch(e){}
   },[]);
 
-  // ══ LOCALSTORAGE SAVE ══
   useEffect(()=>{ try{localStorage.setItem("v_testValues",JSON.stringify(testValues));}catch(e){} },[testValues]);
   useEffect(()=>{ try{localStorage.setItem("v_forceInputs",JSON.stringify(forceInputs));}catch(e){} },[forceInputs]);
   useEffect(()=>{ try{localStorage.setItem("v_playerName",playerName);}catch(e){} },[playerName]);
@@ -361,7 +305,6 @@ export default function App(){
   useEffect(()=>{ try{localStorage.setItem("v_athlete",JSON.stringify(athlete));}catch(e){} },[athlete]);
   useEffect(()=>{ try{if(programme)localStorage.setItem("v_programme",JSON.stringify(programme));}catch(e){} },[programme]);
 
-  // ══ FORCE CALC ══
   useEffect(()=>{
     const s=parseFloat(forceInputs.squat);
     const b=parseFloat(forceInputs.bench);
@@ -373,14 +316,12 @@ export default function App(){
     }
   },[forceInputs]);
 
-  // ══ SCORES CALC ══
   useEffect(()=>{
     const s={};
     TESTS.forEach(t=>{const v=parseFloat(testValues[t.id]);if(!isNaN(v)&&v>0)s[t.id]=clamp(calcScore(t.id,v),35,99);});
     setScores(s);setOvr(calcOVR(s));
   },[testValues]);
 
-  // ══ REST TIMER ══
   useEffect(()=>{
     if(restActive&&restTimer>0){timerRef.current=setTimeout(()=>setRestTimer(t=>t-1),1000);}
     else if(restTimer===0&&restActive){setRestActive(false);}
@@ -394,7 +335,6 @@ export default function App(){
   const hasProgramme=!!programme;
   const pb=isMob?TAB_H+8:8;
 
-  // ══ SHARE ══
   const shareCard=async()=>{
     if(!cardRef.current||sharing)return;
     setSharing(true);
@@ -416,7 +356,6 @@ export default function App(){
     }catch(e){setSharing(false);}
   };
 
-  // ══ GENERATE ══
   const GEN_MSGS=["Analyse du profil biomécanique…","Calcul des faiblesses prioritaires…","Création des exercices sur-mesure…","Construction des blocs cardio…","Calibration des intensités…","Intégration de la périodisation…","Finalisation du programme…"];
 
   const generateProgram=async()=>{
@@ -467,37 +406,26 @@ export default function App(){
     }
   };
 
-  // ══ AUTH LOADING ══
   if(authLoading)return(
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{width:50,height:50,border:`3px solid ${C.border}`,borderTop:`3px solid ${C.gold}`,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
     </div>
   );
 
-  // ══ AUTH GATE ══
   if(!user)return <Auth onAuth={setUser}/>;
-
-  // ══════════════════════════════
-  // ══ SCREENS ══
-  // ══════════════════════════════
 
   if(screen==="home")return(
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:isMob?"20px 16px":"24px",textAlign:"center",position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",top:"20%",left:"50%",transform:"translateX(-50%)",width:500,height:500,background:`radial-gradient(circle,${C.gold}08 0%,transparent 70%)`,pointerEvents:"none"}}/>
-
-      {/* Bouton déconnexion */}
       <div style={{position:"absolute",top:16,right:16,zIndex:10}}>
-        <button onClick={async()=>{await supabase.auth.signOut();setUser(null);}} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",color:C.muted,fontSize:12,cursor:"pointer",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>
-          DÉCONNEXION
-        </button>
+        <button onClick={async()=>{await supabase.auth.signOut();setUser(null);}} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"5px 12px",color:C.muted,fontSize:12,cursor:"pointer",fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1}}>DÉCONNEXION</button>
       </div>
-
       <div className="fu" style={{marginBottom:isMob?20:36}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:isMob?64:80,letterSpacing:8,lineHeight:.9,marginBottom:10}}>
           <span style={{color:C.gold}}>⚡</span>VOL<span style={{color:C.gold}}>TRA</span>
         </div>
         <div style={{fontFamily:"'DM Mono'",fontSize:isMob?10:12,color:C.muted,letterSpacing:3}}>AI ATHLETIC PERFORMANCE SYSTEM</div>
-        <div style={{fontSize:13,color:C.muted,marginTop:6}}>👋 Bienvenue {user?.user_metadata?.pseudo||user?.email?.split("@")[0]}</div>
+        <div style={{fontSize:13,color:C.muted,marginTop:6}}>👋 {user?.user_metadata?.pseudo||user?.email?.split("@")[0]}</div>
       </div>
       <div className="fu1" style={{marginBottom:isMob?20:36,animation:"float 3s ease-in-out infinite"}}>
         <PlayerCard scores={{force:85,detente:78,sprint30:82,sprint10:79,endurance:71,gainage:76}} ovr={80} playerName="EXEMPLE" sport="football"/>
@@ -709,9 +637,7 @@ export default function App(){
           </div>
           {selSport&&(
             <div className="fu" style={{marginTop:16}}>
-              <Btn onClick={()=>setScreen("profile")} full style={{fontSize:16,padding:"14px"}}>
-                CONTINUER AVEC {selSport.name.toUpperCase()} →
-              </Btn>
+              <Btn onClick={()=>setScreen("profile")} full style={{fontSize:16,padding:"14px"}}>CONTINUER AVEC {selSport.name.toUpperCase()} →</Btn>
             </div>
           )}
         </div>
@@ -827,9 +753,7 @@ export default function App(){
                 <div style={{position:"relative",width:160,height:160,margin:"0 auto 20px"}}>
                   <svg viewBox="0 0 180 180" width="160" height="160">
                     <circle cx="90" cy="90" r="70" fill="none" stroke={C.surf3} strokeWidth="8"/>
-                    <circle cx="90" cy="90" r="70" fill="none" stroke={C.gold} strokeWidth="8"
-                      strokeDasharray="440" strokeDashoffset={440-(restTimer/getRestSecs())*440}
-                      strokeLinecap="round" transform="rotate(-90 90 90)" style={{transition:"stroke-dashoffset 1s linear"}}/>
+                    <circle cx="90" cy="90" r="70" fill="none" stroke={C.gold} strokeWidth="8" strokeDasharray="440" strokeDashoffset={440-(restTimer/getRestSecs())*440} strokeLinecap="round" transform="rotate(-90 90 90)" style={{transition:"stroke-dashoffset 1s linear"}}/>
                   </svg>
                   <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
                     <div style={{fontFamily:"'Bebas Neue'",fontSize:52,color:C.gold,lineHeight:1}}>{restTimer}</div>
@@ -882,9 +806,7 @@ export default function App(){
     return(
       <div style={{minHeight:"100vh",background:C.bg,paddingBottom:pb}}>
         <header style={{background:C.surf,borderBottom:`1px solid ${C.border}`,padding:"0 16px",height:HEADER_H,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
-          <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            <VoltraLogo size={18}/>
-          </div>
+          <VoltraLogo size={18}/>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             <span style={{fontSize:16}}>{selSport.icon}</span>
             <Tag color={selSport.color}>{selSport.name}</Tag>
@@ -994,11 +916,7 @@ export default function App(){
                 try{
                   const res=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sport:selSport.name,ovr,weak:weak||"aucune",jours:athlete.jours,niveau:athlete.niveau,saison:athlete.saison,blessures:athlete.blessures||"aucune",contexte:selSport.contexte.slice(0,100),cardioVolume:selSport.cardio.volume,cardioType:selSport.cardio.type,numSeance:activeSeance+1})});
                   const data=await res.json();
-                  if(data.seance){
-                    const newSeances=[...programme.seances];
-                    newSeances[activeSeance]=data.seance;
-                    setProgramme(p=>({...p,seances:newSeances}));
-                  }
+                  if(data.seance){const newSeances=[...programme.seances];newSeances[activeSeance]=data.seance;setProgramme(p=>({...p,seances:newSeances}));}
                 }catch(e){}
               }} style={{width:"100%",background:"transparent",border:`1px dashed ${C.border}`,borderRadius:10,padding:"10px",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"'Bebas Neue'",letterSpacing:1,marginTop:4}}>
                 🔄 RÉGÉNÉRER CETTE SÉANCE
