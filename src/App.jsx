@@ -36,6 +36,42 @@ async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, eq
   return data.programme;
 }
 
+const DAY_OPTIONS = [{ i: 1, l: "Lun" }, { i: 2, l: "Mar" }, { i: 3, l: "Mer" }, { i: 4, l: "Jeu" }, { i: 5, l: "Ven" }, { i: 6, l: "Sam" }, { i: 0, l: "Dim" }];
+const DAY_NAMES = { 0: "dimanche", 1: "lundi", 2: "mardi", 3: "mercredi", 4: "jeudi", 5: "vendredi", 6: "samedi" };
+const DEFAULT_JOURS = { 1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
+
+// Enregistre les jours d'entrainement choisis dans le programme
+async function attachJours(prog, jours) {
+  if (!prog?.id || !jours?.length) return prog;
+  const dj = { ...(prog.data_json || {}), jours };
+  try { await supabase.from("programmes").update({ data_json: dj }).eq("id", prog.id); } catch (e) { console.error(e); }
+  return { ...prog, data_json: dj };
+}
+
+// Selecteur de jours (max = nombre de seances par semaine)
+function DayPicker({ jours, max, onChange, accent }) {
+  const toggle = (i) => {
+    if (jours.includes(i)) onChange(jours.filter(d => d !== i));
+    else if (jours.length < max) onChange([...jours, i]);
+    else onChange([...jours.slice(1), i]);
+  };
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6 }}>
+        {DAY_OPTIONS.map(d => {
+          const on = jours.includes(d.i);
+          return (
+            <div key={d.i} onClick={() => toggle(d.i)} style={{ flex: 1, padding: "12px 0", textAlign: "center", borderRadius: 12, cursor: "pointer", background: on ? accent : DS.colors.surfaceHigh, color: on ? "#000" : DS.colors.textSec, border: `1px solid ${on ? accent : DS.colors.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, transition: "all 0.15s ease" }}>{d.l}</div>
+          );
+        })}
+      </div>
+      <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: jours.length === max ? accent : DS.colors.textSec, textAlign: "center", marginTop: 10 }}>
+        {jours.length === max ? "✓ Jours choisis" : `Choisis ${max - jours.length} jour${max - jours.length > 1 ? "s" : ""} de plus`}
+      </p>
+    </div>
+  );
+}
+
 async function saveCompleteSession(programmeId, seance, completedSetsData, feedback, durationMin) {
   await supabase.auth.refreshSession();
   const { data: { session } } = await supabase.auth.getSession();
@@ -1911,7 +1947,7 @@ function OnboardingScreen({ onComplete }) {
   const [data, setData] = useState({
     sport: null, objectif: null, poste: null,
     douleurs: [], equipement: null,
-    niveau: null, frequence: 3,
+    niveau: null, frequence: 3, jours: [1, 3, 5],
     poids: null, age: null, taille: null,
   });
   const [loading, setLoading] = useState(false);
@@ -2046,7 +2082,7 @@ function OnboardingScreen({ onComplete }) {
     if (contentStep === 2) return data.poste !== null;
     if (contentStep === 3) return data.douleurs.length > 0;
     if (contentStep === 4) return data.equipement !== null;
-    if (contentStep === 5) return data.niveau !== null;
+    if (contentStep === 5) return data.niveau !== null && (data.jours || []).length === data.frequence;
     if (contentStep === 6) return true; // profil physique optionnel
     return false;
   })();
@@ -2455,11 +2491,15 @@ function OnboardingScreen({ onComplete }) {
                 <div style={{ ...s.display, fontSize: 48, color: DS.colors.primary, textAlign: "center", marginBottom: 16 }}>{data.frequence}</div>
                 <div style={{ display: "flex", gap: 10 }}>
                   {[2, 3, 4, 5].map(n => (
-                    <div key={n} onClick={() => setData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "10px 0", textAlign: "center", background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: data.frequence === n ? "#000" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>
+                    <div key={n} onClick={() => setData(d => ({ ...d, frequence: n, jours: (d.jours && d.jours.length === n) ? d.jours : DEFAULT_JOURS[n] }))} style={{ flex: 1, padding: "10px 0", textAlign: "center", background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: data.frequence === n ? "#000" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>
                   ))}
                 </div>
                 <p style={{ color: DS.colors.textSec, fontSize: 13, textAlign: "center", marginTop: 12, ...s.body }}>jours / semaine</p>
               </div>
+            </div>
+            <div>
+              <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Quels jours t'entraînes-tu ?</p>
+              <DayPicker jours={data.jours || []} max={data.frequence} accent={DS.colors.primary} onChange={(j) => setData(d => ({ ...d, jours: j }))} />
             </div>
           </div>
         )}
@@ -2929,6 +2969,22 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           </div>
         )}
 
+        {/* Jour prévu / repos selon les jours choisis */}
+        {seance && progData?.jours?.length > 0 && (() => {
+          const todayI = new Date().getDay();
+          const prevu = progData.jours.includes(todayI);
+          let next = null;
+          for (let k = 1; k <= 7; k++) { const d = (todayI + k) % 7; if (progData.jours.includes(d)) { next = d; break; } }
+          return (
+            <div style={{ background: prevu ? `${theme.accent}15` : DS.colors.surface, border: `1px solid ${prevu ? theme.accent + "50" : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "12px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 18 }}>{prevu ? "💪" : "😴"}</span>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textPrimary, margin: 0, fontWeight: 600 }}>
+                {prevu ? "Séance prévue aujourd'hui" : `Jour de repos prévu · prochaine séance ${DAY_NAMES[next]}`}
+              </p>
+            </div>
+          );
+        })()}
+
         {/* Séance du jour — card sombre */}
         {!seance ? (
           <div style={{ background: DS.colors.isDark ? "#1D1D1F" : DS.colors.surface, borderRadius: DS.radius.xl, padding: 24, marginBottom: 16, position: "relative", overflow: "hidden" }}>
@@ -3351,7 +3407,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
   const [notifOn, setNotifOn] = useState(false);
   const [notifHeure, setNotifHeure] = useState("08:00");
   const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const [editData, setEditData] = useState({ sport: null, objectif: null, frequence: 3 });
+  const [editData, setEditData] = useState({ sport: null, objectif: null, frequence: 3, jours: [1, 3, 5] });
   const [saving, setSaving] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
@@ -3453,7 +3509,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
   }, []);
 
   const openEdit = () => {
-    setEditData({ sport, objectif: objectif !== "Non defini" ? objectif : null, frequence });
+    setEditData({ sport, objectif: objectif !== "Non defini" ? objectif : null, frequence, jours: progData?.jours?.length === frequence ? progData.jours : DEFAULT_JOURS[frequence] });
     setShowEditDrawer(true);
   };
 
@@ -3470,7 +3526,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
           if (onRegenerateProgram) await onRegenerateProgram(editData, true);
         } else if (programme?.id) {
           // Juste mettre a jour objectif + frequence sans regenerer ni remettre a zero
-          const updatedJson = { ...(programme.data_json || {}), objectif: editData.objectif, frequence: editData.frequence };
+          const updatedJson = { ...(programme.data_json || {}), objectif: editData.objectif, frequence: editData.frequence, jours: editData.jours };
           await supabase.from("programmes").update({ data_json: updatedJson }).eq("id", programme.id);
           if (onRegenerateProgram) await onRegenerateProgram(editData, false);
         }
@@ -3527,13 +3583,17 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
             <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Seances / semaine</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
               {[2, 3, 4, 5].map(n => (
-                <div key={n} onClick={() => setEditData(d => ({ ...d, frequence: n }))} style={{ flex: 1, padding: "14px 0", textAlign: "center", background: editData.frequence === n ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: editData.frequence === n ? "#000" : DS.colors.textSec, fontSize: 18, cursor: "pointer", ...s.display }}>{n}</div>
+                <div key={n} onClick={() => setEditData(d => ({ ...d, frequence: n, jours: (d.jours && d.jours.length === n) ? d.jours : DEFAULT_JOURS[n] }))} style={{ flex: 1, padding: "14px 0", textAlign: "center", background: editData.frequence === n ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: editData.frequence === n ? "#000" : DS.colors.textSec, fontSize: 18, cursor: "pointer", ...s.display }}>{n}</div>
               ))}
+            </div>
+            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Mes jours d'entraînement</p>
+            <div style={{ marginBottom: 28 }}>
+              <DayPicker jours={editData.jours || []} max={editData.frequence} accent={theme.accent} onChange={(j) => setEditData(d => ({ ...d, jours: j }))} />
             </div>
             <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,140,0,0.2)", borderRadius: DS.radius.md, padding: "10px 14px", marginBottom: 16 }}>
               <p style={{ color: DS.colors.warning, fontSize: 12 }}>⚠️ Un nouveau programme IA sera genere.</p>
             </div>
-            <button onClick={saveEdit} disabled={saving || !editData.sport || !editData.objectif} style={{ width: "100%", height: 52, background: editData.sport && editData.objectif ? `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: editData.sport && editData.objectif ? "#000" : DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading, fontWeight: 700, letterSpacing: "0.05em" }}>
+            <button onClick={saveEdit} disabled={saving || !editData.sport || !editData.objectif || (editData.jours || []).length !== editData.frequence} style={{ width: "100%", height: 52, background: editData.sport && editData.objectif ? `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: editData.sport && editData.objectif ? "#000" : DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading, fontWeight: 700, letterSpacing: "0.05em" }}>
               {saving ? (editData.sport !== sport || editData.objectif !== objectif ? "Generation en cours..." : "Sauvegarde...") : (editData.sport !== sport || editData.objectif !== objectif ? "Sauvegarder et regenerer ⚡" : "Sauvegarder les changements")}
             </button>
           </div>
@@ -3639,9 +3699,7 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
               const jours = ["L", "M", "M", "J", "V", "S", "D"];
               const joursIdx = [1, 2, 3, 4, 5, 6, 0]; // getDay() index: L=1..D=0
               const todayIdx = new Date().getDay();
-              const planPositions = {
-                1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5],
-              }[Math.min(frequence, 4)] || [1, 2, 3, 4, 5];
+              const planPositions = (progData?.jours?.length ? progData.jours : DEFAULT_JOURS[Math.min(frequence, 5)]) || [1, 3, 5];
               return jours.map((j, i) => {
                 const dayNum = joursIdx[i];
                 const isPlanned = planPositions.includes(dayNum);
@@ -4234,7 +4292,7 @@ export default function VoltraApp() {
     if (genPromiseRef.current) return genPromiseRef.current;
     setProgrammeLoading(true);
     genPromiseRef.current = generateProgramIA(data)
-      .then(prog => { if (prog) setProgrammeActif(prog); return prog; })
+      .then(async prog => { const p = await attachJours(prog, data.jours); if (p) setProgrammeActif(p); return p; })
       .catch(err => { console.error(err); return null; })
       .finally(() => { setProgrammeLoading(false); genPromiseRef.current = null; });
     return genPromiseRef.current;
@@ -4578,8 +4636,10 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                   niveau: "avance",
                   frequence: prog.data_json?.frequence || 3,
                   cycle: (prog.data_json?.cycle || 1) + 1,
+                  jours: prog.data_json?.jours,
                 };
-                generateProgramIA(newData).then(async newProg => {
+                generateProgramIA(newData).then(async newProg0 => {
+                  const newProg = await attachJours(newProg0, newData.jours);
                   if (newProg) {
                     setProgrammeActif(newProg);
                     const { data: { session } } = await supabase.auth.getSession();
@@ -4678,7 +4738,8 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
           {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} sportActif={sportActif} appTheme={appTheme} onThemeChange={setAppTheme} onLogout={handleLogout} onRegenerateProgram={async (data, shouldRegen = true) => {
             try {
               if (shouldRegen) {
-                const prog = await generateProgramIA(data);
+                const prog0 = await generateProgramIA(data);
+                const prog = await attachJours(prog0, data.jours);
                 if (prog) { setProgrammeActif(prog); setSportActif(data.sport); }
               } else {
                 // Juste rafraichir le programme depuis la base
