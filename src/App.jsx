@@ -1175,7 +1175,7 @@ function PaymentSuccessScreen({ plan, onContinue }) {
 // ─────────────────────────────────────────────
 // PROGRAMME GENERATION LOADING SCREEN
 // ─────────────────────────────────────────────
-function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, onboardingData }) {
+function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoading, onboardingData }) {
   const theme = getSportTheme(sport);
   const [step, setStep] = useState(0);
   const [dots, setDots] = useState("");
@@ -1210,20 +1210,20 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, onboardingDa
     let elapsed = 0;
     const timers = [];
     steps.forEach((s, i) => {
-      timers.push(setTimeout(() => setStep(i), elapsed));
+      if (i < steps.length - 1) timers.push(setTimeout(() => setStep(i), elapsed));
       elapsed += s.duration;
     });
-    const done = setTimeout(() => onDone(), Math.max(elapsed, 20000));
-    timers.push(done);
     return () => timers.forEach(clearTimeout);
   }, []);
 
   // Si programme déjà prêt et on a dépassé les étapes visuelles
+  // On attend le VRAI programme : on n'entre dans l'app que quand il est prêt
+  // (ou si la génération a échoué, le dashboard proposera de réessayer)
   useEffect(() => {
-    if (programmeActif && step >= steps.length - 2) {
-      setTimeout(() => onDone(), 800);
-    }
-  }, [programmeActif, step]);
+    if (step < steps.length - 2) return;
+    if (programmeActif) { setStep(steps.length - 1); const t = setTimeout(() => onDone(), 900); return () => clearTimeout(t); }
+    if (!programmeLoading) { const t = setTimeout(() => onDone(), 1500); return () => clearTimeout(t); }
+  }, [programmeActif, programmeLoading, step]);
 
   useEffect(() => {
     const d = setInterval(() => setDots(p => p.length >= 3 ? "" : p + "."), 400);
@@ -2010,19 +2010,8 @@ function OnboardingScreen({ onComplete }) {
     const timeout = setTimeout(() => {
       setGenError(true);
     }, 20000);
+    // La génération est lancée une seule fois par l'App (startGeneration)
     onComplete(data, null);
-    generateProgramIA(data).then(async programme => {
-      clearTimeout(timeout);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await supabase.from("profiles").upsert({ id: session.user.id, sport: data.sport }, { onConflict: "id" });
-      }
-      onComplete(data, programme);
-    }).catch(err => {
-      clearTimeout(timeout);
-      console.error(err);
-      setGenError(true);
-    });
   };
 
   const retryGeneration = () => {
@@ -4239,6 +4228,17 @@ export default function VoltraApp() {
   const [showUpsell, setShowUpsell] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
+  const genPromiseRef = useRef(null);
+  // Lance la génération UNE seule fois (réutilise la requête en cours)
+  const startGeneration = (data) => {
+    if (genPromiseRef.current) return genPromiseRef.current;
+    setProgrammeLoading(true);
+    genPromiseRef.current = generateProgramIA(data)
+      .then(prog => { if (prog) setProgrammeActif(prog); return prog; })
+      .catch(err => { console.error(err); return null; })
+      .finally(() => { setProgrammeLoading(false); genPromiseRef.current = null; });
+    return genPromiseRef.current;
+  };
   const [paidPlan, setPaidPlan] = useState(null);
   const [lastSessionStats, setLastSessionStats] = useState(null);
   const [cycleComplete, setCycleComplete] = useState(false);
@@ -4304,11 +4304,7 @@ export default function VoltraApp() {
           window.history.replaceState({}, document.title, window.location.pathname);
           if (onboardingData) {
             setScreen("pricing");
-            setProgrammeLoading(true);
-            generateProgramIA(onboardingData).then(prog => {
-              if (prog) setProgrammeActif(prog);
-              setProgrammeLoading(false);
-            }).catch(() => setProgrammeLoading(false));
+            startGeneration(onboardingData);
           } else {
             setScreen("app");
           }
@@ -4447,6 +4443,7 @@ export default function VoltraApp() {
   if (screen === "programme-generating") return <ProgrammeGeneratingScreen
     sport={sportActif}
     programmeActif={programmeActif}
+    programmeLoading={programmeLoading}
     onboardingData={onboardingData}
     onDone={() => setScreen("app")}
   />;
@@ -4478,11 +4475,7 @@ export default function VoltraApp() {
     if (onboardingData) {
       // Toujours regenerer apres auth — maintenant on a une session valide
       setScreen("pricing");
-      setProgrammeLoading(true);
-      generateProgramIA(onboardingData).then(prog => {
-        if (prog) setProgrammeActif(prog);
-        setProgrammeLoading(false);
-      }).catch(() => setProgrammeLoading(false));
+      startGeneration(onboardingData);
     } else {
       setScreen("app");
     }
@@ -4492,6 +4485,7 @@ export default function VoltraApp() {
     setSportActif(data.sport);
     setOnboardingData(data);
     if (user) {
+      startGeneration(data);
       setScreen("pricing");
     } else {
       setScreen("projection");
@@ -4515,11 +4509,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
       // Plan gratuit → écran de génération si programme pas encore prêt
       if (!programmeActif && onboardingData) {
         setScreen("programme-generating");
-        setProgrammeLoading(true);
-        generateProgramIA(onboardingData).then(prog => {
-          if (prog) setProgrammeActif(prog);
-          setProgrammeLoading(false);
-        }).catch(() => setProgrammeLoading(false));
+        startGeneration(onboardingData);
       } else {
         setScreen("app");
       }
