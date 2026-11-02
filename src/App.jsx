@@ -1805,7 +1805,7 @@ function LegalScreen({ initial = "cgu", onBack }) {
   );
 }
 
-function AuthScreen({ onAuth, confirmation }) {
+function AuthScreen({ onAuth, confirmation, onboardingData }) {
   const [accepted, setAccepted] = useState(false);
   const [showLegal, setShowLegal] = useState(null);
   const [mode, setMode] = useState("login");
@@ -1829,7 +1829,8 @@ function AuthScreen({ onAuth, confirmation }) {
     if (password.length < 6) { setError("Mot de passe : 6 caractères minimum."); return; }
     setLoading(true);
     if (mode === "signup") {
-      const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { name }, emailRedirectTo: `${window.location.origin}/?confirmed=true` } });
+      // Les réponses de l'onboarding sont gardées avec le compte, pour les retrouver même si l'email est confirmé ailleurs
+      const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { name, ...(onboardingData ? { onboarding: onboardingData } : {}) }, emailRedirectTo: `${window.location.origin}/?confirmed=true` } });
       if (e) { setError(e.message === "User already registered" ? "Email déjà utilisé." : e.message); setLoading(false); return; }
       if (data.user && !data.session) { setSuccess("Vérifie ta boîte mail pour confirmer ton compte !"); setLoading(false); return; }
       onAuth(data.user);
@@ -4835,17 +4836,27 @@ export default function VoltraApp() {
     onboardingData={onboardingData}
     onContinue={() => setScreen("auth")}
   />;
-  if (screen === "auth") return <AuthScreen confirmation={authConfirmation} onAuth={async (u) => {
+  if (screen === "auth") return <AuthScreen confirmation={authConfirmation} onboardingData={onboardingData} onAuth={async (u) => {
     setUser(u);
     userRef.current = u;
-    // Sauvegarder le sport dans le profil
-    if (onboardingData?.sport) {
-      await supabase.from("profiles").upsert({ id: u.id, sport: onboardingData.sport, poids: onboardingData.poids || null, age: onboardingData.age || null, taille: onboardingData.taille || null }, { onConflict: "id" });
+    let ob = onboardingData;
+    // Email confirmé dans un autre onglet/appareil : on reprend les réponses gardées avec le compte, s'il n'a pas encore de programme
+    if (!ob && u.user_metadata?.onboarding) {
+      const { data: progs } = await supabase.from("programmes").select("id").eq("user_id", u.id).limit(1);
+      if (!progs?.length) {
+        ob = u.user_metadata.onboarding;
+        setOnboardingData(ob);
+        setSportActif(ob.sport);
+      }
     }
-    if (onboardingData) {
+    // Sauvegarder le sport dans le profil
+    if (ob?.sport) {
+      await supabase.from("profiles").upsert({ id: u.id, sport: ob.sport, poids: ob.poids || null, age: ob.age || null, taille: ob.taille || null }, { onConflict: "id" });
+    }
+    if (ob) {
       // Toujours regenerer apres auth — maintenant on a une session valide
       setScreen("pricing");
-      startGeneration(onboardingData);
+      startGeneration(ob);
     } else {
       setScreen("app");
     }
