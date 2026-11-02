@@ -3500,31 +3500,192 @@ function HistoriqueScreen() {
 // ─────────────────────────────────────────────
 // PROFIL
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// MON ABONNEMENT — infos, offre de retention, resiliation guidee
+// ─────────────────────────────────────────────
+async function callSubscription(action, extra = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Session expirée, reconnecte-toi.");
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-portal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
+    body: JSON.stringify({ action, return_url: window.location.origin, ...extra }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { const e = new Error(data.error || "Erreur"); e.code = data.error; throw e; }
+  return data;
+}
+
+function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
+  const [info, setInfo] = useState(null);
+  const [loadErr, setLoadErr] = useState("");
+  const [flow, setFlow] = useState(0); // 0 normal, 1 avant de partir, 2 offre, 3 confirmation
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const load = async () => {
+    try { setInfo(await callSubscription("info")); setLoadErr(""); }
+    catch (e) { setLoadErr(e.code === "no_subscription" ? "none" : (e.message || "Erreur")); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const dateFr = (unix) => unix ? new Date(unix * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
+  const isYear = info?.interval === "year";
+  const planLabel = info ? `${isYear ? "Annuel" : "Mensuel"} · ${String(info.amount).replace(".", ",")} €/${isYear ? "an" : "mois"}` : "";
+
+  const goPortal = async (action) => {
+    setBusy(true); setMsg("");
+    try { const d = await callSubscription(action, { reason }); if (d.url) { window.location.href = d.url; return; } }
+    catch (e) { setMsg(e.message || "Erreur, réessaie."); }
+    setBusy(false);
+  };
+  const takeOffer = async (type) => {
+    setBusy(true); setMsg("");
+    try {
+      await callSubscription("offer", { type, reason });
+      setFlow(0); await load();
+      setMsg(type === "free_month" ? "✓ Ton prochain mois est offert. Merci de rester avec nous !" : "✓ Ta réduction de 30 % est appliquée. Merci de rester avec nous !");
+    } catch (e) { setMsg(e.code === "offer_used" ? "Tu as déjà profité d'une offre de fidélité." : (e.message || "Erreur, réessaie.")); }
+    setBusy(false);
+  };
+  const resume = async () => {
+    setBusy(true); setMsg("");
+    try { await callSubscription("resume"); await load(); setMsg("✓ Ton abonnement est réactivé."); }
+    catch (e) { setMsg(e.message || "Erreur, réessaie."); }
+    setBusy(false);
+  };
+
+  const card = { background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 };
+  const h = { fontFamily: "'Inter',sans-serif", fontWeight: 800, color: DS.colors.textPrimary, margin: 0 };
+  const t = { fontFamily: "'Inter',sans-serif", fontSize: 13, lineHeight: 1.55, color: DS.colors.textSec, margin: 0 };
+  const btnMain = { width: "100%", height: 52, borderRadius: DS.radius.md, background: accent, border: "none", color: "#000", fontSize: 15, fontFamily: "'Inter',sans-serif", fontWeight: 800, cursor: "pointer" };
+  const btnGhost = { width: "100%", height: 46, borderRadius: DS.radius.md, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, color: DS.colors.textPrimary, fontSize: 14, fontFamily: "'Inter',sans-serif", fontWeight: 700, cursor: "pointer" };
+  const link = { fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, textDecoration: "underline", cursor: "pointer", textAlign: "center", margin: "14px 0 0" };
+  const REASONS = ["Trop cher", "Je ne m'en sers pas assez", "Je n'ai pas trouvé ce que je cherchais", "Je fais une pause", "Autre"];
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: DS.colors.bg, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ padding: "52px 16px 12px", display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${DS.colors.border}`, position: "sticky", top: 0, background: DS.colors.bg, zIndex: 2 }}>
+        <button onClick={flow ? () => setFlow(0) : onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: 20, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 16, cursor: "pointer" }}>←</button>
+        <p style={{ ...h, fontSize: 18 }}>Mon abonnement</p>
+      </div>
+
+      <div style={{ padding: "20px 16px 80px", maxWidth: 520, margin: "0 auto" }}>
+        {msg && <div style={{ ...card, borderColor: `${accent}60`, background: `${accent}12` }}><p style={{ ...t, color: DS.colors.textPrimary, fontWeight: 600 }}>{msg}</p></div>}
+
+        {!info && !loadErr && <p style={{ ...t, textAlign: "center", marginTop: 40 }}>Chargement...</p>}
+        {loadErr === "none" && (
+          <div style={card}>
+            <p style={{ ...h, fontSize: 16, marginBottom: 8 }}>Aucun abonnement récurrent</p>
+            <p style={t}>Ton accès Pro n'est lié à aucun abonnement à renouveler (accès à vie, ou abonnement déjà terminé). Une question ? contact.voltra1@gmail.com</p>
+          </div>
+        )}
+        {loadErr && loadErr !== "none" && (
+          <div style={card}><p style={t}>Impossible de charger ton abonnement ({loadErr}). Réessaie ou écris à contact.voltra1@gmail.com</p></div>
+        )}
+
+        {info && flow === 0 && (
+          <>
+            <div style={{ ...card, borderColor: `${accent}50` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <span style={{ fontSize: 20 }}>⭐</span>
+                <p style={{ ...h, fontSize: 18 }}>Voltra Pro</p>
+              </div>
+              <p style={{ ...t, color: DS.colors.textPrimary, fontWeight: 600 }}>{planLabel}</p>
+              <p style={{ ...t, marginTop: 6 }}>
+                {info.cancelAtPeriodEnd ? `Résiliation prévue : ton accès reste actif jusqu'au ${dateFr(info.periodEnd)}.`
+                  : info.paused ? `Pause active : ton prochain mois est offert.`
+                  : `Prochain renouvellement le ${dateFr(info.periodEnd)}.`}
+                {info.hasDiscount && !info.cancelAtPeriodEnd ? " 🎁 Réduction de fidélité appliquée." : ""}
+              </p>
+              {info.cancelAtPeriodEnd && <button onClick={resume} disabled={busy} style={{ ...btnMain, marginTop: 14 }}>{busy ? "..." : "Réactiver mon abonnement"}</button>}
+            </div>
+
+            <div style={card}>
+              <p style={{ ...h, fontSize: 14, marginBottom: 12 }}>Ce que Voltra Pro t'apporte</p>
+              <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                <div style={{ flex: 1, background: DS.colors.surfaceHigh, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}><p style={{ ...h, fontSize: 22, color: accent }}>{totalSeances || 0}</p><p style={{ ...t, fontSize: 11 }}>séances</p></div>
+                <div style={{ flex: 1, background: DS.colors.surfaceHigh, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}><p style={{ ...h, fontSize: 22, color: accent }}>{memberDays || 0}</p><p style={{ ...t, fontSize: 11 }}>jours actifs</p></div>
+              </div>
+              <p style={t}>✓ Programme IA personnalisé et cycles évolutifs{"\n"}✓ Coach Ace illimité pendant tes séances{"\n"}✓ Séances et progression sans limite</p>
+            </div>
+
+            <div style={card}>
+              <p style={{ ...h, fontSize: 14, marginBottom: 6 }}>Paiement et factures</p>
+              <p style={{ ...t, marginBottom: 12 }}>Change ta carte bancaire, consulte et télécharge tes factures.</p>
+              <button onClick={() => goPortal("portal")} disabled={busy} style={btnGhost}>{busy ? "Ouverture..." : "Moyen de paiement et factures"}</button>
+            </div>
+
+            {!info.cancelAtPeriodEnd && (
+              <p onClick={() => { setMsg(""); setFlow(1); }} style={link}>Résilier mon abonnement</p>
+            )}
+          </>
+        )}
+
+        {info && flow === 1 && (
+          <>
+            <div style={card}>
+              <p style={{ ...h, fontSize: 20, marginBottom: 8 }}>Avant de partir…</p>
+              <p style={t}>Tu as fait <b style={{ color: accent }}>{totalSeances || 0} séance{totalSeances > 1 ? "s" : ""}</b> avec Voltra. En résiliant, tu perdras à la fin de ta période d'accès :{"\n"}• ton programme IA qui évolue avec toi{"\n"}• le coach Ace pendant tes séances{"\n"}• les séances illimitées</p>
+            </div>
+            <div style={card}>
+              <p style={{ ...h, fontSize: 14, marginBottom: 10 }}>Pourquoi veux-tu partir ? (facultatif)</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {REASONS.map(r => (
+                  <div key={r} onClick={() => setReason(r)} style={{ padding: "9px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 600, background: reason === r ? accent : DS.colors.surfaceHigh, color: reason === r ? "#000" : DS.colors.textSec, border: `1px solid ${reason === r ? accent : DS.colors.border}` }}>{r}</div>
+                ))}
+              </div>
+            </div>
+            <button onClick={onBack} style={btnMain}>Garder mon abonnement</button>
+            <p onClick={() => setFlow(info.offerUsed ? 3 : 2)} style={link}>Continuer la résiliation</p>
+          </>
+        )}
+
+        {info && flow === 2 && (
+          <>
+            <div style={{ ...card, borderColor: `${accent}60` }}>
+              <p style={{ ...h, fontSize: 20, marginBottom: 8 }}>🎁 Une offre rien que pour toi</p>
+              <p style={t}>On préfère te garder. Choisis ce qui te convient :</p>
+            </div>
+            <div style={card}>
+              <p style={{ ...h, fontSize: 16, marginBottom: 4 }}>−30 % {isYear ? "sur ton prochain renouvellement" : "pendant 3 mois"}</p>
+              <p style={{ ...t, marginBottom: 12 }}>{isYear ? "Une seule fois, au prochain paiement annuel." : "Appliqué automatiquement sur tes 3 prochaines factures."} Sans engagement, tu peux toujours résilier ensuite.</p>
+              <button onClick={() => takeOffer("discount")} disabled={busy} style={btnMain}>{busy ? "..." : "Profiter de −30 %"}</button>
+            </div>
+            {!isYear && (
+              <div style={card}>
+                <p style={{ ...h, fontSize: 16, marginBottom: 4 }}>1 mois offert</p>
+                <p style={{ ...t, marginBottom: 12 }}>On met ton abonnement en pause : ton prochain mois ne te coûte rien, et tu gardes ton accès Pro.</p>
+                <button onClick={() => takeOffer("free_month")} disabled={busy} style={btnGhost}>{busy ? "..." : "Profiter d'un mois offert"}</button>
+              </div>
+            )}
+            <p onClick={() => setFlow(3)} style={link}>Non merci, je veux résilier</p>
+          </>
+        )}
+
+        {info && flow === 3 && (
+          <>
+            <div style={card}>
+              <p style={{ ...h, fontSize: 20, marginBottom: 8 }}>Dernière étape</p>
+              <p style={t}>Ton accès Pro reste actif jusqu'au <b>{dateFr(info.periodEnd)}</b>, puis il s'arrêtera. Tu ne seras plus facturé. Tu garderas ton compte et ton historique.</p>
+            </div>
+            <button onClick={onBack} style={btnMain}>Finalement, je reste</button>
+            <button onClick={() => goPortal("cancel_flow")} disabled={busy} style={{ ...btnGhost, marginTop: 12, color: "#FF2D55", borderColor: "rgba(255,45,85,0.3)" }}>{busy ? "Ouverture..." : "Confirmer la résiliation"}</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appTheme, onThemeChange, onLogout, onRegenerateProgram }) {
   const [notifOn, setNotifOn] = useState(false);
   const [notifHeure, setNotifHeure] = useState("08:00");
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [editData, setEditData] = useState({ sport: null, objectif: null, frequence: 3, jours: [1, 3, 5] });
   const [showLegal, setShowLegal] = useState(null);
-  const [portalLoading, setPortalLoading] = useState(false);
-  const [portalMsg, setPortalMsg] = useState("");
-  const openPortal = async () => {
-    setPortalMsg(""); setPortalLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Session expirée, reconnecte-toi.");
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-portal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({ return_url: window.location.origin }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (data.url) { window.location.href = data.url; return; }
-      if (data.error === "no_subscription") setPortalMsg("Aucun abonnement récurrent à résilier (accès à vie ou abonnement déjà terminé). Besoin d'aide ? contact.voltra1@gmail.com");
-      else setPortalMsg("Impossible d'ouvrir la gestion de l'abonnement. Réessaie ou écris à contact.voltra1@gmail.com");
-    } catch (e) { setPortalMsg(e.message || "Erreur, réessaie."); }
-    setPortalLoading(false);
-  };
+  const [showSub, setShowSub] = useState(false);
   const [saving, setSaving] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
@@ -3931,10 +4092,8 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
               <span style={{ fontSize: 18 }}>⭐</span>
               <p style={{ flex: 1, color: DS.colors.textPrimary, fontSize: 15, margin: 0, fontFamily: "'Inter',sans-serif", fontWeight: 800 }}>Voltra Pro actif</p>
             </div>
-            <p onClick={openPortal} style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, textDecoration: "underline", cursor: "pointer", margin: 0 }}>
-              {portalLoading ? "Ouverture..." : "Gérer mon abonnement"}
-            </p>
-            {portalMsg && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginTop: 10, lineHeight: 1.5 }}>{portalMsg}</p>}
+            <p onClick={() => setShowSub(true)} style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, textDecoration: "underline", cursor: "pointer", margin: 0 }}>Gérer mon abonnement</p>
+            {showSub && <SubscriptionScreen onBack={() => setShowSub(false)} accent={theme.accent} totalSeances={totalSeancesAllTime} memberDays={memberSinceDays} />}
           </div>
         )}
 
