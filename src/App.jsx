@@ -1716,7 +1716,92 @@ function SplashScreen({ onDone }) {
 // ─────────────────────────────────────────────
 // ECRAN AUTH
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// DOCUMENTS LEGAUX
+// ─────────────────────────────────────────────
+const LEGAL_EMAIL = "contact.voltra1@gmail.com";
+const LEGAL_DATE = "1er novembre 2026";
+const LEGAL_DOCS = {
+  cgu: {
+    label: "CGU",
+    title: "Conditions générales d'utilisation et de vente",
+    sections: [
+      ["1. Objet", "Voltra est une application web de préparation physique qui génère des programmes d'entraînement personnalisés grâce à l'intelligence artificielle, et propose un coach virtuel (Ace). Les présentes conditions encadrent l'utilisation de l'application et la vente des abonnements. En créant un compte, tu les acceptes."],
+      ["2. Éditeur", `Voltra, édité par Erwan Mantouba, Rennes (35000), France. Contact : ${LEGAL_EMAIL}.`],
+      ["3. Compte", "Tu dois avoir au moins 12 ans pour créer un compte. Les moins de 15 ans doivent avoir l'accord de leur représentant légal pour l'utilisation de leurs données personnelles, et les mineurs doivent avoir l'accord de leur représentant légal pour tout achat. Tu es responsable de la confidentialité de tes identifiants et des informations que tu fournis, qui doivent être exactes."],
+      ["4. Offres et prix", "Voltra propose une offre gratuite (accès limité) et des offres payantes (abonnement mensuel, abonnement annuel, accès à vie). Les tarifs en vigueur sont affichés dans l'application, toutes taxes comprises, avant le paiement. Les paiements sont traités de façon sécurisée par Stripe ; Voltra n'a jamais accès à tes données bancaires."],
+      ["5. Abonnements et résiliation", `Les abonnements se renouvellent automatiquement à chaque échéance (mensuelle ou annuelle) jusqu'à résiliation. Tu peux résilier à tout moment, en quelques clics, depuis ton profil (« Gérer mon abonnement »), ou en écrivant à ${LEGAL_EMAIL} ; la résiliation prend effet à la prochaine échéance et l'accès Pro reste actif jusqu'à la fin de la période déjà payée. L'accès à vie est un paiement unique, valable tant que le service Voltra est exploité. Une réduction de bienvenue (code promotionnel) peut s'appliquer au premier mois uniquement, dans les conditions affichées lors de l'offre.`],
+      ["6. Droit de rétractation", `Conformément au Code de la consommation, tu disposes de 14 jours à compter de ta souscription pour te rétracter, sans avoir à te justifier, en écrivant à ${LEGAL_EMAIL}. Le contenu numérique (programme généré, accès Pro) étant fourni immédiatement, en validant ton achat tu demandes l'exécution immédiate du service et reconnais perdre ton droit de rétractation une fois le service pleinement exécuté ; en cas de rétractation dans le délai, tu ne paies que la part de service déjà utilisée.`],
+      ["7. Santé et sécurité — important", "Voltra fournit des conseils sportifs généraux et ne remplace en aucun cas un avis médical. Avant de commencer un programme, consulte un médecin, surtout en cas de blessure, de douleur, de pathologie, de grossesse ou de reprise après une longue pause. Les programmes et les réponses du coach IA sont générés automatiquement : ils peuvent comporter des erreurs et doivent être adaptés à ta condition. Tu t'entraînes sous ta seule responsabilité et tu arrêtes immédiatement en cas de douleur ou de malaise. Dans la mesure permise par la loi, Voltra ne peut être tenu responsable des blessures liées à une mauvaise utilisation du service."],
+      ["8. Utilisation acceptable", "Tu t'engages à ne pas détourner l'application (piratage, extraction automatisée, partage de ton compte, contournement des limites de l'offre gratuite) ni à demander au coach IA des contenus illicites ou dangereux. Voltra peut suspendre un compte en cas d'abus."],
+      ["9. Propriété intellectuelle", "L'application, son design, sa marque et ses contenus sont protégés. Tu bénéficies d'un droit d'usage personnel, non exclusif et non transférable. Les programmes générés pour toi sont à ton usage personnel."],
+      ["10. Disponibilité", "Voltra met tout en œuvre pour assurer un service continu mais ne garantit pas une disponibilité permanente (maintenance, incident, dépendance à des services tiers). Les fonctionnalités peuvent évoluer."],
+      ["11. Suppression du compte", `Tu peux demander la suppression de ton compte et de tes données à tout moment à ${LEGAL_EMAIL}. Elle est effectuée dans un délai maximum de 30 jours.`],
+      ["12. Droit applicable et litiges", `Les présentes conditions sont soumises au droit français. En cas de litige, contacte-nous d'abord à ${LEGAL_EMAIL} pour trouver une solution amiable. Tu peux aussi recourir gratuitement à un médiateur de la consommation ou à la plateforme européenne de règlement en ligne des litiges, et tu conserves la faculté de saisir les tribunaux compétents.`],
+      ["Dernière mise à jour", LEGAL_DATE],
+    ],
+  },
+  privacy: {
+    label: "Confidentialité",
+    title: "Politique de confidentialité",
+    sections: [
+      ["Responsable du traitement", `Voltra, édité par Erwan Mantouba, Rennes (35000), France — ${LEGAL_EMAIL}.`],
+      ["Données que nous collectons", "• Compte : prénom, adresse e-mail, mot de passe (stocké chiffré, jamais lisible).\n• Profil sportif : sport, objectif, poste ou discipline, niveau, fréquence et jours d'entraînement, équipement.\n• Données de santé : zones de douleur ou de blessure, poids, âge, taille. Ces informations sont facultatives et servent uniquement à adapter tes programmes.\n• Activité : séances réalisées, charges, répétitions, historique, records.\n• Photo de profil (facultative).\n• Échanges avec le coach IA.\n• Paiement : géré par Stripe ; nous recevons seulement l'état de ton abonnement, jamais ton numéro de carte."],
+      ["Pourquoi (finalités et bases légales)", "• Créer ton compte et fournir le service, générer tes programmes et le coach IA : exécution du contrat.\n• Traiter tes données de santé (blessures, poids, âge) pour personnaliser l'entraînement : ton consentement explicite, que tu donnes en les renseignant et que tu peux retirer à tout moment.\n• Gérer les paiements et obligations comptables : exécution du contrat et obligation légale.\n• Sécuriser le service et prévenir les abus : intérêt légitime."],
+      ["Intelligence artificielle", "Pour générer ton programme et répondre au coach, les informations utiles de ton profil (sport, objectif, niveau, blessures, poids, âge, séance en cours) et tes messages sont transmis à notre prestataire d'IA (Anthropic). Ton adresse e-mail et ton identité ne sont pas nécessaires à cette génération. Les décisions prises par l'IA (programme, conseils) ne produisent pas d'effet juridique sur toi."],
+      ["Prestataires et transferts hors UE", "Nous faisons appel à : Supabase (base de données, authentification, stockage), Vercel (hébergement de l'application), Stripe (paiement), Anthropic (intelligence artificielle), ainsi qu'à des services d'illustrations d'exercices (ExerciseDB, Pexels). Certains sont situés aux États-Unis ou ailleurs hors Union européenne ; les transferts sont encadrés par des garanties appropriées (clauses contractuelles types de la Commission européenne ou équivalent). Nous ne vendons jamais tes données."],
+      ["Durée de conservation", "Tes données sont conservées tant que ton compte est actif, puis supprimées dans un délai de 30 jours après la suppression du compte. Les données de facturation sont conservées 10 ans (obligation légale comptable) par notre prestataire de paiement."],
+      ["Tes droits", `Tu disposes des droits d'accès, de rectification, d'effacement, de limitation, d'opposition, de portabilité et du droit de retirer ton consentement à tout moment. Pour les exercer : ${LEGAL_EMAIL} (réponse sous 1 mois). Tu peux aussi modifier tes informations directement dans ton profil. En cas de désaccord, tu peux saisir la CNIL (www.cnil.fr).`],
+      ["Cookies et stockage local", "Voltra utilise uniquement le stockage de ton navigateur pour le fonctionnement de l'application (session de connexion, thème clair/sombre, séance en pause). Nous n'utilisons pas de cookies publicitaires."],
+      ["Mineurs", `Voltra est accessible dès 12 ans. Pour les moins de 15 ans, le traitement des données (y compris de santé) nécessite l'accord d'un représentant légal ; sur demande à ${LEGAL_EMAIL}, nous supprimons sans délai les données d'un mineur collectées sans cet accord.`],
+      ["Sécurité", "Les échanges sont chiffrés (HTTPS) et l'accès aux données est protégé par des règles d'accès par utilisateur. Aucun système n'étant infaillible, nous t'informerons en cas d'incident te concernant, conformément à la loi."],
+      ["Dernière mise à jour", LEGAL_DATE],
+    ],
+  },
+  mentions: {
+    label: "Mentions légales",
+    title: "Mentions légales",
+    sections: [
+      ["Éditeur du site", `Voltra — édité par Erwan Mantouba.\nAdresse : Rennes (35000), France.\nEmail : ${LEGAL_EMAIL}\nDirecteur de la publication : Erwan Mantouba.`],
+      ["Hébergement", "Application hébergée par Vercel Inc. (États-Unis). Base de données et authentification : Supabase."],
+      ["Propriété intellectuelle", "L'ensemble des éléments de l'application (marque Voltra, logo, textes, design, programmes) est protégé par le droit de la propriété intellectuelle. Toute reproduction sans autorisation est interdite."],
+      ["Contact", `Pour toute question ou réclamation : ${LEGAL_EMAIL}.`],
+    ],
+  },
+};
+
+function LegalScreen({ initial = "cgu", onBack }) {
+  const [tab, setTab] = useState(initial);
+  const doc = LEGAL_DOCS[tab];
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: DS.colors.bg, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ position: "sticky", top: 0, background: DS.colors.bg, borderBottom: `1px solid ${DS.colors.border}`, padding: "52px 16px 12px", zIndex: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <button onClick={onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: 20, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 16, cursor: "pointer" }}>←</button>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 18, color: DS.colors.textPrimary, margin: 0 }}>Informations légales</p>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {Object.keys(LEGAL_DOCS).map(k => (
+            <div key={k} onClick={() => setTab(k)} style={{ flex: 1, textAlign: "center", padding: "9px 4px", borderRadius: 10, cursor: "pointer", background: tab === k ? DS.colors.primary : DS.colors.surfaceHigh, color: tab === k ? "#000" : DS.colors.textSec, fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700 }}>{LEGAL_DOCS[k].label}</div>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding: "20px 20px 80px", maxWidth: 560, margin: "0 auto" }}>
+        <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 22, color: DS.colors.textPrimary, margin: "0 0 20px", letterSpacing: "-0.01em" }}>{doc.title}</h1>
+        {doc.sections.map(([h, p], i) => (
+          <div key={tab + i} style={{ marginBottom: 20 }}>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 14, color: DS.colors.textPrimary, margin: "0 0 6px" }}>{h}</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, lineHeight: 1.6, color: DS.colors.textSec, margin: 0, whiteSpace: "pre-line" }}>{p}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AuthScreen({ onAuth }) {
+  const [accepted, setAccepted] = useState(false);
+  const [showLegal, setShowLegal] = useState(null);
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -1734,6 +1819,7 @@ function AuthScreen({ onAuth }) {
     setError(""); setSuccess("");
     if (!email || !password) { setError("Remplis tous les champs."); return; }
     if (mode === "signup" && !name) { setError("Entre ton prénom."); return; }
+    if (mode === "signup" && !accepted) { setError("Accepte les CGU et la politique de confidentialité pour continuer."); return; }
     if (password.length < 6) { setError("Mot de passe : 6 caractères minimum."); return; }
     setLoading(true);
     if (mode === "signup") {
@@ -1861,6 +1947,14 @@ function AuthScreen({ onAuth }) {
         {mode === "signup" && <Input label="Prénom" value={name} onChange={setName} placeholder="Alex" />}
         <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="alex@email.com" />
         <Input label="Mot de passe" type="password" value={password} onChange={setPassword} placeholder="Min. 6 caractères" />
+        {mode === "signup" && (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 16 }}>
+            <div onClick={() => setAccepted(a => !a)} style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1, cursor: "pointer", background: accepted ? DS.colors.primary : "transparent", border: `2px solid ${accepted ? DS.colors.primary : DS.colors.textSec}`, display: "flex", alignItems: "center", justifyContent: "center", color: "#000", fontSize: 13, fontWeight: 800 }}>{accepted ? "✓" : ""}</div>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, lineHeight: 1.5, color: DS.colors.textSec, margin: 0 }}>
+              J'ai au moins 12 ans (accord d'un parent si moins de 15 ans) et j'accepte les <span onClick={() => setShowLegal("cgu")} style={{ color: DS.colors.primary, fontWeight: 700, textDecoration: "underline", cursor: "pointer" }}>CGU</span> et la <span onClick={() => setShowLegal("privacy")} style={{ color: DS.colors.primary, fontWeight: 700, textDecoration: "underline", cursor: "pointer" }}>politique de confidentialité</span>, et que mes données de santé facultatives (blessures, poids, âge) soient utilisées pour personnaliser mon programme.
+            </p>
+          </div>
+        )}
         {error && <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.warning, fontSize: 13 }}>⚠ {error}</p></div>}
         {success && <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(76,175,80,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.success, fontSize: 13 }}>✓ {success}</p></div>}
         {loading ? (
@@ -1877,7 +1971,10 @@ function AuthScreen({ onAuth }) {
           </button>
         )}
       </div>
-      <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", paddingBottom: 40, fontFamily: "'Inter',sans-serif" }}>En continuant, tu acceptes nos CGU.</p>
+      <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", paddingBottom: 40, fontFamily: "'Inter',sans-serif" }}>
+        <span onClick={() => setShowLegal("cgu")} style={{ textDecoration: "underline", cursor: "pointer" }}>CGU</span> · <span onClick={() => setShowLegal("privacy")} style={{ textDecoration: "underline", cursor: "pointer" }}>Confidentialité</span> · <span onClick={() => setShowLegal("mentions")} style={{ textDecoration: "underline", cursor: "pointer" }}>Mentions légales</span>
+      </p>
+      {showLegal && <LegalScreen initial={showLegal} onBack={() => setShowLegal(null)} />}
     </div>
   );
 }
@@ -3403,11 +3500,31 @@ function HistoriqueScreen() {
 // ─────────────────────────────────────────────
 // PROFIL
 // ─────────────────────────────────────────────
-function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, onThemeChange, onLogout, onRegenerateProgram }) {
+function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appTheme, onThemeChange, onLogout, onRegenerateProgram }) {
   const [notifOn, setNotifOn] = useState(false);
   const [notifHeure, setNotifHeure] = useState("08:00");
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [editData, setEditData] = useState({ sport: null, objectif: null, frequence: 3, jours: [1, 3, 5] });
+  const [showLegal, setShowLegal] = useState(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalMsg, setPortalMsg] = useState("");
+  const openPortal = async () => {
+    setPortalMsg(""); setPortalLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Session expirée, reconnecte-toi.");
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-portal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ return_url: window.location.origin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.url) { window.location.href = data.url; return; }
+      if (data.error === "no_subscription") setPortalMsg("Aucun abonnement récurrent à résilier (accès à vie ou abonnement déjà terminé). Besoin d'aide ? contact.voltra1@gmail.com");
+      else setPortalMsg("Impossible d'ouvrir la gestion de l'abonnement. Réessaie ou écris à contact.voltra1@gmail.com");
+    } catch (e) { setPortalMsg(e.message || "Erreur, réessaie."); }
+    setPortalLoading(false);
+  };
   const [saving, setSaving] = useState(false);
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
@@ -3806,6 +3923,37 @@ function ProfilScreen({ user, programme, sportActif: sportActifProp, appTheme, o
             </div>
           </div>
         </div>
+
+        {/* Abonnement */}
+        {isPro && (
+          <div style={{ background: DS.colors.surface, border: `1px solid ${theme.accent}40`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 18 }}>⭐</span>
+              <p style={{ flex: 1, color: DS.colors.textPrimary, fontSize: 15, margin: 0, fontFamily: "'Inter',sans-serif", fontWeight: 800 }}>Voltra Pro actif</p>
+            </div>
+            <button onClick={openPortal} disabled={portalLoading} style={{ width: "100%", height: 46, borderRadius: DS.radius.md, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, color: DS.colors.textPrimary, fontSize: 14, fontFamily: "'Inter',sans-serif", fontWeight: 700, cursor: "pointer" }}>
+              {portalLoading ? "Ouverture..." : "Gérer mon abonnement / résilier"}
+            </button>
+            {portalMsg && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginTop: 10, lineHeight: 1.5 }}>{portalMsg}</p>}
+          </div>
+        )}
+
+        {/* Informations legales */}
+        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, marginBottom: 14, overflow: "hidden" }}>
+          {[["cgu", "📄", "Conditions d'utilisation"], ["privacy", "🔒", "Politique de confidentialité"], ["mentions", "ℹ️", "Mentions légales"]].map(([k, ic, label], i) => (
+            <div key={k} onClick={() => setShowLegal(k)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", cursor: "pointer", borderTop: i ? `1px solid ${DS.colors.border}` : "none" }}>
+              <span style={{ fontSize: 18 }}>{ic}</span>
+              <p style={{ flex: 1, color: DS.colors.textPrimary, fontSize: 14, margin: 0, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>{label}</p>
+              <span style={{ color: DS.colors.textSec }}>›</span>
+            </div>
+          ))}
+          <a href="mailto:contact.voltra1@gmail.com?subject=Voltra%20-%20Support%20ou%20donn%C3%A9es" style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", borderTop: `1px solid ${DS.colors.border}`, textDecoration: "none" }}>
+            <span style={{ fontSize: 18 }}>✉️</span>
+            <p style={{ flex: 1, color: DS.colors.textPrimary, fontSize: 14, margin: 0, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>Support · supprimer mes données</p>
+            <span style={{ color: DS.colors.textSec }}>›</span>
+          </a>
+        </div>
+        {showLegal && <LegalScreen initial={showLegal} onBack={() => setShowLegal(null)} />}
 
         {/* Deconnexion */}
         <div onClick={onLogout} style={{ background: "rgba(255,45,85,0.06)", border: "1px solid rgba(255,45,85,0.15)", borderRadius: DS.radius.xl, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
@@ -4735,7 +4883,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
             />
           )}
           {activeTab === "historique" && <HistoriqueScreen />}
-          {activeTab === "profil" && <ProfilScreen user={user} programme={programmeActif} sportActif={sportActif} appTheme={appTheme} onThemeChange={setAppTheme} onLogout={handleLogout} onRegenerateProgram={async (data, shouldRegen = true) => {
+          {activeTab === "profil" && <ProfilScreen isPro={isPro} user={user} programme={programmeActif} sportActif={sportActif} appTheme={appTheme} onThemeChange={setAppTheme} onLogout={handleLogout} onRegenerateProgram={async (data, shouldRegen = true) => {
             try {
               if (shouldRegen) {
                 const prog0 = await generateProgramIA(data);
