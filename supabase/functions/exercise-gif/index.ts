@@ -13,7 +13,7 @@ const supabase = createClient(
 );
 
 // Version du cache : les anciennes images (mauvaise correspondance, 180 px) sont ignorées
-const VERSION = "v2";
+const VERSION = "v3";
 
 // Résolutions essayées de la meilleure à la plus petite (selon l'abonnement ExerciseDB)
 const RESOLUTIONS = (Deno.env.get("EXERCISEDB_RESOLUTIONS") || "720,360,180").split(",").map(r => r.trim());
@@ -44,6 +44,20 @@ function equipementDemande(term: string, materiel?: string): string[] | null {
   return null;
 }
 
+// Noms courants -> noms utilisés par ExerciseDB
+const SYNONYMES: [RegExp, string][] = [
+  [/\bback squat\b/, "full squat"],
+  [/\bpush ?ups?\b/, "push-up"],
+  [/\bpull ?ups?\b/, "pull-up"],
+  [/\bchin ?ups?\b/, "chin-up"],
+  [/\bstep ?ups?\b/, "step-up"],
+  [/\bsit ?ups?\b/, "sit-up"],
+  [/\brdl\b/, "romanian deadlift"],
+  [/\bmilitary press\b/, "overhead press"],
+  [/\bskull ?crushers?\b/, "lying triceps extension"],
+];
+const normaliser = (t: string) => SYNONYMES.reduce((acc, [re, rep]) => acc.replace(re, rep), t);
+
 const MOTS_VIDES = new Set(["with", "and", "the", "a", "on", "to", "of", "for", "dumbbell", "dumbbells", "barbell", "kettlebell", "cable", "band", "machine", "body", "weight", "bodyweight", "medicine", "ball"]);
 const mots = (t: string) => t.toLowerCase().replace(/[^a-z0-9 -]/g, " ").split(/\s+/).filter(w => w && !MOTS_VIDES.has(w));
 
@@ -52,7 +66,7 @@ function score(demande: string, ex: any, equip: string[] | null): number {
   const a = mots(demande), b = new Set(mots(ex.name || ""));
   let s = 0;
   for (const w of a) if (b.has(w) || [...b].some(x => x.startsWith(w) || w.startsWith(x))) s += 2;
-  s -= Math.max(0, b.size - a.length) * 0.5; // pénalise les variantes trop éloignées
+  for (const x of b) if (!a.some(w => x.startsWith(w) || w.startsWith(x))) s -= 1; // mot en trop = variante différente
   if (equip) s += equip.includes(String(ex.equipment || "").toLowerCase()) ? 4 : -6;
   return s;
 }
@@ -88,7 +102,7 @@ serve(async (req) => {
 
     // 2. Recherche : nom complet, puis nom sans matériel, puis mot principal ; on garde le meilleur score
     const equip = equipementDemande(rawTerm, materiel);
-    const termeNet = rawTerm.replace(/[^a-z0-9 -]/g, " ").replace(/\s+/g, " ").trim();
+    const termeNet = normaliser(rawTerm.replace(/[^a-z0-9 -]/g, " ").replace(/\s+/g, " ").trim());
     const sansMateriel = mots(termeNet).join(" ");
     const motPrincipal = mots(termeNet).slice(-1)[0];
     const essais = [termeNet, sansMateriel, motPrincipal].filter((q, i, arr) => q && arr.indexOf(q) === i);
