@@ -21,7 +21,7 @@ function getNiveauCycle(niveau) {
   return 1;
 }
 
-async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age }) {
+async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Pas de session");
   const startCycle = cycle || getNiveauCycle(niveau);
@@ -34,7 +34,7 @@ async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, eq
         "Authorization": `Bearer ${session.access_token}`,
         "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle, startCycle, equipement, douleurs, poste, poids, age }),
+      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle, startCycle, equipement, douleurs, poste, poids, age, taille }),
     }
   );
   const data = await res.json();
@@ -45,6 +45,89 @@ async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, eq
 const DAY_OPTIONS = [{ i: 1, l: "Lun" }, { i: 2, l: "Mar" }, { i: 3, l: "Mer" }, { i: 4, l: "Jeu" }, { i: 5, l: "Ven" }, { i: 6, l: "Sam" }, { i: 0, l: "Dim" }];
 const DAY_NAMES = { 0: "dimanche", 1: "lundi", 2: "mardi", 3: "mercredi", 4: "jeudi", 5: "vendredi", 6: "samedi" };
 const DEFAULT_JOURS = { 1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
+
+// ─────────────────────────────────────────────
+// Garde-fous de charges (mêmes règles que la fonction serveur generate-program) :
+// corrige aussi les programmes créés avant (ex. 90 kg d'haltères par main).
+// Haltères et kettlebells : charge PAR MAIN / par unité.
+// ─────────────────────────────────────────────
+const RATIOS_CHARGE = {
+  barre: { squat: [0.6, 0.9, 1.25], hinge: [0.7, 1.1, 1.5], bench: [0.45, 0.7, 0.95], ohp: [0.3, 0.45, 0.6], row: [0.4, 0.6, 0.8], thrust: [0.7, 1.1, 1.6], lunge: [0.3, 0.45, 0.65], olympic: [0.3, 0.5, 0.75], curl: [0.15, 0.25, 0.35], defaut: [0.3, 0.45, 0.6] },
+  halteres: { squat: [0.12, 0.2, 0.3], hinge: [0.15, 0.25, 0.35], bench: [0.15, 0.25, 0.35], ohp: [0.1, 0.16, 0.22], row: [0.15, 0.25, 0.35], lunge: [0.1, 0.17, 0.25], curl: [0.06, 0.1, 0.14], raise: [0.04, 0.07, 0.11], olympic: [0.1, 0.15, 0.22], defaut: [0.08, 0.14, 0.2] },
+  haltere_unique: { squat: [0.2, 0.3, 0.4], thrust: [0.2, 0.3, 0.45], defaut: [0.15, 0.25, 0.35] },
+  kettlebell: { swing: [0.2, 0.3, 0.4], squat: [0.2, 0.3, 0.4], defaut: [0.12, 0.2, 0.28] },
+  machine: { legpress: [1.0, 1.6, 2.4], defaut: [0.4, 0.6, 0.9] },
+  poulie: { defaut: [0.2, 0.3, 0.45] },
+};
+const KETTLEBELLS = [4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48];
+const MEDBALLS = [2, 3, 4, 5, 6, 8, 10];
+const SANS_CHARGE = /push[- ]?up|pull[- ]?up|chin[- ]?up|plank|jump|sprint|burpee|hop|bound|skip|crunch|sit[- ]?up|mountain climber|bear crawl|dip\b|bodyweight|body weight|band|elastic|wall sit|dead bug|bird dog|stretch|mobility|shuffle|carioca|run|drill|leg raise|hollow|superman/;
+
+function detecterMateriel(ex) {
+  const m = String(ex.materiel || "").toLowerCase();
+  const n = `${ex.nomEn || ""} ${ex.nom || ""}`.toLowerCase();
+  if (/medicine ball|med ball|medball/.test(n) || m === "medball") return "medball";
+  if (/kettlebell|\bkb\b/.test(n) || m === "kettlebell") return "kettlebell";
+  if (/dumbbell|\bdb\b|halt[eè]re/.test(n) || m === "halteres" || m === "haltere") {
+    return /goblet|single dumbbell|one dumbbell|hip thrust|glute bridge/.test(n) ? "haltere_unique" : "halteres";
+  }
+  if (/cable|pulley|poulie/.test(n) || m === "poulie") return "poulie";
+  if (/machine|leg press|lever|smith|hack squat|leg extension|leg curl|pec deck|presse/.test(n) || m === "machine") return "machine";
+  if (/barbell|trap bar|hex bar|ez bar|\bbar\b|barre/.test(n) || m === "barre") return "barre";
+  if (/weighted|lest/.test(n)) return "halteres";
+  if (SANS_CHARGE.test(n) || m === "poids_du_corps" || m === "elastique") return "poids_du_corps";
+  return m || "inconnu";
+}
+
+function detecterMouvement(ex) {
+  const n = `${ex.nomEn || ""} ${ex.nom || ""}`.toLowerCase();
+  if (/leg press|presse/.test(n)) return "legpress";
+  if (/clean|snatch|jerk|epaul|arrach/.test(n)) return "olympic";
+  if (/swing/.test(n)) return "swing";
+  if (/hip thrust|glute bridge/.test(n)) return "thrust";
+  if (/lunge|split squat|step[- ]?up|fente/.test(n)) return "lunge";
+  if (/squat/.test(n)) return "squat";
+  if (/deadlift|rdl|romanian|good morning|hinge|soulev/.test(n)) return "hinge";
+  if (/bench|chest press|floor press|couch/.test(n)) return "bench";
+  if (/overhead|shoulder press|military|push press|arnold|militaire/.test(n)) return "ohp";
+  if (/row|pulldown|pull-down|rowing|tirage/.test(n)) return "row";
+  if (/curl/.test(n)) return "curl";
+  if (/raise|fly|flye|[eé]l[eé]vation/.test(n)) return "raise";
+  return "defaut";
+}
+
+function securiserExercice(ex, p) {
+  const materiel = detecterMateriel(ex);
+  const mouvement = detecterMouvement(ex);
+  const lvl = /^av/.test(String(p.niveau || "").toLowerCase()) ? 2 : /^inter/.test(String(p.niveau || "").toLowerCase()) ? 1 : 0;
+  let max;
+  if (!p.avecCharges || materiel === "poids_du_corps") max = 0;
+  else if (materiel === "medball") max = [4, 6, 8][lvl];
+  else {
+    const table = RATIOS_CHARGE[materiel] || RATIOS_CHARGE.halteres;
+    const poids = p.poids >= 30 && p.poids <= 250 ? p.poids : 65;
+    const age = p.age || 25;
+    const reps = Number((String(ex.reps ?? "").match(/\d+/) || [8])[0]);
+    max = poids * (table[mouvement] || table.defaut)[lvl]
+      * (age < 16 ? 0.7 : age < 18 ? 0.85 : age >= 55 ? 0.85 : 1)
+      * (1 + Math.min(Math.max((p.cycle || 1) - 1, 0), 3) * 0.05)
+      * (reps >= 15 ? 0.7 : reps >= 10 ? 0.85 : 1)
+      * 1.1; // marge pour la semaine 3 (+10 %)
+  }
+  let charge = Number(ex.chargeKg) || 0;
+  if (max === 0) charge = 0;
+  else if (charge <= 0) charge = max * 0.7;
+  else charge = Math.min(charge, max);
+  if (charge > 0) {
+    if (materiel === "kettlebell") charge = [...KETTLEBELLS].reverse().find(k => k <= charge) ?? 4;
+    else if (materiel === "medball") charge = [...MEDBALLS].reverse().find(k => k <= charge) ?? 2;
+    else if (materiel === "halteres" || materiel === "haltere_unique") charge = Math.max(2, Math.floor(charge / 2) * 2);
+    else if (materiel === "machine") charge = Math.max(5, Math.floor(charge / 5) * 5);
+    else if (materiel === "barre") charge = Math.max(mouvement === "curl" ? 10 : 20, Math.floor(charge / 2.5) * 2.5);
+    else charge = Math.max(2.5, Math.floor(charge / 2.5) * 2.5);
+  }
+  return { ...ex, chargeKg: charge, materiel, chargeUnite: materiel === "halteres" ? "par main" : (ex.chargeUnite || "") };
+}
 
 // Enregistre les jours d'entrainement choisis dans le programme
 async function attachJours(prog, jours) {
@@ -643,25 +726,25 @@ function RestTimer({ seconds, onComplete }) {
 
 // Cache local + Edge Function pour les GIFs animés ExerciseDB
 const gifCache = {};
-async function getExerciseGif(nomFr, nomEn) {
+async function getExerciseGif(nomFr, nomEn, materiel) {
   const key = (nomEn || nomFr || "").toLowerCase().trim();
   if (!key) return null;
   if (gifCache[key]) return gifCache[key];
   try {
-    const stored = localStorage.getItem(`voltra_gif_${key}`);
+    const stored = localStorage.getItem(`voltra_gif2_${key}`);
     if (stored) { gifCache[key] = stored; return stored; }
   } catch (e) {}
   try {
     const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/exercise-gif`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
-      body: JSON.stringify({ nom: nomFr, nomEn: nomEn }),
+      body: JSON.stringify({ nom: nomFr, nomEn: nomEn, materiel }),
     });
     if (!res.ok) return null;
     const data = await res.json();
     if (data.gifUrl) {
       gifCache[key] = data.gifUrl;
-      try { localStorage.setItem(`voltra_gif_${key}`, data.gifUrl); } catch (e) {}
+      try { localStorage.setItem(`voltra_gif2_${key}`, data.gifUrl); } catch (e) {}
       return data.gifUrl;
     }
   } catch (e) {}
@@ -812,7 +895,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
     setPhotoUrl(null);
     setGifUrl(null);
     // Priorite au GIF anime, verifie qu'il charge vraiment avant de l'afficher
-    getExerciseGif(currentEx.nom, currentEx.nomEn).then(async url => {
+    getExerciseGif(currentEx.nom, currentEx.nomEn, currentEx.materiel).then(async url => {
       if (url && await preloadImage(url)) {
         setGifUrl(url);
       } else {
@@ -1128,7 +1211,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", color: "rgba(255,255,255,0.4)", marginBottom: 2 }}>SÉRIE {setIdx + 1} SUR {totalSets}</p>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <span style={{ fontSize: 88, fontWeight: 900, lineHeight: 1, color: accentColor, letterSpacing: "-0.04em", textShadow: `0 0 50px ${accentColor}40` }}>{currentEx.reps}</span>
-            <span style={{ fontSize: 20, color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>{currentEx.chargeKg > 0 ? `× ${currentEx.chargeKg}kg` : "reps"}</span>
+            <span style={{ fontSize: 20, color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>{currentEx.chargeKg > 0 ? `× ${currentEx.chargeKg}kg${currentEx.chargeUnite === "par main" ? " /main" : ""}` : "reps"}</span>
           </div>
 
           {/* Séries cercles */}
@@ -4625,11 +4708,22 @@ export default function VoltraApp() {
   const [showDoubleSessionWarning, setShowDoubleSessionWarning] = useState(false);
   const [pendingSeance, setPendingSeance] = useState(null);
   const [authConfirmation, setAuthConfirmation] = useState(null);
+  const [profilPhysique, setProfilPhysique] = useState(null);
 
   const launchSeance = (rawSeance) => {
+    const dj = programmeActif?.data_json || {};
+    const profilCharges = {
+      poids: profilPhysique?.poids ?? onboardingData?.poids ?? null,
+      age: profilPhysique?.age ?? onboardingData?.age ?? null,
+      niveau: dj.niveau || programmeActif?.niveau || onboardingData?.niveau || "debutant",
+      cycle: dj.cycle || 1,
+      avecCharges: !["maison", "terrain"].includes(dj.equipement || onboardingData?.equipement),
+    };
     const seance = {
       ...rawSeance,
-      exercices: (rawSeance.exercices || []).map((ex, i) => ({
+      exercices: (rawSeance.exercices || []).map((ex, i) => securiserExercice({
+        materiel: ex.materiel || "",
+        chargeUnite: ex.chargeUnite || "",
         id: ex.id || `ex_${i}`,
         nom: ex.nom || "Exercice",
         nomEn: ex.nomEn || ex.nom_en || "",
@@ -4640,7 +4734,7 @@ export default function VoltraApp() {
         reposSec: ex.reposSec || ex.repos_sec || 90,
         conseil: ex.conseil || "",
         ordre: ex.ordre || i + 1,
-      }))
+      }, profilCharges))
     };
     setResumeState(null);
     localStorage.removeItem("voltra_paused_session");
@@ -4851,12 +4945,13 @@ export default function VoltraApp() {
     // Charger le sport et is_pro depuis le profil
     supabase
       .from("profiles")
-      .select("sport, is_pro")
+      .select("sport, is_pro, poids, age, taille")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
         if (data?.sport) setSportActif(data.sport);
         if (data?.is_pro) setIsPro(true);
+        if (data) setProfilPhysique({ poids: data.poids, age: data.age, taille: data.taille });
       });
     supabase
       .from("seances")
