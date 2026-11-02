@@ -2709,7 +2709,6 @@ function OnboardingScreen({ onComplete }) {
 // ─────────────────────────────────────────────
 function PricingScreen({ onSelectPlan, programme, frequence, user }) {
   const [selected, setSelected] = useState("annual");
-  const [timeLeft, setTimeLeft] = useState({ h: 23, m: 47, s: 12 });
   const [showFeatures, setShowFeatures] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stripeError, setStripeError] = useState("");
@@ -2769,17 +2768,6 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
     setLoading(false);
   };
 
-  useEffect(() => {
-    const t = setInterval(() => {
-      setTimeLeft(prev => {
-        let { h, m, s } = prev;
-        s--; if (s < 0) { s = 59; m--; } if (m < 0) { m = 59; h--; }
-        if (h < 0) return prev;
-        return { h, m, s };
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, []);
 
   const pad = n => String(n).padStart(2, "0");
   const currentPlan = PLANS.find(p => p.id === selected);
@@ -2841,14 +2829,6 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
           })}
         </div>
 
-        {selected === "lifetime" && (
-          <div className="v-up" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 14 }}>
-            <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginRight: 4 }}>Prix de lancement, encore</span>
-            {[timeLeft.h, timeLeft.m, timeLeft.s].map((val, i) => (
-              <span key={i} style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 13, fontVariantNumeric: "tabular-nums", color: DS.colors.textPrimary, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 8, padding: "4px 7px" }}>{pad(val)}{["h", "m", "s"][i]}</span>
-            ))}
-          </div>
-        )}
 
         {/* Ce qui est inclus */}
         <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 18, padding: "14px 18px", color: DS.colors.textPrimary, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "'Inter',sans-serif", marginBottom: 8 }}>
@@ -2876,7 +2856,7 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
           {!loading && <span className="v-shine" style={{ position: "absolute", inset: 0, borderRadius: DS.radius.full }} />}
           {loading ? "Redirection vers Stripe..." : `Continuer avec ${currentPlan.label}`}
         </PrimaryButton>
-        <p style={{ color: DS.colors.textSec, fontSize: 12, textAlign: "center", margin: "10px 0 6px", fontFamily: "'Inter',sans-serif" }}>🔒 Paiement sécurisé Stripe · Remboursement 7 jours</p>
+        <p style={{ color: DS.colors.textSec, fontSize: 12, textAlign: "center", margin: "10px 0 6px", fontFamily: "'Inter',sans-serif" }}>🔒 Paiement sécurisé Stripe · Résiliable à tout moment</p>
         <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textSec, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", textDecoration: "underline" }}>
           Non merci, je veux juste essayer gratuitement
         </button>
@@ -4299,19 +4279,6 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
   const exercices = seance?.exercices || [];
   const frequence = onboardingData?.frequence || 3;
 
-  const [timeLeft, setTimeLeft] = useState({ m: 59, s: 59 });
-  useEffect(() => {
-    const t = setInterval(() => {
-      setTimeLeft(prev => {
-        let { m, s } = prev;
-        s--;
-        if (s < 0) { s = 59; m--; }
-        if (m < 0) return { m: 0, s: 0 };
-        return { m, s };
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, []);
   const pad = n => String(n).padStart(2, "0");
 
   const nomsProgramme = {
@@ -4354,14 +4321,12 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
           <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 500, fontSize: 12, opacity: 0.7, marginTop: 2 }}>Puis 14,99€/mois · résiliable à tout moment</p>
         </div>
 
-        {/* Compte à rebours */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 22 }}>
-          <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginRight: 4 }}>Offre valable encore</span>
-          {[pad(timeLeft.m), pad(timeLeft.s)].map((v, i) => (
-            <Fragment key={i}>
-              {i > 0 && <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, color: DS.colors.textPrimary }}>:</span>}
-              <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 16, fontVariantNumeric: "tabular-nums", color: DS.colors.textPrimary, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 10, padding: "6px 10px", boxShadow: DS.shadow.card }}>{v}</span>
-            </Fragment>
+        {/* Garanties */}
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 22 }}>
+          {["Sans engagement", "Résiliable à tout moment", "Paiement sécurisé Stripe"].map(t => (
+            <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 12, color: DS.colors.textPrimary, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, padding: "6px 12px", boxShadow: DS.shadow.card }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={accentTexte} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>{t}
+            </span>
           ))}
         </div>
 
@@ -4805,11 +4770,18 @@ export default function VoltraApp() {
       const isPaid = params.get("paid") === "true";
       const paidPlanParam = params.get("plan") || "monthly";
       if (isPaid && userRef.current) {
-        supabase.from("profiles").upsert({ id: userRef.current.id, is_pro: true }, { onConflict: "id" });
         window.history.replaceState({}, document.title, window.location.pathname);
-        setIsPro(true);
         setPaidPlan(paidPlanParam);
         setScreen("payment-success");
+        // Le passage en Pro est fait uniquement par le webhook Stripe : on relit le profil (le webhook peut prendre quelques secondes)
+        const uid = userRef.current.id;
+        let essais = 0;
+        const verifierPro = async () => {
+          const { data } = await supabase.from("profiles").select("is_pro").eq("id", uid).maybeSingle();
+          if (data?.is_pro) setIsPro(true);
+          else if (++essais < 15) setTimeout(verifierPro, 2000);
+        };
+        verifierPro();
         return;
       }
       if (confirmationEmail) {
@@ -4989,14 +4961,7 @@ export default function VoltraApp() {
     stats={lastSessionStats}
     programme={programmeActif}
     sportActif={sportActif}
-    onSelectPlan={async (plan) => {
-      if (plan !== "free") {
-        setIsPro(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true }, { onConflict: "id" });
-      }
-      setScreen("app");
-    }}
+    onSelectPlan={() => setScreen("app")}
   />;
 if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} user={user} onSelectPlan={async (plan) => {
     if (plan === "free") {
@@ -5008,9 +4973,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
         setScreen("app");
       }
     } else {
-      setIsPro(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) await supabase.from("profiles").upsert({ id: session.user.id, is_pro: true }, { onConflict: "id" });
+      // Les offres payantes passent par Stripe (le Pro est activé par le webhook)
       setScreen("app");
     }
   }} />;
