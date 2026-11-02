@@ -3931,9 +3931,9 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
               <span style={{ fontSize: 18 }}>⭐</span>
               <p style={{ flex: 1, color: DS.colors.textPrimary, fontSize: 15, margin: 0, fontFamily: "'Inter',sans-serif", fontWeight: 800 }}>Voltra Pro actif</p>
             </div>
-            <button onClick={openPortal} disabled={portalLoading} style={{ width: "100%", height: 46, borderRadius: DS.radius.md, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, color: DS.colors.textPrimary, fontSize: 14, fontFamily: "'Inter',sans-serif", fontWeight: 700, cursor: "pointer" }}>
-              {portalLoading ? "Ouverture..." : "Gérer mon abonnement / résilier"}
-            </button>
+            <p onClick={openPortal} style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, textDecoration: "underline", cursor: "pointer", margin: 0 }}>
+              {portalLoading ? "Ouverture..." : "Gérer mon abonnement"}
+            </p>
             {portalMsg && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginTop: 10, lineHeight: 1.5 }}>{portalMsg}</p>}
           </div>
         )}
