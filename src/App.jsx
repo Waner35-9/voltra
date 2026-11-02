@@ -263,16 +263,23 @@ const SPORT_THEMES = {
   default:    { accent: "#9BE84F", accentRgb: "155,232,79", bg: "radial-gradient(ellipse 300px 300px at 80% 0%, rgba(155,232,79,0.06), transparent)" },
 };
 
+// Couleur d'accent lisible : assombrie en thème clair pour rester lisible sur fond blanc
+function accentLisible(hex) {
+  if (DS.colors.isDark || !/^#[0-9a-f]{6}$/i.test(hex || "")) return hex;
+  const n = parseInt(hex.slice(1), 16), f = c => Math.round(c * 0.62);
+  return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+}
+
 function getSportTheme(sport) {
   return SPORT_THEMES[sport] || SPORT_THEMES.default;
 }
 
 // Alias for backwards compatibility
 const s = {
-  mono: { fontFamily: "'Space Mono', 'Courier New', monospace" },
-  display: { fontFamily: "'Rajdhani', system-ui, sans-serif", fontWeight: 700, letterSpacing: "0.02em", textTransform: "uppercase" },
-  heading: { fontFamily: "'Rajdhani', system-ui, sans-serif", fontWeight: 600 },
-  body: { fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 400 },
+  mono: { fontFamily: "'Inter',sans-serif", fontVariantNumeric: "tabular-nums" },
+  display: { fontFamily: "'Inter',sans-serif", fontWeight: 900, letterSpacing: "-0.02em", textTransform: "uppercase" },
+  heading: { fontFamily: "'Inter',sans-serif", fontWeight: 700 },
+  body: { fontFamily: "'Inter',sans-serif", fontWeight: 400 },
 };
 
 const THEMES = {
@@ -334,7 +341,7 @@ function PrimaryButton({ children, onClick, disabled, style = {} }) {
         cursor: disabled ? "not-allowed" : "pointer",
         transform: p ? "scale(0.96)" : "scale(1)", transition: "all 0.15s ease",
         boxShadow: disabled ? "none" : DS.shadow.primary,
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 10, position: "relative", overflow: "hidden",
         fontFamily: "'Inter',sans-serif", fontWeight: 700, ...style,
       }}>
       {children}
@@ -346,7 +353,7 @@ function Input({ label, type = "text", value, onChange, placeholder }) {
   const [focused, setFocused] = useState(false);
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, display: "block", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+      <label style={{ color: DS.colors.textSec, fontSize: 13, fontFamily: "'Inter',sans-serif", fontWeight: 600, display: "block", marginBottom: 8, paddingLeft: 4 }}>
         {label}
       </label>
       <input
@@ -359,7 +366,7 @@ function Input({ label, type = "text", value, onChange, placeholder }) {
           borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 16,
           outline: "none", transition: "border 0.2s ease",
           boxShadow: focused ? `0 0 0 3px ${DS.colors.primarySoft}` : DS.shadow.card,
-          fontFamily: "'Inter', system-ui, sans-serif",
+          fontFamily: "'Inter',sans-serif",
         }}
       />
     </div>
@@ -606,7 +613,7 @@ function RestTimer({ seconds, onComplete }) {
   return (
     <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "28px 24px", textAlign: "center", position: "relative", overflow: "hidden", boxShadow: DS.shadow.card }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 50% 40%, ${color}10, transparent 70%)`, transition: "background 0.5s ease", pointerEvents: "none" }} />
-      <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.1em" }}>Temps de repos</p>
+      <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.heading, marginBottom: 20, textTransform: "uppercase", letterSpacing: "0.06em" }}>Temps de repos</p>
       <div style={{ position: "relative", width: 148, height: 148, margin: "0 auto 16px" }}>
         <svg width="148" height="148" viewBox="0 0 148 148" style={{ transform: "rotate(-90deg)" }}>
           <circle cx="74" cy="74" r="54" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="10" />
@@ -824,7 +831,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
     return (
       <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", textAlign: "center" }}>
         <p style={{ fontSize: 48, marginBottom: 16 }}>⚠️</p>
-        <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 24, color: DS.colors.textPrimary, marginBottom: 8 }}>Séance introuvable</h2>
+        <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 24, color: DS.colors.textPrimary, marginBottom: 8 }}>Séance introuvable</h2>
         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, marginBottom: 24 }}>Le programme n'a pas encore d'exercices. Attends que la génération soit terminée.</p>
         <button onClick={() => onFinish && onFinish("skip", {}, 0)} style={{ padding: "12px 24px", background: DS.colors.primary, border: "none", borderRadius: DS.radius.full, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Retour au dashboard</button>
       </div>
@@ -940,9 +947,9 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
             🏆
           </div>
 
-          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8 }}>SEANCE TERMINEE</div>
+          <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentColor, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>SEANCE TERMINEE</div>
           <h1 style={{ ...s.display, fontSize: 36, color: DS.colors.textPrimary, marginBottom: 6, textAlign: "center", letterSpacing: "0.02em" }}>{getRandom(MOTIVATION.finish).toUpperCase()}</h1>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, marginBottom: 36, letterSpacing: "0.15em" }}>{(seance.titre || "").toUpperCase()}</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, marginBottom: 36, letterSpacing: "0.06em" }}>{(seance.titre || "").toUpperCase()}</p>
 
           {/* Stats */}
           <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 36 }}>
@@ -953,14 +960,14 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
             ].map((stat, i) => (
               <div key={i} style={{ flex: 1, background: DS.colors.surface, border: `1px solid ${stat.color}25`, borderRadius: DS.radius.lg, padding: "18px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 28, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
-                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
+                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 28, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
+                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{stat.label}</div>
               </div>
             ))}
           </div>
 
           {/* Ressenti */}
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 14 }}>Comment tu te sens ?</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 14 }}>Comment tu te sens ?</p>
           <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 24 }}>
             {[
               { id: "easy", emoji: "😤", label: "FACILE", color: accentColor },
@@ -969,12 +976,12 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
             ].map(fb => (
               <button key={fb.id} onClick={() => setFeedback(fb.id)} style={{ flex: 1, padding: "16px 8px", background: feedback === fb.id ? fb.color + "20" : DS.colors.surface, border: `2px solid ${feedback === fb.id ? fb.color : DS.colors.border}`, borderRadius: DS.radius.lg, cursor: "pointer", transition: "all 0.2s", transform: feedback === fb.id ? "scale(1.05)" : "scale(1)" }}>
                 <div style={{ fontSize: 26, marginBottom: 6 }}>{fb.emoji}</div>
-                <div style={{ fontFamily: "'Space Mono',monospace", color: feedback === fb.id ? fb.color : DS.colors.textSec, fontSize: 9, letterSpacing: "0.1em" }}>{fb.label}</div>
+                <div style={{ fontFamily: "'Inter',sans-serif", color: feedback === fb.id ? fb.color : DS.colors.textSec, fontSize: 10, letterSpacing: "0.06em" }}>{fb.label}</div>
               </button>
             ))}
           </div>
 
-          <button onClick={() => onFinish(feedback, completedSets, exercices, durationMin)} disabled={!feedback} style={{ width: "100%", height: 56, background: feedback ? `linear-gradient(135deg, ${accentColor}, ${accentColor}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? "#000" : DS.colors.textSec, fontSize: 15, cursor: feedback ? "pointer" : "not-allowed", fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", boxShadow: feedback ? `0 8px 32px ${accentColor}40` : "none", transition: "all 0.3s" }}>
+          <button onClick={() => onFinish(feedback, completedSets, exercices, durationMin)} disabled={!feedback} style={{ width: "100%", height: 56, background: feedback ? `linear-gradient(135deg, ${accentColor}, ${accentColor}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? "#000" : DS.colors.textSec, fontSize: 15, cursor: feedback ? "pointer" : "not-allowed", fontFamily: "'Inter',sans-serif", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", boxShadow: feedback ? `0 8px 32px ${accentColor}40` : "none", transition: "all 0.3s" }}>
             {feedback ? "ENREGISTRER ET CONTINUER" : "SELECTIONNE TON RESSENTI"}
           </button>
         </div>
@@ -1006,7 +1013,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
         <div style={{ padding: "0 20px 32px", position: "relative", zIndex: 1 }}>
           <div style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "16px 18px", marginBottom: 14 }}>
-            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.2em", marginBottom: 6 }}>ENSUITE</p>
+            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em", marginBottom: 6 }}>ENSUITE</p>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <p style={{ fontSize: 17, fontWeight: 800 }}>{currentEx.nom} — Série {nextSetNum}/{totalSets}</p>
@@ -1111,14 +1118,14 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
         {/* Nom */}
         <div style={{ textAlign: "center", marginBottom: 14 }}>
-          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.25em", color: accentColor, marginBottom: 6 }}>EXERCICE {exIdx + 1}/{exercices.length}{currentEx.muscles ? ` · ${(currentEx.muscles || "").split(" ")[0].toUpperCase()}` : ""}</p>
+          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", color: accentColor, marginBottom: 6 }}>EXERCICE {exIdx + 1}/{exercices.length}{currentEx.muscles ? ` · ${(currentEx.muscles || "").split(" ")[0].toUpperCase()}` : ""}</p>
           <h1 style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, letterSpacing: "-0.02em", textTransform: "uppercase", color: "white" }}>{currentEx.nom}</h1>
           {currentEx.conseil && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8, fontStyle: "italic" }}>💡 {currentEx.conseil}</p>}
         </div>
 
         {/* Chiffre géant */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.3em", color: "rgba(255,255,255,0.4)", marginBottom: 2 }}>SÉRIE {setIdx + 1} SUR {totalSets}</p>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", color: "rgba(255,255,255,0.4)", marginBottom: 2 }}>SÉRIE {setIdx + 1} SUR {totalSets}</p>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <span style={{ fontSize: 88, fontWeight: 900, lineHeight: 1, color: accentColor, letterSpacing: "-0.04em", textShadow: `0 0 50px ${accentColor}40` }}>{currentEx.reps}</span>
             <span style={{ fontSize: 20, color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>{currentEx.chargeKg > 0 ? `× ${currentEx.chargeKg}kg` : "reps"}</span>
@@ -1160,7 +1167,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
                 <div style={{ width: 36, height: 36, borderRadius: DS.radius.full, background: accentColor + "20", border: `1px solid ${accentColor}40`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><AceAvatar size={30} /></div>
                 <div>
                   <p style={{ ...s.heading, fontSize: 15, color: DS.colors.textPrimary }}>Coach IA</p>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.15em" }}>EN LIGNE</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentColor, letterSpacing: "0.06em" }}>EN LIGNE</p>
                 </div>
               </div>
               <button onClick={() => setShowCoach(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 30, height: 30, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
@@ -1170,11 +1177,11 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
               <div style={{ margin: "8px 16px 0", background: accentColor + "12", border: `1px solid ${accentColor}25`, borderRadius: DS.radius.md, padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
                   <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12, color: accentColor, marginBottom: 1 }}>{currentEx.nom}</p>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec }}>
                     {Object.keys(completedSets).filter(k => k.startsWith(`${exIdx}-`)).length}/{currentEx.sets} séries · {currentEx.reps} reps{currentEx.chargeKg > 0 ? ` · ${currentEx.chargeKg}kg` : ""}
                   </p>
                 </div>
-                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec }}>
+                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec }}>
                   {exIdx + 1}/{exercices.length}
                 </div>
               </div>
@@ -1248,7 +1255,7 @@ function PaymentSuccessScreen({ plan, onContinue }) {
   const planEmoji = plan === "lifetime" ? "💎" : plan === "annual" ? "⚡" : "🚀";
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.1), transparent)", pointerEvents: "none" }} />
 
       <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
@@ -1261,17 +1268,17 @@ function PaymentSuccessScreen({ plan, onContinue }) {
 
         {/* Texte */}
         <div style={{ opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "translateY(0)" : "translateY(20px)", transition: "all 0.5s ease" }}>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#9BE84F", letterSpacing: "0.3em", marginBottom: 14 }}>PAIEMENT CONFIRMÉ</p>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 38, color: "white", lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em" }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible("#9BE84F"), fontWeight: 800, letterSpacing: "0.06em", marginBottom: 14 }}>PAIEMENT CONFIRMÉ</p>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 12, letterSpacing: "-0.03em" }}>
             BIENVENUE DANS<br />L'ÉQUIPE PRO ⚡
           </h1>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 8, lineHeight: 1.6 }}>
-            Plan <strong style={{ color: "white" }}>{planLabel}</strong> activé. Ton programme personnalisé est en cours de génération.
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, marginBottom: 8, lineHeight: 1.6 }}>
+            Plan <strong style={{ color: DS.colors.textPrimary }}>{planLabel}</strong> activé. Ton programme personnalisé est en cours de génération.
           </p>
 
           {/* Features débloquées */}
           <div style={{ background: "rgba(155,232,79,0.06)", border: "1px solid rgba(155,232,79,0.2)", borderRadius: 20, padding: "20px 20px", marginTop: 28, marginBottom: 32, textAlign: "left" }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "#9BE84F", letterSpacing: "0.2em", marginBottom: 14 }}>CE QUE TU VIENS DE DÉBLOQUER</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible("#9BE84F"), fontWeight: 800, letterSpacing: "0.06em", marginBottom: 14 }}>CE QUE TU VIENS DE DÉBLOQUER</p>
             {[
               { emoji: "📈", text: "Séances illimitées" },
               { emoji: "🤖", text: "Coach IA en temps réel" },
@@ -1280,7 +1287,7 @@ function PaymentSuccessScreen({ plan, onContinue }) {
             ].map((f, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
                 <span style={{ fontSize: 16 }}>{f.emoji}</span>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "white", fontWeight: 500 }}>{f.text}</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textPrimary, fontWeight: 500 }}>{f.text}</p>
                 <svg style={{ marginLeft: "auto" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#9BE84F" strokeWidth="2.5" strokeLinecap="round"/></svg>
               </div>
             ))}
@@ -1361,7 +1368,7 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
   const progress = Math.round((step / (steps.length - 1)) * 100);
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sport] || "⚡"}
@@ -1372,8 +1379,8 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ width: 72, height: 72, borderRadius: 20, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, margin: "0 auto 16px", boxShadow: `0 0 50px ${theme.accent}50`, animation: "pulse 2s ease infinite" }}>⚡</div>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 10 }}>GÉNÉRATION EN COURS</p>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: "white", lineHeight: 1.1, letterSpacing: "0.02em" }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent), letterSpacing: "0.06em", marginBottom: 10 }}>GÉNÉRATION EN COURS</p>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, lineHeight: 1.1, letterSpacing: "0.02em" }}>
             Ton programme<br />se construit{dots}
           </h1>
         </div>
@@ -1381,10 +1388,10 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
         {/* Barre de progression */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.5)" }}>PROGRESSION</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>{progress}%</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec }}>PROGRESSION</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent) }}>{progress}%</p>
           </div>
-          <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 9999, height: 6, overflow: "hidden" }}>
+          <div style={{ background: DS.colors.surface, borderRadius: 9999, height: 6, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${progress}%`, background: theme.accent, borderRadius: 9999, transition: "width 0.8s ease", boxShadow: `0 0 12px ${theme.accent}80` }} />
           </div>
         </div>
@@ -1394,7 +1401,7 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
           {steps.map((s, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: i < step ? theme.accent + "08" : i === step ? theme.accent + "15" : "rgba(255,255,255,0.02)", border: `1px solid ${i <= step ? theme.accent + "25" : "rgba(255,255,255,0.04)"}`, borderRadius: 14, transition: "all 0.4s ease", opacity: i > step ? 0.35 : 1 }}>
               <span style={{ fontSize: 16, filter: i > step ? "grayscale(1)" : "none", transition: "filter 0.3s" }}>{s.emoji}</span>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: i <= step ? "white" : "rgba(255,255,255,0.35)", fontWeight: i === step ? 600 : 400, flex: 1 }}>{s.text}</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: i <= step ? DS.colors.textPrimary : DS.colors.textSec, fontWeight: i === step ? 600 : 400, flex: 1 }}>{s.text}</p>
               {i < step && (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round"/></svg>
               )}
@@ -1406,17 +1413,17 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
         </div>
 
         {/* Checklist de personnalisation en direct */}
-        <div style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${theme.accent}20`, borderRadius: 16, padding: "16px 18px" }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 10, color: theme.accent, letterSpacing: "0.15em", marginBottom: 12 }}>CONSTRUIT SPÉCIALEMENT POUR TOI</p>
+        <div style={{ background: DS.colors.surface, border: `1px solid ${theme.accent}20`, borderRadius: 16, padding: "16px 18px" }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 10, color: accentLisible(theme.accent), letterSpacing: "0.06em", marginBottom: 12 }}>CONSTRUIT SPÉCIALEMENT POUR TOI</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {checklist.map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, opacity: i < checkIdx ? 1 : 0.25, transition: "opacity 0.4s ease" }}>
                 {i < checkIdx ? (
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, animation: i === checkIdx - 1 ? "pop 0.4s cubic-bezier(0.34,1.56,0.64,1)" : "none" }}><circle cx="12" cy="12" r="11" fill={theme.accent} /><path d="M7 12.5L10.5 16L17 8" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 ) : (
-                  <div style={{ width: 15, height: 15, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.25)", flexShrink: 0 }} />
+                  <div style={{ width: 15, height: 15, borderRadius: "50%", border: `1px solid ${DS.colors.border}`, flexShrink: 0 }} />
                 )}
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: i < checkIdx ? "white" : "rgba(255,255,255,0.4)", fontWeight: i < checkIdx ? 600 : 400 }}>{item}</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: i < checkIdx ? DS.colors.textPrimary : DS.colors.textSec, fontWeight: i < checkIdx ? 600 : 400 }}>{item}</p>
               </div>
             ))}
           </div>
@@ -1448,7 +1455,7 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
   const msg = getCycleMsg(cycle);
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sport] || "⚡"}
@@ -1462,27 +1469,27 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
         </div>
 
         {/* Titre */}
-        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 12 }}>
+        <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent), letterSpacing: "0.06em", marginBottom: 12 }}>
           CYCLE {cycle} COMPLETE
         </div>
-        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 42, color: DS.colors.textPrimary, lineHeight: 0.95, marginBottom: 12, letterSpacing: "0.02em" }}>
+        <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 42, color: DS.colors.textPrimary, lineHeight: 0.95, marginBottom: 12, letterSpacing: "0.02em" }}>
           {msg.title.toUpperCase()}
         </h1>
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.1em", marginBottom: 40, maxWidth: 300, margin: "0 auto 40px" }}>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.06em", marginBottom: 40, maxWidth: 300, margin: "0 auto 40px" }}>
           {msg.desc}
         </p>
 
         {/* Stats du cycle */}
         <div style={{ display: "flex", gap: 10, marginBottom: 40, justifyContent: "center" }}>
           {[
-            { val: cycle, label: "CYCLES", color: theme.accent },
-            { val: `${(programme?.semaine_courante || 8)}`, label: "SEMAINES", color: "#00FF87" },
+            { val: cycle, label: "CYCLES", color: accentLisible(theme.accent) },
+            { val: `${(programme?.semaine_courante || 8)}`, label: "SEMAINES", color: accentLisible("#9BE84F") },
             { val: "↑↑↑", label: "NIVEAU", color: "#FF8C00" },
           ].map((stat, i) => (
             <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 16px", textAlign: "center", position: "relative", overflow: "hidden", minWidth: 80 }}>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 24, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
+              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 24, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
+              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{stat.label}</div>
             </div>
           ))}
         </div>
@@ -1491,14 +1498,14 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
         {cycleLoading ? (
           <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "12px 20px", marginBottom: 24, justifyContent: "center" }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: theme.accent, animation: "pulse 1s infinite", boxShadow: `0 0 8px ${theme.accent}` }} />
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent, letterSpacing: "0.15em" }}>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent), letterSpacing: "0.06em" }}>
               GENERATION DU CYCLE {cycle + 1} EN COURS...
             </p>
           </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(0,255,135,0.08)", border: "1px solid rgba(0,255,135,0.25)", borderRadius: DS.radius.full, padding: "12px 20px", marginBottom: 24, justifyContent: "center" }}>
             <span style={{ fontSize: 16 }}>✅</span>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#00FF87", letterSpacing: "0.15em" }}>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible("#9BE84F"), letterSpacing: "0.06em" }}>
               CYCLE {cycle + 1} PRET · PLUS INTENSE
             </p>
           </div>
@@ -1506,7 +1513,7 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
 
         {/* CTA */}
         {showContinue && (
-          <button onClick={onContinue} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", boxShadow: `0 8px 32px ${theme.accent}40`, animation: "slideUp 0.5s ease" }}>
+          <button onClick={onContinue} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.06em", cursor: "pointer", boxShadow: `0 8px 32px ${theme.accent}40`, animation: "slideUp 0.5s ease" }}>
             ATTAQUER LE CYCLE {cycle + 1} →
           </button>
         )}
@@ -1570,8 +1577,8 @@ function ThemeChoiceScreen({ onChoose }) {
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ width: 64, height: 64, borderRadius: 18, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 16px", boxShadow: "0 0 40px rgba(155,232,79,0.4)" }}>⚡</div>
-          <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 32, color: "white", letterSpacing: "0.15em", marginBottom: 8 }}>VOLTRA</div>
-          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.5)", letterSpacing: "0.2em" }}>CHOISIS TON STYLE</div>
+          <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 32, color: "white", letterSpacing: "0.06em", marginBottom: 8 }}>VOLTRA</div>
+          <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em" }}>CHOISIS TON STYLE</div>
         </div>
 
         {/* Theme cards */}
@@ -1608,8 +1615,8 @@ function ThemeChoiceScreen({ onChoose }) {
               {/* Theme label */}
               <div style={{ background: selected === theme.id ? "#9BE84F" : "rgba(255,255,255,0.06)", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
-                  <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 15, color: selected === theme.id ? "#16181A" : "white", letterSpacing: "0.08em" }}>{theme.name}</p>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: selected === theme.id ? "#16181A" : "rgba(255,255,255,0.4)", letterSpacing: "0.1em", marginTop: 2 }}>{theme.desc}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 15, color: selected === theme.id ? "#16181A" : "white", letterSpacing: "0.08em" }}>{theme.name}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: selected === theme.id ? "#16181A" : "rgba(255,255,255,0.4)", letterSpacing: "0.06em", marginTop: 2 }}>{theme.desc}</p>
                 </div>
                 <div style={{ width: 22, height: 22, borderRadius: 9999, border: `2px solid ${selected === theme.id ? "#16181A" : "rgba(255,255,255,0.3)"}`, background: selected === theme.id ? "#16181A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {selected === theme.id && <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round"/></svg>}
@@ -1620,10 +1627,10 @@ function ThemeChoiceScreen({ onChoose }) {
         </div>
 
         {/* Note */}
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.5)", textAlign: "center", letterSpacing: "0.1em", marginBottom: 24 }}>TU POURRAS CHANGER CA DANS TON PROFIL</p>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.5)", textAlign: "center", letterSpacing: "0.06em", marginBottom: 24 }}>TU POURRAS CHANGER CA DANS TON PROFIL</p>
 
         {/* CTA */}
-        <button onClick={() => selected && onChoose(selected)} disabled={!selected} style={{ width: "100%", height: 56, background: selected ? "#9BE84F" : "rgba(255,255,255,0.1)", border: "none", borderRadius: 9999, color: selected ? "#16181A" : "rgba(255,255,255,0.3)", fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.1em", cursor: selected ? "pointer" : "not-allowed", transition: "all 0.3s", boxShadow: selected ? "0 8px 32px rgba(155,232,79,0.4)" : "none" }}>
+        <button onClick={() => selected && onChoose(selected)} disabled={!selected} style={{ width: "100%", height: 56, background: selected ? "#9BE84F" : "rgba(255,255,255,0.1)", border: "none", borderRadius: 9999, color: selected ? "#16181A" : "rgba(255,255,255,0.3)", fontFamily: "'Inter',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.06em", cursor: selected ? "pointer" : "not-allowed", transition: "all 0.3s", boxShadow: selected ? "0 8px 32px rgba(155,232,79,0.4)" : "none" }}>
           {selected ? `CONTINUER EN MODE ${themes.find(t => t.id === selected)?.name} →` : "SÉLECTIONNE UN THÈME"}
         </button>
       </div>
@@ -1635,121 +1642,81 @@ function ThemeChoiceScreen({ onChoose }) {
 // WELCOME SCREEN
 // ─────────────────────────────────────────────
 function WelcomeScreen({ onStart }) {
-  const [phase, setPhase] = useState(0); // 0=logo, 1=features, 2=cta
   const [featureIdx, setFeatureIdx] = useState(0);
-  const [logoReady, setLogoReady] = useState(false);
-
-  useEffect(() => {
-    // Phase logo → features → cta
-    const t1 = setTimeout(() => { setLogoReady(true); }, 300);
-    const t2 = setTimeout(() => setPhase(1), 1800);
-    const t3 = setTimeout(() => setPhase(2), 5200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, []);
-
-  // Auto-scroll features
-  useEffect(() => {
-    if (phase < 1) return;
-    const interval = setInterval(() => {
-      setFeatureIdx(i => (i + 1) % features.length);
-    }, 2200);
-    return () => clearInterval(interval);
-  }, [phase]);
+  const accentTexte = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
 
   const features = [
-    { emoji: "🎯", title: "Programme 100% personnalisé", desc: "L'IA crée ton programme selon ton sport, ton niveau et tes objectifs spécifiques", color: "#00FF87" },
-    { emoji: "📈", title: "Progression automatique", desc: "Tes charges augmentent intelligemment chaque semaine pour maximiser tes gains", color: "#FF8C00" },
-    { emoji: "🤖", title: "Coach IA en temps réel", desc: "Un coach disponible pendant chaque séance pour adapter et t'encourager", color: "#00C8FF" },
-    { emoji: "🏆", title: "Suis tes records", desc: "Visualise ta progression semaine après semaine et bats tes limites", color: "#FFE500" },
+    { emoji: "🎯", title: "Programme 100% personnalisé", desc: "L'IA crée ton programme selon ton sport, ton poste, ton niveau et tes objectifs." },
+    { emoji: "📈", title: "Progression automatique", desc: "Tes charges augmentent intelligemment chaque semaine pour maximiser tes gains." },
+    { emoji: "🤖", title: "Ace, ton coach IA", desc: "Il t'accompagne pendant chaque séance, adapte les charges et te motive." },
+    { emoji: "🏆", title: "Suis tes records", desc: "Visualise ta progression semaine après semaine et bats tes limites." },
   ];
 
+  // Carrousel automatique, façon « stories »
+  useEffect(() => {
+    const t = setTimeout(() => setFeatureIdx(i => (i + 1) % features.length), 3200);
+    return () => clearTimeout(t);
+  }, [featureIdx]);
+
+  const sports = ["🏀 Basketball", "⚽ Football", "🎾 Tennis", "🏉 Rugby", "🏊 Natation", "🏃 Sprint", "🥊 Combat"];
+  const f = features[featureIdx];
+
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: -160, right: -120, width: 380, height: 380, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, pointerEvents: "none" }} />
 
-      {/* Glow de fond */}
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 500px 500px at 50% 30%, rgba(0,255,135,0.07), transparent)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: -100, left: -100, width: 400, height: 400, background: "radial-gradient(circle, rgba(0,200,255,0.04), transparent)", pointerEvents: "none" }} />
-
-      {/* Phase logo */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: phase === 0 ? "center" : "flex-start", paddingTop: phase === 0 ? 0 : 60, transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1)", position: "relative", zIndex: 1 }}>
-
+      <div className="v-stagger" style={{ flex: 1, padding: "56px 24px 0", position: "relative", zIndex: 1 }}>
         {/* Logo */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: phase === 0 ? 0 : 40, transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1)", transform: logoReady ? "scale(1)" : "scale(0.5)", opacity: logoReady ? 1 : 0 }}>
-          <div style={{ position: "relative", marginBottom: 20 }}>
-            {/* Rings animés */}
-            <div style={{ position: "absolute", inset: -20, borderRadius: "50%", border: "1px solid rgba(0,255,135,0.15)", animation: "pulse 3s ease-in-out infinite" }} />
-            <div style={{ position: "absolute", inset: -36, borderRadius: "50%", border: "1px solid rgba(0,255,135,0.08)", animation: "pulse 3s ease-in-out 0.5s infinite" }} />
-            {/* Icone */}
-            <div style={{ width: 90, height: 90, borderRadius: 26, background: "linear-gradient(135deg, #00FF87, #00C896)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, boxShadow: "0 0 60px rgba(0,255,135,0.5), 0 0 120px rgba(0,255,135,0.2)", position: "relative", zIndex: 1 }}>
-              ⚡
-            </div>
-          </div>
-
-          <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: phase === 0 ? 52 : 36, color: "white", letterSpacing: "0.2em", lineHeight: 1, transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1)", marginBottom: 8 }}>
-            VOLTRA
-          </div>
-          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.3)", letterSpacing: "0.3em", opacity: logoReady ? 1 : 0, transition: "opacity 0.6s ease 0.5s" }}>
-            PERFORMANCE · IA · SPORT
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 11, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: DS.shadow.primary }}>⚡</div>
+          <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 18, letterSpacing: "0.04em", color: DS.colors.textPrimary }}>VOLTRA</span>
         </div>
 
-        {/* Features carousel */}
-        {phase >= 1 && (
-          <div style={{ width: "100%", maxWidth: 390, padding: "0 24px", animation: "slideUp 0.6s ease" }}>
+        {/* Titre */}
+        <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 40, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 14 }}>
+          Ta prépa<br />physique<br /><span style={{ color: accentTexte }}>sur mesure</span>
+        </h1>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 15, lineHeight: 1.5, color: DS.colors.textSec, marginBottom: 28, maxWidth: 320 }}>
+          Un programme créé par l'IA pour ton sport, et un coach qui t'accompagne à chaque séance.
+        </p>
 
-            {/* Feature card principale */}
-            <div key={featureIdx} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${features[featureIdx].color}20`, borderRadius: DS.radius.xl, padding: "28px 24px", marginBottom: 20, position: "relative", overflow: "hidden", animation: "fadeIn 0.4s ease" }}>
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: features[featureIdx].color }} />
-              <div style={{ position: "absolute", top: -30, right: -20, fontSize: 100, opacity: 0.05, lineHeight: 1 }}>{features[featureIdx].emoji}</div>
-              <div style={{ fontSize: 42, marginBottom: 16 }}>{features[featureIdx].emoji}</div>
-              <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 24, color: "white", marginBottom: 10, lineHeight: 1.1, letterSpacing: "0.02em" }}>
-                {features[featureIdx].title}
-              </h2>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, letterSpacing: "0.08em" }}>
-                {features[featureIdx].desc}
-              </p>
-            </div>
-
-            {/* Dots */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 24 }}>
-              {features.map((_, i) => (
-                <div key={i} onClick={() => setFeatureIdx(i)} style={{ width: i === featureIdx ? 24 : 6, height: 6, borderRadius: 3, background: i === featureIdx ? features[featureIdx].color : "rgba(255,255,255,0.15)", transition: "all 0.3s ease", cursor: "pointer", boxShadow: i === featureIdx ? `0 0 8px ${features[featureIdx].color}` : "none" }} />
-              ))}
-            </div>
-
-            {/* 4 icones features rapides */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
-              {features.map((f, i) => (
-                <div key={i} onClick={() => setFeatureIdx(i)} style={{ background: i === featureIdx ? f.color + "15" : "rgba(255,255,255,0.06)", border: `1px solid ${i === featureIdx ? f.color + "40" : "rgba(255,255,255,0.1)"}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
-                  <div style={{ fontSize: 20, marginBottom: 4 }}>{f.emoji}</div>
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: i === featureIdx ? f.color : DS.colors.textSec, letterSpacing: "0.06em", lineHeight: 1.3 }}>{f.title.split(" ")[0]}</div>
-                </div>
-              ))}
+        {/* Carte fonctionnalité, qui défile toute seule */}
+        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 24, padding: "18px 20px 20px", boxShadow: DS.shadow.card }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+            {features.map((_, i) => (
+              <div key={i} onClick={() => setFeatureIdx(i)} style={{ flex: 1, height: 4, borderRadius: 2, background: DS.colors.surfaceHigh, overflow: "hidden", cursor: "pointer" }}>
+                <div key={featureIdx} style={{ height: "100%", borderRadius: 2, background: DS.colors.primary, width: i < featureIdx ? "100%" : "0%", animation: i === featureIdx ? "vProgress 3.2s linear forwards" : "none" }} />
+              </div>
+            ))}
+          </div>
+          <div key={featureIdx} className="v-up" style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+            <div className="v-float" style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 16, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>{f.emoji}</div>
+            <div>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 17, color: DS.colors.textPrimary, marginBottom: 4 }}>{f.title}</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, lineHeight: 1.5, color: DS.colors.textSec }}>{f.desc}</p>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* CTA en bas */}
-      <div style={{ padding: "0 24px 52px", position: "relative", zIndex: 1, opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "translateY(0)" : "translateY(40px)", transition: "all 0.8s cubic-bezier(0.34,1.56,0.64,1) 0.3s" }}>
+      {/* Bandeau des sports qui défile */}
+      <div style={{ overflow: "hidden", margin: "28px 0 20px", WebkitMaskImage: "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)", maskImage: "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)" }}>
+        <div style={{ display: "flex", gap: 8, width: "max-content", animation: "vMarquee 22s linear infinite" }}>
+          {[...sports, ...sports].map((sp, i) => (
+            <span key={i} style={{ whiteSpace: "nowrap", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, padding: "8px 14px", fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13, color: DS.colors.textPrimary }}>{sp}</span>
+          ))}
+        </div>
+      </div>
 
-        {phase >= 2 && (
-          <div style={{ marginBottom: 16, animation: "slideUp 0.5s ease" }}>
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20 }}>
-              {["🏀 Basketball", "⚽ Football", "🥊 Combat", "🏃 Sprint"].map((s, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: DS.radius.full, padding: "4px 10px", fontFamily: "'Space Mono',monospace", fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{s}</div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button onClick={onStart} style={{ width: "100%", height: 60, background: "linear-gradient(135deg, #00FF87, #00C896)", border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", boxShadow: "0 8px 40px rgba(0,255,135,0.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16 }}>
-          <span>⚡</span>
-          <span>CONSTRUIRE MON PROGRAMME</span>
-        </button>
-
-        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "rgba(255,255,255,0.2)", textAlign: "center", letterSpacing: "0.15em" }}>
-          GRATUIT · 2 MINUTES · SANS CARTE BANCAIRE
+      {/* Bouton */}
+      <div className="v-up" style={{ padding: "0 24px 40px", position: "relative", zIndex: 1, animationDelay: "0.35s" }}>
+        <PrimaryButton onClick={onStart} style={{ height: 58 }}>
+          <span className="v-shine" style={{ position: "absolute", inset: 0, borderRadius: DS.radius.full }} />
+          Construire mon programme
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </PrimaryButton>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, textAlign: "center", marginTop: 12 }}>
+          Gratuit · 2 minutes · Sans carte bancaire
         </p>
       </div>
     </div>
@@ -1763,39 +1730,31 @@ function SplashScreen({ onDone }) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 400);
-    const t2 = setTimeout(() => setPhase(2), 1200);
-    const t3 = setTimeout(() => onDone && onDone(), 2600);
+    const t1 = setTimeout(() => setPhase(1), 150);
+    const t2 = setTimeout(() => setPhase(2), 700);
+    const t3 = setTimeout(() => onDone && onDone(), 2200);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", width: 420, height: 420, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.6)", transition: "all 1.2s ease", pointerEvents: "none" }} />
 
-      {/* Logo animé */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.4)", transition: "all 0.7s cubic-bezier(0.34,1.56,0.64,1)" }}>
-        <div style={{ position: "relative", marginBottom: 24 }}>
-          <div style={{ position: "absolute", inset: -16, borderRadius: "50%", border: "1px solid rgba(155,232,79,0.2)", animation: phase >= 2 ? "pulse 2s ease infinite" : "none" }} />
-          <div style={{ position: "absolute", inset: -32, borderRadius: "50%", border: "1px solid rgba(155,232,79,0.1)", animation: phase >= 2 ? "pulse 2s ease 0.4s infinite" : "none" }} />
-          <div style={{ width: 90, height: 90, borderRadius: 26, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, boxShadow: "0 0 60px rgba(155,232,79,0.5)", position: "relative", zIndex: 1 }}>
-            ⚡
-          </div>
+      {phase >= 1 && (
+        <div className="v-pop v-glow" style={{ width: 92, height: 92, borderRadius: 28, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, position: "relative", zIndex: 1, marginBottom: 26 }}>
+          <span className="v-shine" style={{ position: "absolute", inset: 0, borderRadius: 28 }} />
+          ⚡
         </div>
-        <div style={{ fontFamily: "'Bebas Neue','Rajdhani',sans-serif", fontSize: 52, color: "white", letterSpacing: "0.2em", lineHeight: 1, opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "translateY(0)" : "translateY(10px)", transition: "all 0.5s ease 0.3s" }}>
-          VOLTRA
-        </div>
-        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.3em", marginTop: 8, opacity: phase >= 2 ? 1 : 0, transition: "opacity 0.5s ease 0.6s" }}>
-          PERFORMANCE · IA · SPORT
-        </div>
-      </div>
+      )}
 
-      {/* Loading dots */}
-      <div style={{ position: "absolute", bottom: 60, display: "flex", gap: 6, opacity: phase >= 2 ? 1 : 0, transition: "opacity 0.4s ease 0.8s" }}>
-        {[0,1,2].map(i => (
-          <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "#9BE84F", animation: `pulse 1s ease ${i*0.2}s infinite` }} />
+      <div style={{ display: "flex", position: "relative", zIndex: 1 }}>
+        {"VOLTRA".split("").map((l, i) => (
+          <span key={i} style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 44, letterSpacing: "0.04em", color: DS.colors.textPrimary, opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "none" : "translateY(14px)", transition: `all 0.5s cubic-bezier(0.2,0.8,0.2,1) ${i * 0.06}s` }}>{l}</span>
         ))}
       </div>
+      <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 12, letterSpacing: "0.12em", color: DS.colors.textSec, marginTop: 10, opacity: phase >= 2 ? 1 : 0, transition: "opacity 0.6s ease 0.5s", position: "relative", zIndex: 1 }}>
+        PERFORMANCE · IA · SPORT
+      </p>
     </div>
   );
 }
@@ -1956,10 +1915,10 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
   // Ecran reset password (vient du lien email)
   if (isPasswordRecovery) {
     return (
-      <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
         <div style={{ paddingTop: 80, paddingBottom: 40, textAlign: "center" }}>
           <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>🔑</div>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Nouveau mot de passe</h1>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Nouveau mot de passe</h1>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec }}>Choisis un nouveau mot de passe sécurisé</p>
         </div>
         <div style={{ flex: 1 }}>
@@ -1983,10 +1942,10 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
   // Mode mot de passe oublié
   if (mode === "forgot") {
     return (
-      <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
         <div style={{ paddingTop: 80, paddingBottom: 40, textAlign: "center" }}>
           <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>📧</div>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Mot de passe oublié ?</h1>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Mot de passe oublié ?</h1>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, lineHeight: 1.6 }}>Entre ton email et on t'envoie un lien pour réinitialiser ton mot de passe.</p>
         </div>
         <div style={{ flex: 1 }}>
@@ -2018,16 +1977,19 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.surface, display: "flex", flexDirection: "column", padding: "0 24px" }}>
-      <div style={{ paddingTop: 80, paddingBottom: 48, textAlign: "center" }}>
-        <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>⚡</div>
-        <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: DS.colors.textPrimary, marginBottom: 8 }}>Voltra</h1>
-        <p style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textSec, fontSize: 15 }}>{mode === "login" ? "Content de te revoir 👋" : "Commence ton parcours"}</p>
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+      <div className="v-stagger" style={{ paddingTop: 64, paddingBottom: 32 }}>
+        <div className="v-glow" style={{ width: 52, height: 52, borderRadius: 16, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 24 }}>⚡</div>
+        <h1 key={mode} className="v-up" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 10 }}>
+          {mode === "login" ? <>Content de<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>te revoir</span></> : <>Crée ton<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>compte</span></>}
+        </h1>
+        <p style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textSec, fontSize: 15 }}>{mode === "login" ? "Ton programme t'attend." : "30 secondes pour sauvegarder ton programme."}</p>
       </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, padding: 4, marginBottom: 32 }}>
+      <div className="v-up" style={{ flex: 1, animationDelay: "0.15s" }}>
+        <div style={{ position: "relative", display: "flex", background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, padding: 4, marginBottom: 28 }}>
+          <div style={{ position: "absolute", top: 4, bottom: 4, left: 4, width: "calc(50% - 4px)", borderRadius: DS.radius.full, background: DS.colors.primary, boxShadow: DS.shadow.primary, transform: mode === "signup" ? "translateX(100%)" : "none", transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)" }} />
           {["login", "signup"].map(m => (
-            <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{ flex: 1, height: 40, borderRadius: DS.radius.full, background: mode === m ? DS.colors.primary : "transparent", border: "none", color: mode === m ? "#000" : DS.colors.textSec, fontSize: 14, fontWeight: mode === m ? 700 : 400, cursor: "pointer", transition: "all 0.2s", fontFamily: "'Inter',sans-serif" }}>
+            <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{ position: "relative", zIndex: 1, flex: 1, height: 42, borderRadius: DS.radius.full, background: "transparent", border: "none", color: mode === m ? "#0B0B0C" : DS.colors.textSec, fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "color 0.25s", fontFamily: "'Inter',sans-serif" }}>
               {m === "login" ? "Connexion" : "Inscription"}
             </button>
           ))}
@@ -2302,14 +2264,14 @@ function OnboardingScreen({ onComplete }) {
                 {msgVisible >= 2 && (
                   <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "flex-end", gap: 8, animation: "fadeIn 0.3s ease" }}>
                     <div style={{ width: 26, height: 26, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><AceAvatar size={26} /></div>
-                    <div style={{ maxWidth: "78%", background: "rgba(255,255,255,0.08)", color: "white", padding: "10px 14px", borderRadius: "18px 18px 18px 4px", fontFamily: "'Inter',sans-serif", fontSize: 13 }}>
+                    <div style={{ maxWidth: "78%", background: DS.colors.surface, color: DS.colors.textPrimary, padding: "10px 14px", borderRadius: "18px 18px 18px 4px", fontFamily: "'Inter',sans-serif", fontSize: 13 }}>
                       Pas de souci, on baisse la charge de <strong>15%</strong> pour cette série. On garde le volume, on protège ta forme 💪
                     </div>
                   </div>
                 )}
                 {msgVisible >= 3 && (
                   <div style={{ alignSelf: "center", background: "rgba(155,232,79,0.12)", border: "1px solid rgba(155,232,79,0.3)", borderRadius: 12, padding: "6px 14px", marginTop: 4, animation: "fadeIn 0.3s ease" }}>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "#9BE84F", fontWeight: 600 }}>✓ Série adaptée en temps réel</p>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.isDark ? "#9BE84F" : DS.colors.primaryDark, fontWeight: 600 }}>✓ Série adaptée en temps réel</p>
                   </div>
                 )}
               </div>
@@ -2320,13 +2282,13 @@ function OnboardingScreen({ onComplete }) {
           );
         };
         return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", animation: "fadeIn 0.4s ease" }}>
+          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", animation: "fadeIn 0.4s ease" }}>
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 20%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
             <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 360 }}>
               <div style={{ textAlign: "center", marginBottom: 28 }}>
                 <div style={{ width: 56, height: 56, borderRadius: 16, overflow: "hidden", margin: "0 auto 14px", boxShadow: "0 0 40px rgba(155,232,79,0.4)" }}><AceAvatar size={56} /></div>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 11, color: "#9BE84F", letterSpacing: "0.15em", marginBottom: 8 }}>ACE — TON COACH IA</p>
-                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 24, color: "white", lineHeight: 1.2 }}>Il s'adapte à toi,<br />en temps réel</h2>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 11, color: DS.colors.isDark ? "#9BE84F" : DS.colors.primaryDark, letterSpacing: "0.06em", marginBottom: 8 }}>ACE — TON COACH IA</p>
+                <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 24, color: DS.colors.textPrimary, lineHeight: 1.2 }}>Il s'adapte à toi,<br />en temps réel</h2>
               </div>
               <CoachDemoContent />
             </div>
@@ -2341,21 +2303,21 @@ function OnboardingScreen({ onComplete }) {
         const objLabel = objLabels[data.objectif] || "leur objectif";
         const pct = 78 + Math.floor(Math.random() * 15); // 78-92%
         return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", animation: "fadeIn 0.4s ease" }}>
+          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", animation: "fadeIn 0.4s ease" }}>
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 30%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
 
             <div style={{ position: "relative", zIndex: 1, textAlign: "center", maxWidth: 340 }}>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
                 {["🏀","🥊","🏃","⚽"].map((e, i) => (
-                  <div key={i} style={{ width: 46, height: 46, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "2px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: i > 0 ? -12 : 0 }}>{e}</div>
+                  <div key={i} style={{ width: 46, height: 46, borderRadius: "50%", background: DS.colors.surface, border: `2px solid ${DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: i > 0 ? -12 : 0 }}>{e}</div>
                 ))}
               </div>
 
-              <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 56, color: "#9BE84F", lineHeight: 1, letterSpacing: "-0.02em", marginBottom: 12 }}>{pct}%</p>
-              <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 19, color: "white", lineHeight: 1.4, marginBottom: 8 }}>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 56, color: DS.colors.isDark ? "#9BE84F" : DS.colors.primaryDark, lineHeight: 1, letterSpacing: "-0.02em", marginBottom: 12 }}>{pct}%</p>
+              <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 19, color: DS.colors.textPrimary, lineHeight: 1.4, marginBottom: 8 }}>
                 des athlètes en {sportLabel} progressent en {objLabel} dès les 6 premières semaines
               </h2>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 32 }}>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, marginBottom: 32 }}>
                 avec un protocole IA personnalisé comme le tien
               </p>
 
@@ -2411,21 +2373,21 @@ function OnboardingScreen({ onComplete }) {
               <div style={{ background: DS.colors.surface, border: `1px solid ${sportTheme.accent}20`, borderRadius: DS.radius.xl, overflow: "hidden", width: "100%" }}>
                 <div style={{ height: 90, background: DS.colors.surfaceHigh, position: "relative", display: "flex", alignItems: "flex-end", padding: "10px 14px" }}>
                   <div style={{ position: "absolute", top: 8, left: 10, background: DS.colors.isDark ? "rgba(6,6,14,0.8)" : "rgba(0,0,0,0.6)", borderRadius: 6, padding: "2px 8px" }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent }}>EX 1/5</p>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(sportTheme.accent) }}>EX 1/5</p>
                   </div>
                   <div style={{ position: "absolute", top: 8, right: 10, background: sportTheme.accent + "20", border: `1px solid ${sportTheme.accent}40`, borderRadius: 6, padding: "2px 8px" }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: sportTheme.accent, fontWeight: 700 }}>12:34</p>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(sportTheme.accent), fontWeight: 700 }}>12:34</p>
                   </div>
                   <div>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent, marginBottom: 2 }}>QUADRICEPS</p>
-                    <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 20, color: DS.colors.textPrimary }}>SQUAT BARRE</p>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(sportTheme.accent), marginBottom: 2 }}>QUADRICEPS</p>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 20, color: DS.colors.textPrimary }}>SQUAT BARRE</p>
                   </div>
                 </div>
                 <div style={{ padding: "10px 14px" }}>
                   <div style={{ display: "flex", gap: 6 }}>
                     {[1,2,3,4].map(i => (
                       <div key={i} style={{ flex: 1, background: i <= 2 ? sportTheme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${i <= 2 ? sportTheme.accent : DS.colors.border}`, borderRadius: 8, padding: "8px 4px", textAlign: "center" }}>
-                        <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: i <= 2 ? sportTheme.accent : DS.colors.textSec }}>{i <= 2 ? "✓" : i}</p>
+                        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: i <= 2 ? sportTheme.accent : DS.colors.textSec }}>{i <= 2 ? "✓" : i}</p>
                       </div>
                     ))}
                   </div>
@@ -2468,8 +2430,8 @@ function OnboardingScreen({ onComplete }) {
                   ))}
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec }}>S1</p>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: sportTheme.accent }}>+60% EN 7 SEMAINES</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec }}>S1</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(sportTheme.accent) }}>+60% EN 7 SEMAINES</p>
                 </div>
               </div>
             ),
@@ -2491,11 +2453,11 @@ function OnboardingScreen({ onComplete }) {
             {genError ? (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", position: "relative", zIndex: 2 }}>
                 <div style={{ fontSize: 56, marginBottom: 20 }}>⚠️</div>
-                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 12, letterSpacing: "0.05em" }}>Generation lente...</h2>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, marginBottom: 32, lineHeight: 1.8, letterSpacing: "0.1em" }}>Le serveur prend du temps. Tu peux reessayer ou continuer — le programme se generera en arriere-plan.</p>
+                <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 12, letterSpacing: "0.05em" }}>Generation lente...</h2>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, marginBottom: 32, lineHeight: 1.8, letterSpacing: "0.06em" }}>Le serveur prend du temps. Tu peux reessayer ou continuer — le programme se generera en arriere-plan.</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-                  <button onClick={retryGeneration} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer" }}>REESSAYER</button>
-                  <button onClick={skipGeneration} style={{ width: "100%", height: 52, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontFamily: "'Space Mono',monospace", fontSize: 11, letterSpacing: "0.1em", cursor: "pointer" }}>CONTINUER SANS PROGRAMME</button>
+                  <button onClick={retryGeneration} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", cursor: "pointer" }}>REESSAYER</button>
+                  <button onClick={skipGeneration} style={{ width: "100%", height: 52, background: "transparent", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textSec, fontFamily: "'Inter',sans-serif", fontSize: 11, letterSpacing: "0.06em", cursor: "pointer" }}>CONTINUER SANS PROGRAMME</button>
                 </div>
               </div>
             ) : (
@@ -2503,16 +2465,16 @@ function OnboardingScreen({ onComplete }) {
                 {/* Tag */}
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: sportTheme.accent + "15", border: `1px solid ${sportTheme.accent}30`, borderRadius: 6, padding: "3px 10px", marginBottom: 16, alignSelf: "flex-start" }}>
                   <div style={{ width: 5, height: 5, borderRadius: "50%", background: sportTheme.accent, animation: "pulse 1.5s infinite" }} />
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: sportTheme.accent, letterSpacing: "0.2em" }}>{currentSlide.tag}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(sportTheme.accent), letterSpacing: "0.06em" }}>{currentSlide.tag}</p>
                 </div>
 
                 {/* Title */}
-                <h2 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em", whiteSpace: "pre-line" }}>
+                <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 12, letterSpacing: "0.02em", whiteSpace: "pre-line" }}>
                   {currentSlide.title}
                 </h2>
 
                 {/* Desc */}
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em", marginBottom: 24 }}>{currentSlide.desc}</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em", marginBottom: 24 }}>{currentSlide.desc}</p>
 
                 {/* Visual */}
                 <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
@@ -2525,8 +2487,8 @@ function OnboardingScreen({ onComplete }) {
             {!genError && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 2, paddingTop: 16 }}>
                 <button onClick={() => setSlideIndex(i => Math.max(0, i - 1))} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 44, height: 44, color: DS.colors.textSec, cursor: "pointer", fontSize: 18, opacity: slideIndex === 0 ? 0.3 : 1 }}>←</button>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{slideIndex + 1} / {slides.length}</p>
-                <button onClick={() => setSlideIndex(i => Math.min(slides.length - 1, i + 1))} style={{ background: slideIndex === slides.length - 1 ? sportTheme.accent : DS.colors.surfaceHigh, border: "none", borderRadius: slideIndex === slides.length - 1 ? DS.radius.full : DS.radius.full, padding: slideIndex === slides.length - 1 ? "0 20px" : "0", width: slideIndex === slides.length - 1 ? "auto" : 44, height: 44, color: slideIndex === slides.length - 1 ? "#000" : DS.colors.textSec, cursor: "pointer", fontSize: slideIndex === slides.length - 1 ? 13 : 18, fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: "0.05em", boxShadow: slideIndex === slides.length - 1 ? `0 4px 20px ${sportTheme.accent}50` : "none" }}>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{slideIndex + 1} / {slides.length}</p>
+                <button onClick={() => setSlideIndex(i => Math.min(slides.length - 1, i + 1))} style={{ background: slideIndex === slides.length - 1 ? sportTheme.accent : DS.colors.surfaceHigh, border: "none", borderRadius: slideIndex === slides.length - 1 ? DS.radius.full : DS.radius.full, padding: slideIndex === slides.length - 1 ? "0 20px" : "0", width: slideIndex === slides.length - 1 ? "auto" : 44, height: 44, color: slideIndex === slides.length - 1 ? "#000" : DS.colors.textSec, cursor: "pointer", fontSize: slideIndex === slides.length - 1 ? 13 : 18, fontFamily: "'Inter',sans-serif", fontWeight: 700, letterSpacing: "0.05em", boxShadow: slideIndex === slides.length - 1 ? `0 4px 20px ${sportTheme.accent}50` : "none" }}>
                   {slideIndex === slides.length - 1 ? "VOIR MON PROGRAMME →" : "→"}
                 </button>
               </div>
@@ -2551,7 +2513,7 @@ function OnboardingScreen({ onComplete }) {
         {contentStep === 0 && (
           <div>
             <StepTitle title={data.sport === "combat" ? "Choisis ta discipline" : "Quel est ton sport ?"} sub="Ton programme sera entièrement adapté." />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div className="v-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
                 <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primary : DS.colors.surface, borderRadius: DS.radius.full, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.05)" : "scale(1)", boxShadow: data.sport === sport.id ? DS.shadow.primary : DS.colors.isDark ? "0 2px 12px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)" }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{sport.emoji}</div>
@@ -2566,7 +2528,7 @@ function OnboardingScreen({ onComplete }) {
         {contentStep === 1 && (
           <div>
             <StepTitle title={data.sport === "combat" ? "Ton objectif de combat ?" : "Quel est ton objectif ?"} sub="Les exercices et les charges s'adapteront." />
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="v-stagger" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
                 <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
                   <span style={{ fontSize: 26 }}>{obj.emoji}</span>
@@ -2585,7 +2547,7 @@ function OnboardingScreen({ onComplete }) {
         {contentStep === 2 && (
           <div>
             <StepTitle title={data.sport === "combat" ? "Ta discipline ?" : "Ton poste ?"} sub={data.sport === "combat" ? "Le programme est adapté à ta discipline de combat." : "Le programme cible les qualités de ton poste."} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="v-stagger" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(POSTES_PAR_SPORT[data.sport] || []).map(poste => (
                 <div key={poste.id} onClick={() => setData(d => ({ ...d, poste: poste.id }))} style={{ background: data.poste === poste.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.poste === poste.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
                   <span style={{ fontSize: 26 }}>{poste.emoji}</span>
@@ -2608,7 +2570,7 @@ function OnboardingScreen({ onComplete }) {
               <span style={{ fontSize: 16 }}>⚠️</span>
               <p style={{ color: DS.colors.warning, fontSize: 12, ...s.body }}>Tu peux selectionner plusieurs zones. Les exercices a risque seront remplaces.</p>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="v-stagger" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {DOULEURS.map(d => {
                 const selected = data.douleurs.includes(d.id);
                 const solutions = {
@@ -2642,7 +2604,7 @@ function OnboardingScreen({ onComplete }) {
         {contentStep === 4 && (
           <div>
             <StepTitle title="Ton équipement ?" sub="Les exercices seront adaptés à ce que tu as." />
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="v-stagger" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {EQUIPEMENTS.map(eq => (
                 <div key={eq.id} onClick={() => setData(d => ({ ...d, equipement: eq.id }))} style={{ background: data.equipement === eq.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.equipement === eq.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
                   <span style={{ fontSize: 26 }}>{eq.emoji}</span>
@@ -2823,86 +2785,99 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
   const currentPlan = PLANS.find(p => p.id === selected);
   const featuresPro = ["Progression automatique des charges", "Nouveau programme IA genere a chaque cycle", "Adaptation si seance skippee", "Deload automatique intelligent", "Historique complet + graphiques", "Jusqu'a 5 seances / semaine", "Coach IA integre", "Export PDF du programme"];
 
+  const accentTexte = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const statsProg = [
+    { val: String(programme?.data_json?.semaines?.length || 8), label: "semaines" },
+    { val: String(programme?.data_json?.semaines?.[0]?.seances?.[0]?.exercices?.length || 5), label: "exos / séance" },
+    { val: String(frequence || programme?.data_json?.semaines?.[0]?.seances?.length || 3), label: "séances / sem" },
+  ];
+
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40 }}>
-      <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <p style={{ color: DS.colors.primary, fontSize: 13, ...s.heading, marginBottom: 10 }}>Programme pret</p>
-          <h1 style={{ ...s.display, fontSize: 28, color: DS.colors.textPrimary, lineHeight: 1.2, marginBottom: 16 }}>
-            {programme?.titre || "Ton programme est pret"}
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: -150, right: -120, width: 380, height: 380, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, pointerEvents: "none" }} />
+      <div className="v-stagger" style={{ padding: "104px 20px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <div style={{ marginBottom: 22 }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: accentTexte, marginBottom: 10 }}>PROGRAMME PRÊT</p>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 12 }}>
+            Débloque<br /><span style={{ color: accentTexte }}>tout Voltra</span>
           </h1>
-          <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
-            {[
-              { val: programme?.data_json?.semaines?.length || 8, label: "semaines" },
-              { val: programme?.data_json?.semaines?.[0]?.seances?.[0]?.exercices?.length || 5, label: "exercices/seance" },
-              { val: frequence || programme?.data_json?.semaines?.[0]?.seances?.length || 3, label: "seances/sem" },
-            ].map((stat, i) => (
-              <div key={i} style={{ flex: 1, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.md, padding: "10px 6px", textAlign: "center" }}>
-                <div style={{ ...s.mono, fontSize: 20, color: DS.colors.primary, fontWeight: 700 }}>{stat.val}</div>
-                <div style={{ color: DS.colors.textSec, fontSize: 10 }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-          <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body }}>Debloque l'acces complet pour commencer.</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 15, color: DS.colors.textSec }}>{programme?.titre || "Ton programme"} · accès complet, coach Ace inclus.</p>
         </div>
-        <div style={{ background: DS.colors.goldSoft, border: `1px solid rgba(255,209,102,0.25)`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <div>
-            <p style={{ color: DS.colors.gold, fontSize: 12, ...s.heading, marginBottom: 2 }}>Offre Lifetime - Prix de lancement</p>
-            <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>Expire dans</p>
-          </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {[timeLeft.h, timeLeft.m, timeLeft.s].map((val, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.sm, padding: "4px 8px", ...s.mono, fontSize: 18, color: DS.colors.gold, fontWeight: 700, minWidth: 36, textAlign: "center" }}>{pad(val)}</div>
-                <span style={{ color: DS.colors.textDim, fontSize: 9, marginTop: 2 }}>{["h", "m", "s"][i]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
-          {PLANS.map(plan => (
-            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: selected === plan.id ? plan.colorSoft : DS.colors.surface, border: `1.5px solid ${selected === plan.id ? plan.colorBorder : DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", cursor: "pointer", transition: "all 0.2s ease" }}>
-              {selected === plan.id && <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 2, background: plan.color, borderRadius: DS.radius.full }} />}
-              {plan.badge && <div style={{ display: "inline-flex", padding: "3px 10px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: plan.color, fontSize: 11, ...s.heading, marginBottom: 10 }}>{plan.badge}</div>}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-                <div>
-                  <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.body, marginBottom: 4 }}>{plan.label}</p>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span style={{ ...s.display, fontSize: 32, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
-                    <span style={{ color: DS.colors.textSec, fontSize: 14 }}>{plan.unit}</span>
-                  </div>
-                </div>
-                <div style={{ width: 24, height: 24, borderRadius: DS.radius.full, border: `2px solid ${selected === plan.id ? plan.color : DS.colors.textDim}`, background: selected === plan.id ? plan.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
-                  {selected === plan.id && <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: "white" }} />}
-                </div>
-              </div>
-              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                <p style={{ color: DS.colors.textSec, fontSize: 12 }}>{plan.priceDetail}</p>
-                {plan.savings && <span style={{ padding: "2px 8px", background: plan.colorSoft, borderRadius: DS.radius.full, color: plan.color, fontSize: 11, ...s.heading }}>{plan.savings}</span>}
-              </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+          {statsProg.map((st, i) => (
+            <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 18, padding: "12px 6px", textAlign: "center", boxShadow: DS.shadow.card }}>
+              <div style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 24, color: DS.colors.textPrimary, fontVariantNumeric: "tabular-nums" }}><CountUp value={st.val} delay={200 + i * 120} /></div>
+              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec }}>{st.label}</div>
             </div>
           ))}
         </div>
-        {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>⚠ {stripeError}</p>}
-        <button onClick={() => handleStripeCheckout(selected)} disabled={loading} style={{ width: "100%", height: 58, background: loading ? DS.colors.surfaceHigh : currentPlan.highlight ? `linear-gradient(135deg, ${DS.colors.primary}, ${DS.colors.primaryDark})` : `linear-gradient(135deg, ${DS.colors.primary}, ${DS.colors.primaryDark})`, border: "none", borderRadius: DS.radius.full, color: "#000", fontSize: 16, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", boxShadow: DS.shadow.primary, fontFamily: "'Inter',sans-serif", marginBottom: 12 }}>
-          {loading ? "Redirection vers Stripe..." : `Commencer avec ${currentPlan.label} →`}
-        </button>
-        <p style={{ color: DS.colors.textDim, fontSize: 12, textAlign: "center", marginBottom: 24, fontFamily: "'Inter',sans-serif" }}>🔒 Paiement sécurisé Stripe · Remboursement 7 jours</p>
-        <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 20px", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "'Inter',sans-serif", marginBottom: 8 }}>
+
+        {/* Offres */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+          {PLANS.map(plan => {
+            const on = selected === plan.id;
+            return (
+              <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: DS.colors.surface, border: `2px solid ${on ? DS.colors.primary : DS.colors.border}`, borderRadius: 22, padding: "18px 20px", cursor: "pointer", boxShadow: on ? DS.shadow.primary : DS.shadow.card, transform: on ? "scale(1.02)" : "scale(1)", transition: "all 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}>
+                {plan.badge && <div style={{ position: "absolute", top: -11, left: 18, padding: "4px 10px", background: DS.colors.primary, borderRadius: DS.radius.full, color: "#0B0B0C", fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 800, letterSpacing: "0.06em" }}>{plan.badge}</div>}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <div>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 14, color: DS.colors.textSec, marginBottom: 2 }}>{plan.label}</p>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 30, letterSpacing: "-0.02em", color: DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
+                      <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec }}>{plan.unit}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+                      <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>{plan.priceDetail}</span>
+                      {plan.savings && <span style={{ padding: "2px 8px", background: DS.colors.primarySoft, borderRadius: DS.radius.full, color: accentTexte, fontFamily: "'Inter',sans-serif", fontSize: 11, fontWeight: 700 }}>{plan.savings}</span>}
+                    </div>
+                  </div>
+                  <div style={{ width: 26, height: 26, flexShrink: 0, borderRadius: DS.radius.full, border: `2px solid ${on ? DS.colors.primary : DS.colors.textDim}`, background: on ? DS.colors.primary : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.25s ease" }}>
+                    {on && <svg className="v-pop" width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#0B0B0C" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {selected === "lifetime" && (
+          <div className="v-up" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 14 }}>
+            <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginRight: 4 }}>Prix de lancement, encore</span>
+            {[timeLeft.h, timeLeft.m, timeLeft.s].map((val, i) => (
+              <span key={i} style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 13, fontVariantNumeric: "tabular-nums", color: DS.colors.textPrimary, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 8, padding: "4px 7px" }}>{pad(val)}{["h", "m", "s"][i]}</span>
+            ))}
+          </div>
+        )}
+
+        {/* Ce qui est inclus */}
+        <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 18, padding: "14px 18px", color: DS.colors.textPrimary, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "'Inter',sans-serif", marginBottom: 8 }}>
           <span>Voir ce qui est inclus</span>
-          <span style={{ transform: showFeatures ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>↓</span>
+          <span style={{ transform: showFeatures ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s ease" }}>⌄</span>
         </button>
         {showFeatures && (
-          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: 16, marginBottom: 24 }}>
+          <div className="v-stagger" style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 18, padding: "6px 16px", marginBottom: 16 }}>
             {featuresPro.map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < featuresPro.length - 1 ? `1px solid ${DS.colors.border}` : "none" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill={DS.colors.successSoft} /><path d="M7 12.5L10.5 16L17 9" stroke={DS.colors.success} strokeWidth="2.5" strokeLinecap="round" /></svg>
-                <span style={{ color: DS.colors.textSec, fontSize: 14 }}>{f}</span>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderBottom: i < featuresPro.length - 1 ? `1px solid ${DS.colors.border}` : "none" }}>
+                <div style={{ width: 22, height: 22, borderRadius: DS.radius.full, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={accentTexte} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </div>
+                <span style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textPrimary, fontSize: 14 }}>{f}</span>
               </div>
             ))}
           </div>
         )}
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", textDecoration: "none" }}>
+      </div>
+
+      {/* Bouton de paiement, toujours visible */}
+      <div style={{ position: "sticky", bottom: 0, padding: "20px 20px 24px", maxWidth: 430, margin: "0 auto", background: `linear-gradient(transparent, ${DS.colors.bg} 30%)`, zIndex: 2 }}>
+        {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>⚠ {stripeError}</p>}
+        <PrimaryButton onClick={() => handleStripeCheckout(selected)} disabled={loading} style={{ height: 58 }}>
+          {!loading && <span className="v-shine" style={{ position: "absolute", inset: 0, borderRadius: DS.radius.full }} />}
+          {loading ? "Redirection vers Stripe..." : `Continuer avec ${currentPlan.label}`}
+        </PrimaryButton>
+        <p style={{ color: DS.colors.textSec, fontSize: 12, textAlign: "center", margin: "10px 0 6px", fontFamily: "'Inter',sans-serif" }}>🔒 Paiement sécurisé Stripe · Remboursement 7 jours</p>
+        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textSec, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", textDecoration: "underline" }}>
           Non merci, je veux juste essayer gratuitement
         </button>
       </div>
@@ -2972,7 +2947,7 @@ function MatchsScreen({ user, onBack }) {
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "14px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 26, color: DS.colors.textPrimary, letterSpacing: "0.1em" }}>MES MATCHS</h1>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 26, color: DS.colors.textPrimary, letterSpacing: "0.06em" }}>MES MATCHS</h1>
           <button onClick={() => setShowForm(v => !v)} style={{ background: DS.colors.primary, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: DS.shadow.primary }}>+</button>
         </div>
       </div>
@@ -3110,7 +3085,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
   const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 130 }}>
 
       {/* Badge programme loading */}
       {programmeLoading && (
@@ -3121,21 +3096,22 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
       )}
 
       {/* Header */}
-      <div style={{ background: DS.colors.surface, padding: "56px 24px 20px", borderBottom: `1px solid ${DS.colors.border}` }}>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, marginBottom: 4, fontWeight: 500 }}>
+      <div className="v-up" style={{ padding: "56px 24px 4px", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -140, right: -110, width: 320, height: 320, borderRadius: "50%", background: `radial-gradient(circle, ${theme.accent}26, transparent 70%)`, pointerEvents: "none" }} />
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, marginBottom: 6, fontWeight: 600, position: "relative" }}>
           {today.charAt(0).toUpperCase() + today.slice(1)}
         </p>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 32, color: DS.colors.textPrimary, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-            {greeting},<br />{userName} 👋
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 34, color: DS.colors.textPrimary, margin: 0, letterSpacing: "-0.03em", lineHeight: 1, textTransform: "uppercase" }}>
+            {greeting},<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>{userName}</span>
           </h1>
-          <div style={{ width: 44, height: 44, borderRadius: 22, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, boxShadow: `0 4px 12px ${theme.accent}40` }}>
+          <div className="v-float" style={{ width: 52, height: 52, borderRadius: 18, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, boxShadow: `0 8px 24px ${theme.accent}55` }}>
             {SPORT_EMOJIS[sport] || "⚡"}
           </div>
         </div>
       </div>
 
-      <div style={{ padding: "20px 16px 0" }}>
+      <div className="v-stagger" style={{ padding: "20px 16px 0" }}>
 
         {/* Bannière reprise séance en pause */}
         {pausedSession && (
@@ -3147,7 +3123,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                 Tu en étais à l'exercice {(pausedSession.exIdx || 0) + 1}, série {(pausedSession.setIdx || 0) + 1} · {Object.keys(pausedSession.completedSets || {}).length} séries validées
               </p>
             </div>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 800, color: theme.accent, whiteSpace: "nowrap" }}>Reprendre →</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 800, color: accentLisible(theme.accent), whiteSpace: "nowrap" }}>Reprendre →</p>
           </div>
         )}
 
@@ -3169,19 +3145,19 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
 
         {/* Séance du jour — card sombre */}
         {!seance ? (
-          <div style={{ background: DS.colors.isDark ? "#1D1D1F" : DS.colors.surface, borderRadius: DS.radius.xl, padding: 24, marginBottom: 16, position: "relative", overflow: "hidden" }}>
+          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, boxShadow: DS.shadow.card, borderRadius: 26, padding: 24, marginBottom: 16, position: "relative", overflow: "hidden" }}>
             <div style={{ position: "absolute", right: -20, top: -20, fontSize: 120, opacity: 0.06 }}>{SPORT_EMOJIS[sport] || "⚡"}</div>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: theme.accent, fontWeight: 600, marginBottom: 8, letterSpacing: "0.04em" }}>PROGRAMME EN PRÉPARATION</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: accentLisible(theme.accent), fontWeight: 600, marginBottom: 8, letterSpacing: "0.04em" }}>PROGRAMME EN PRÉPARATION</p>
             <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 24, color: DS.colors.textPrimary, margin: "0 0 8px", letterSpacing: "-0.01em" }}>Ton programme arrive...</h2>
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, margin: 0 }}>L'IA construit ton programme personnalisé. Reviens dans quelques instants.</p>
           </div>
         ) : (
-          <div style={{ background: DS.colors.surfaceDark || "#1D1D1F", borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16, position: "relative" }}>
+          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, boxShadow: DS.colors.isDark ? `0 0 0 1px ${theme.accent}22, 0 12px 40px ${theme.accent}14` : "0 12px 32px rgba(0,0,0,0.08)", borderRadius: 26, overflow: "hidden", marginBottom: 16, position: "relative" }}>
             <div style={{ position: "absolute", right: -20, top: -20, fontSize: 140, opacity: 0.06 }}>{SPORT_EMOJIS[sport] || "⚡"}</div>
             <div style={{ padding: "20px 20px 16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                 <div>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: theme.accent, fontWeight: 700, marginBottom: 6, letterSpacing: "0.04em" }}>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: accentLisible(theme.accent), fontWeight: 700, marginBottom: 6, letterSpacing: "0.04em" }}>
                     {seance.type?.toUpperCase() || "SÉANCE DU JOUR"}
                   </p>
                   <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 24, color: DS.colors.textPrimary, margin: 0, letterSpacing: "-0.01em" }}>
@@ -3217,9 +3193,11 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
             </div>
 
             <div style={{ padding: "0 16px 16px" }}>
-              <button onClick={() => onStartSession(seance)} style={{ width: "100%", height: 50, background: theme.accent, border: "none", borderRadius: DS.radius.lg, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.01em" }}>
-                Démarrer la séance →
-              </button>
+              <PrimaryButton onClick={() => onStartSession(seance)} style={{ height: 54 }}>
+                <span className="v-shine" style={{ position: "absolute", inset: 0, borderRadius: DS.radius.full }} />
+                Démarrer la séance
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 4.5V19.5L19 12L7 4.5Z" fill="currentColor" /></svg>
+              </PrimaryButton>
             </div>
           </div>
         )}
@@ -3235,7 +3213,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                 Cycle {currentCycle} · Semaine {prog.semaineCourante} sur {prog.totalSemaines}
               </p>
             </div>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, color: theme.accent, margin: 0 }}>{prog.progression}%</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, color: accentLisible(theme.accent), margin: 0 }}>{prog.progression}%</p>
           </div>
           <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, height: 6, overflow: "hidden" }}>
             <div style={{ width: `${prog.progression}%`, height: "100%", background: theme.accent, borderRadius: DS.radius.full, transition: "width 1s ease" }} />
@@ -3262,7 +3240,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                         : isSkipped ? <span style={{ color: DS.colors.textDim, fontSize: 12 }}>—</span>
                         : <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: isCurrent ? theme.accent : DS.colors.textSec, fontWeight: 700 }}>{c.num}</span>}
                     </div>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, color: isCurrent ? theme.accent : DS.colors.textSec, fontWeight: isCurrent ? 700 : 400, letterSpacing: "0.05em", textAlign: "center" }}>{c.label}</p>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: isCurrent ? theme.accent : DS.colors.textSec, fontWeight: isCurrent ? 700 : 400, letterSpacing: "0.05em", textAlign: "center" }}>{c.label}</p>
                   </div>
                 );
               });
@@ -3284,7 +3262,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                   {new Date(derniereSeance.date_realisee).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} · {derniereSeance.duree_min || 0} min
                 </p>
               </div>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: theme.accent, fontWeight: 700 }}>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: accentLisible(theme.accent), fontWeight: 700 }}>
                 {derniereSeance.exercices?.length || 0} exo
               </p>
             </div>
@@ -3385,7 +3363,7 @@ function HistoriqueScreen() {
   const accentColor = "#FF2D55";
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
+    <div className="v-stagger" style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 130 }}>
 
       {/* Drawer detail seance */}
       {selectedSeance && (
@@ -3394,10 +3372,10 @@ function HistoriqueScreen() {
           <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "24px 20px 48px", maxHeight: "70vh", overflowY: "auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", marginBottom: 4 }}>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", marginBottom: 4 }}>
                   {new Date(selectedSeance.date_realisee).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }).toUpperCase()}
                 </p>
-                <h3 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 22, color: DS.colors.textPrimary }}>{selectedSeance.titre}</h3>
+                <h3 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 22, color: DS.colors.textPrimary }}>{selectedSeance.titre}</h3>
               </div>
               <button onClick={() => setSelectedSeance(null)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
             </div>
@@ -3407,15 +3385,14 @@ function HistoriqueScreen() {
                 { val: selectedSeance.exercices?.length || 0, label: "EXO", color: DS.colors.success },
               ].map((stat, i) => (
                 <div key={i} style={{ flex: 1, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "12px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 20, color: stat.color, fontWeight: 700 }}>{stat.val}</div>
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, marginTop: 2, letterSpacing: "0.1em" }}>{stat.label}</div>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 20, color: DS.colors.textPrimary, fontWeight: 700 }}>{stat.val}</div>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, marginTop: 2, letterSpacing: "0.06em" }}>{stat.label}</div>
                 </div>
               ))}
               {selectedSeance.feedback && (
                 <div style={{ flex: 1, background: feedbackColor(selectedSeance.feedback) + "15", borderRadius: DS.radius.md, padding: "12px 8px", textAlign: "center", border: `1px solid ${feedbackColor(selectedSeance.feedback)}30` }}>
                   <div style={{ fontSize: 20, marginBottom: 2 }}>{feedbackEmoji(selectedSeance.feedback)}</div>
-                  <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: feedbackColor(selectedSeance.feedback), letterSpacing: "0.08em" }}>{feedbackLabel(selectedSeance.feedback).toUpperCase()}</div>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: feedbackColor(selectedSeance.feedback), letterSpacing: "0.08em" }}>{feedbackLabel(selectedSeance.feedback).toUpperCase()}</div>
                 </div>
               )}
             </div>
@@ -3426,7 +3403,7 @@ function HistoriqueScreen() {
                     <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{ex.nom}</p>
                     <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{ex.muscles?.split(" ")[0]}</p>
                   </div>
-                  <p style={{ fontFamily: "'Space Mono',monospace", color: accentColor, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}{ex.charge_kg > 0 ? ` @ ${ex.charge_kg}kg` : ""}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", color: accentColor, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}{ex.charge_kg > 0 ? ` @ ${ex.charge_kg}kg` : ""}</p>
                 </div>
               ))}
             </div>
@@ -3436,26 +3413,25 @@ function HistoriqueScreen() {
 
       {/* Header */}
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(10px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 34, color: DS.colors.textPrimary, letterSpacing: "0.1em" }}>PROGRESSION</h1>
-        <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 6, padding: "5px 10px" }}>CE MOIS</div>
+        <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 34, color: DS.colors.textPrimary, letterSpacing: "-0.03em" }}>PROGRESSION</h1>
+        <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 999, padding: "6px 12px", whiteSpace: "nowrap", fontWeight: 700 }}>CE MOIS</div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: "center", padding: 60 }}>
           <div style={{ width: 32, height: 32, borderRadius: DS.radius.full, background: accentColor, animation: "pulse 1s infinite", margin: "0 auto 12px" }} />
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: DS.colors.textSec }}>Chargement...</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec }}>Chargement...</p>
         </div>
       ) : (
         <div style={{ padding: "20px 20px 0" }}>
 
           {/* Hero stat */}
           <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, boxShadow: DS.shadow.card, padding: "24px 20px", marginBottom: 16, position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: accentColor }} />
-            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: accentColor, letterSpacing: "0.25em", marginBottom: 8 }}>VOLUME TOTAL</div>
-            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 72, color: DS.colors.textPrimary, lineHeight: 0.9, letterSpacing: "-0.02em" }}>{totalSeances}</div>
-            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em", marginTop: 8 }}>SEANCES COMPLETEES</div>
+            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentColor, letterSpacing: "0.06em", marginBottom: 8 }}>VOLUME TOTAL</div>
+            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 72, color: DS.colors.textPrimary, lineHeight: 0.9, letterSpacing: "-0.02em" }}>{totalSeances}</div>
+            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", marginTop: 8 }}>SEANCES COMPLETEES</div>
             {streak > 0 && (
-              <div style={{ position: "absolute", top: 20, right: 20, background: "rgba(0,255,135,0.15)", border: "1px solid rgba(0,255,135,0.3)", borderRadius: 8, padding: "6px 12px", fontFamily: "'Space Mono',monospace", fontSize: 11, color: "#00FF87", fontWeight: 700 }}>
+              <div style={{ position: "absolute", top: 20, right: 20, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: 8, padding: "6px 12px", fontFamily: "'Inter',sans-serif", fontSize: 11, color: accentLisible("#9BE84F"), fontWeight: 700 }}>
                 🔥 {streak} JOURS
               </div>
             )}
@@ -3465,21 +3441,20 @@ function HistoriqueScreen() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
             {[
               { val: streak, label: "STREAK ACTUEL", color: accentColor },
-              { val: `${dureeAvg}m`, label: "DUREE MOY.", color: "#00FF87" },
+              { val: `${dureeAvg}m`, label: "DUREE MOY.", color: accentLisible("#9BE84F") },
               { val: topRecords[0] ? `${topRecords[0][1]}kg` : "—", label: `RECORD ${(topRecords[0]?.[0] || "").split(" ")[0].toUpperCase()}`, color: "#FFE500" },
               { val: seancesReelles.filter(s => s.feedback === "good" || s.feedback === "easy").length, label: "SEANCES REUSSIES", color: "#00C8FF" },
             ].map((stat, i) => (
               <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 16, padding: "16px 14px", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: stat.color, lineHeight: 1, marginBottom: 6 }}>{stat.val}</div>
-                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.12em" }}>{stat.label}</div>
+                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 6 }}>{stat.val}</div>
+                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{stat.label}</div>
               </div>
             ))}
           </div>
 
           {/* Graphique séances par semaine — cliquable */}
           <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16 }}>
-            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 14 }}>SEANCES SUR 8 SEMAINES · APPUIE POUR DETAIL</div>
+            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 14 }}>SEANCES SUR 8 SEMAINES · APPUIE POUR DETAIL</div>
             <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 100 }}>
               {seancesParSemaine.map((count, i) => {
                 const isLast = i === 7;
@@ -3491,9 +3466,9 @@ function HistoriqueScreen() {
                 });
                 return (
                   <div key={i} onClick={() => seancesOfWeek.length > 0 && setSelectedSeance(seancesOfWeek[0])} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, cursor: seancesOfWeek.length > 0 ? "pointer" : "default" }}>
-                    {count > 0 && <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: isLast ? accentColor : "rgba(255,255,255,0.3)" }}>{count}</div>}
+                    {count > 0 && <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: isLast ? accentColor : "rgba(255,255,255,0.3)" }}>{count}</div>}
                     <div style={{ width: "100%", height: h, background: isEmpty ? "rgba(255,255,255,0.04)" : isLast ? accentColor : `rgba(255,45,85,${0.2 + (count/maxSemaine)*0.6})`, borderRadius: "4px 4px 0 0", border: isEmpty ? "1px dashed rgba(255,255,255,0.08)" : "none", boxShadow: isLast && count > 0 ? `0 0 12px rgba(255,45,85,0.5)` : "none", transition: "opacity 0.2s" }} />
-                    <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: isLast ? accentColor : "rgba(255,255,255,0.2)" }}>S{i + 1}</div>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: isLast ? accentColor : "rgba(255,255,255,0.2)" }}>S{i + 1}</div>
                   </div>
                 );
               })}
@@ -3503,12 +3478,12 @@ function HistoriqueScreen() {
           {/* Calendrier du mois */}
           <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "16px", marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: DS.colors.textPrimary, letterSpacing: "0.08em" }}>{now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }).toUpperCase()}</div>
-              {streak > 0 && <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: accentColor, letterSpacing: "0.1em" }}>🔥 {streak} JOURS</div>}
+              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 18, color: DS.colors.textPrimary, letterSpacing: "0.08em" }}>{now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }).toUpperCase()}</div>
+              {streak > 0 && <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentColor, letterSpacing: "0.06em" }}>🔥 {streak} JOURS</div>}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, marginBottom: 4 }}>
               {["L","M","M","J","V","S","D"].map((d, i) => (
-                <div key={i} style={{ textAlign: "center", fontFamily: "'Space Mono',monospace", fontSize: 7, color: DS.colors.textSec, paddingBottom: 4 }}>{d}</div>
+                <div key={i} style={{ textAlign: "center", fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, paddingBottom: 4 }}>{d}</div>
               ))}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
@@ -3518,8 +3493,8 @@ function HistoriqueScreen() {
                 const isToday = day === now.getDate();
                 const hasSeance = seanceDates.has(day);
                 return (
-                  <div key={day} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 4, background: hasSeance ? accentColor : isToday ? DS.colors.surfaceHigh : "transparent", border: isToday && !hasSeance ? `1px solid ${accentColor}` : "none", boxShadow: hasSeance ? `0 0 8px rgba(255,45,85,0.4)` : "none" }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: hasSeance ? "white" : isToday ? accentColor : "rgba(255,255,255,0.25)" }}>{day}</p>
+                  <div key={day} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, background: hasSeance ? accentColor : isToday ? DS.colors.surfaceHigh : "transparent", border: isToday && !hasSeance ? `1px solid ${accentColor}` : "none", boxShadow: hasSeance ? `0 0 8px rgba(255,45,85,0.4)` : "none" }}>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: hasSeance || isToday ? 800 : 500, color: hasSeance ? "#0B0B0C" : isToday ? accentLisible(accentColor) : DS.colors.textSec }}>{day}</p>
                   </div>
                 );
               })}
@@ -3529,7 +3504,7 @@ function HistoriqueScreen() {
           {/* Records personnels */}
           {topRecords.length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 12 }}>RECORDS PERSONNELS</div>
+              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>RECORDS PERSONNELS</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 0, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, overflow: "hidden" }}>
                 {topRecords.map(([nom, charge], i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderBottom: i < topRecords.length - 1 ? `1px solid rgba(255,255,255,0.04)` : "none" }}>
@@ -3537,7 +3512,7 @@ function HistoriqueScreen() {
                       {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
                     </div>
                     <div style={{ flex: 1, fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: DS.colors.textPrimary, fontWeight: 500 }}>{nom}</div>
-                    <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 14, color: "#00FF87", fontWeight: 700 }}>{charge} kg</div>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: accentLisible("#9BE84F"), fontWeight: 700 }}>{charge} kg</div>
                   </div>
                 ))}
               </div>
@@ -3547,7 +3522,7 @@ function HistoriqueScreen() {
           {/* Historique séances récentes */}
           {seancesReelles.length > 0 && (
             <div>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 12 }}>DERNIERES SEANCES</div>
+              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>DERNIERES SEANCES</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {seancesReelles.slice(0, 6).map((sc, i) => (
                   <div key={i} onClick={() => setSelectedSeance(sc)} style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "14px 16px", cursor: "pointer" }}>
@@ -3556,13 +3531,13 @@ function HistoriqueScreen() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading, marginBottom: 2 }}>{sc.titre}</p>
-                      <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.08em" }}>
+                      <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.08em" }}>
                         {new Date(sc.date_realisee).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }).toUpperCase()} · {sc.duree_min || 0}min
                       </p>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: accentColor, fontWeight: 700 }}>{sc.exercices?.length || 0} EXO</p>
-                      {sc.feedback && <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: feedbackColor(sc.feedback), marginTop: 2 }}>{feedbackLabel(sc.feedback).toUpperCase()}</p>}
+                      <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: accentColor, fontWeight: 700 }}>{sc.exercices?.length || 0} EXO</p>
+                      {sc.feedback && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: feedbackColor(sc.feedback), marginTop: 2 }}>{feedbackLabel(sc.feedback).toUpperCase()}</p>}
                     </div>
                   </div>
                 ))}
@@ -3573,8 +3548,8 @@ function HistoriqueScreen() {
           {seancesReelles.length === 0 && (
             <div style={{ textAlign: "center", padding: "40px 20px" }}>
               <p style={{ fontSize: 48, marginBottom: 16 }}>🏋️</p>
-              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: DS.colors.textPrimary, letterSpacing: "0.08em", marginBottom: 8 }}>AUCUNE SEANCE ENCORE</p>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em" }}>Complete ta premiere seance pour voir ta progression ici.</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 24, color: DS.colors.textPrimary, letterSpacing: "0.08em", marginBottom: 8 }}>AUCUNE SEANCE ENCORE</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>Complete ta premiere seance pour voir ta progression ici.</p>
             </div>
           )}
         </div>
@@ -3900,7 +3875,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100, position: "relative", overflow: "hidden" }}>
+    <div className="v-stagger" style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 130, position: "relative", overflow: "hidden" }}>
 
       {/* Sport bg */}
       <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
@@ -3917,7 +3892,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
               <p style={{ ...s.display, fontSize: 20, color: DS.colors.textPrimary }}>Modifier mon profil</p>
               <button onClick={() => setShowEditDrawer(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
             </div>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Sport</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>Sport</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 24 }}>
               {SPORTS.map(sp => (
                 <div key={sp.id} onClick={() => setEditData(d => ({ ...d, sport: sp.id, objectif: null }))} style={{ background: editData.sport === sp.id ? theme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${editData.sport === sp.id ? theme.accent : DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 6px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
@@ -3928,7 +3903,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             </div>
             {editData.sport && (
               <>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Objectif</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>Objectif</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
                   {(OBJECTIFS_PAR_SPORT[editData.sport] || []).map(obj => (
                     <div key={obj.id} onClick={() => setEditData(d => ({ ...d, objectif: obj.id }))} style={{ background: editData.objectif === obj.id ? theme.accent + "15" : DS.colors.surfaceHigh, border: `1px solid ${editData.objectif === obj.id ? theme.accent : DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
@@ -3943,13 +3918,13 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
                 </div>
               </>
             )}
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Seances / semaine</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>Seances / semaine</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
               {[2, 3, 4, 5].map(n => (
                 <div key={n} onClick={() => setEditData(d => ({ ...d, frequence: n, jours: (d.jours && d.jours.length === n) ? d.jours : DEFAULT_JOURS[n] }))} style={{ flex: 1, padding: "14px 0", textAlign: "center", background: editData.frequence === n ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: editData.frequence === n ? "#000" : DS.colors.textSec, fontSize: 18, cursor: "pointer", ...s.display }}>{n}</div>
               ))}
             </div>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 12 }}>Mes jours d'entraînement</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>Mes jours d'entraînement</p>
             <div style={{ marginBottom: 28 }}>
               <DayPicker jours={editData.jours || []} max={editData.frequence} accent={theme.accent} onChange={(j) => setEditData(d => ({ ...d, jours: j }))} />
             </div>
@@ -3968,7 +3943,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: "none" }} />
           <div onClick={() => fileInputRef.current?.click()} style={{ position: "relative", width: 72, height: 72, flexShrink: 0, cursor: "pointer" }}>
-            <div style={{ width: 72, height: 72, background: avatarUrl ? "transparent" : theme.accent + "20", border: `2px solid ${theme.accent}50`, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, ...s.display, color: theme.accent, overflow: "hidden", boxShadow: `0 0 30px ${theme.accent}20` }}>
+            <div style={{ width: 72, height: 72, background: avatarUrl ? "transparent" : theme.accent + "20", border: `2px solid ${theme.accent}50`, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, ...s.display, color: accentLisible(theme.accent), overflow: "hidden", boxShadow: `0 0 30px ${theme.accent}20` }}>
               {uploadingAvatar ? (
                 <div style={{ width: 20, height: 20, border: `2px solid ${theme.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
               ) : avatarUrl ? (
@@ -3985,10 +3960,10 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
           <div>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: 6, padding: "2px 8px", marginBottom: 6 }}>
               <span style={{ fontSize: 12 }}>{SPORT_EMOJIS[sport] || "⚡"}</span>
-              <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>{sport !== "default" ? sport : "Sport"}</span>
+              <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent), letterSpacing: "0.06em", textTransform: "uppercase" }}>{sport !== "default" ? sport : "Sport"}</span>
             </div>
             <p style={{ ...s.display, fontSize: 24, color: DS.colors.textPrimary, letterSpacing: "0.05em", lineHeight: 1, marginBottom: 4 }}>{userName.toUpperCase()}</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec }}>{user?.email}</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec }}>{user?.email}</p>
           </div>
         </div>
       </div>
@@ -3998,14 +3973,13 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
         {/* Stats rapides */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
           {[
-            { val: totalSeancesAllTime || seancesCount, label: "Seances", color: theme.accent },
+            { val: totalSeancesAllTime || seancesCount, label: "Seances", color: accentLisible(theme.accent) },
             { val: streak, label: "Streak", color: DS.colors.success },
             { val: `${progression}%`, label: "Progres", color: DS.colors.warning },
           ].map((stat, i) => (
             <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 22, fontWeight: 700, color: stat.color, lineHeight: 1, marginBottom: 4 }}>{stat.val}</p>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em", textTransform: "uppercase" }}>{stat.label}</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 22, fontWeight: 700, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 4 }}>{stat.val}</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase" }}>{stat.label}</p>
             </div>
           ))}
         </div>
@@ -4016,35 +3990,33 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             { val: `${seancesCount}`, label: "Ce mois", color: DS.colors.textSec },
           ].map((stat, i) => (
             <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 22, fontWeight: 700, color: stat.color, lineHeight: 1, marginBottom: 4 }}>{stat.val}</p>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.1em", textTransform: "uppercase" }}>{stat.label}</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 22, fontWeight: 700, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 4 }}>{stat.val}</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase" }}>{stat.label}</p>
             </div>
           ))}
         </div>
 
         {/* Programme actif */}
         <div style={{ background: DS.colors.surface, border: `1px solid ${theme.accent}25`, borderRadius: DS.radius.xl, padding: 20, marginBottom: 14, position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <div>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 6 }}>Programme actif</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent), letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6 }}>Programme actif</p>
               <p style={{ color: DS.colors.textPrimary, fontSize: 16, ...s.heading }}>{programme?.titre || "Aucun programme"}</p>
             </div>
             <div style={{ background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "4px 10px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: theme.accent }}>CYCLE {currentCycle}</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent) }}>CYCLE {currentCycle}</p>
             </div>
           </div>
           <ProgressBar value={progression} />
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec }}>{frequence}x / semaine</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>Semaine {semaineCourante}/{totalSemaines} · {progression}%</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec }}>{frequence}x / semaine</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent) }}>Semaine {semaineCourante}/{totalSemaines} · {progression}%</p>
           </div>
           {objectif && objectif !== "Non defini" && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${DS.colors.border}` }}>
               <span style={{ fontSize: 16 }}>🎯</span>
               <div>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.1em", textTransform: "uppercase" }}>Ton objectif</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase" }}>Ton objectif</p>
                 <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, textTransform: "capitalize" }}>{objectif}</p>
               </div>
             </div>
@@ -4054,8 +4026,8 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
         {/* Calendrier de la semaine */}
         <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase" }}>Cette semaine</p>
-            <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent }}>{seancesFaitesSemaine.length}/{frequence} séances</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase" }}>Cette semaine</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent) }}>{seancesFaitesSemaine.length}/{frequence} séances</p>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             {(() => {
@@ -4070,7 +4042,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
                 const isToday = dayNum === todayIdx;
                 return (
                   <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: isToday ? theme.accent : DS.colors.textDim, fontWeight: isToday ? 700 : 400 }}>{j}</p>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: isToday ? theme.accent : DS.colors.textDim, fontWeight: isToday ? 700 : 400 }}>{j}</p>
                     <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, background: isDone ? theme.accent : isPlanned ? theme.accent + "15" : DS.colors.surfaceHigh, border: `1.5px solid ${isDone ? theme.accent : isPlanned ? theme.accent + "40" : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isToday ? `0 0 0 2px ${theme.accent}30` : "none" }}>
                       {isDone ? (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#000" strokeWidth="3" strokeLinecap="round" /></svg>
@@ -4089,7 +4061,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
 
         {/* Historique des cycles — badges */}
         <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 14 }}>Parcours de cycles</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 14 }}>Parcours de cycles</p>
           <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
             {(() => {
               const cycleInfo = (n) => n === 1 ? { label: "Fondations", emoji: "🌱" } : n === 2 ? { label: "Intensification", emoji: "⚡" } : n === 3 ? { label: "Puissance", emoji: "🔥" } : n === 4 ? { label: "Elite", emoji: "💎" } : { label: `Elite+${n - 4}`, emoji: "🚀" };
@@ -4104,8 +4076,8 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
                     <div style={{ width: 52, height: 52, borderRadius: 16, background: isDone ? theme.accent : isCurrent ? theme.accent + "20" : DS.colors.surfaceHigh, border: `2px solid ${isDone || isCurrent ? theme.accent : DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: isCurrent ? `0 0 16px ${theme.accent}50` : "none" }}>
                       {isSkipped ? "—" : info.emoji}
                     </div>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, fontWeight: isCurrent ? 700 : 500, color: isCurrent ? theme.accent : DS.colors.textSec, textAlign: "center", lineHeight: 1.2 }}>{info.label}</p>
-                    {isDone && <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 7, color: theme.accent }}>✓ FAIT</p>}
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: isCurrent ? 700 : 500, color: isCurrent ? theme.accent : DS.colors.textSec, textAlign: "center", lineHeight: 1.2 }}>{info.label}</p>
+                    {isDone && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent) }}>✓ FAIT</p>}
                   </div>
                 );
               });
@@ -4119,10 +4091,10 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             <div style={{ width: 40, height: 40, background: theme.accent + "15", border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>✏️</div>
             <div>
               <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Modifier mon profil</p>
-              <p style={{ color: DS.colors.textSec, fontSize: 12, fontFamily: "'Space Mono',monospace" }}>{sport !== "default" ? sport : "?"} · {objectif !== "Non defini" ? objectif : "?"} · {frequence}x/sem</p>
+              <p style={{ color: DS.colors.textSec, fontSize: 12, fontFamily: "'Inter',sans-serif" }}>{sport !== "default" ? sport : "?"} · {objectif !== "Non defini" ? objectif : "?"} · {frequence}x/sem</p>
             </div>
           </div>
-          <span style={{ color: theme.accent, fontSize: 18 }}>→</span>
+          <span style={{ color: accentLisible(theme.accent), fontSize: 18 }}>→</span>
         </div>
 
         {/* Notifications */}
@@ -4132,7 +4104,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
               <div style={{ width: 40, height: 40, background: "rgba(255,229,0,0.1)", border: "1px solid rgba(255,229,0,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔔</div>
               <div>
                 <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Rappels seance</p>
-                <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{notifOn ? `TOUS LES JOURS A ${notifHeure}` : "DESACTIVE"}</p>
+                <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Inter',sans-serif" }}>{notifOn ? `TOUS LES JOURS A ${notifHeure}` : "DESACTIVE"}</p>
               </div>
             </div>
             <div onClick={() => {
@@ -4147,9 +4119,9 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
           </div>
           {notifOn && (
             <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px" }}>
-              <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.1em", flex: 1 }}>HEURE DU RAPPEL</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", flex: 1 }}>HEURE DU RAPPEL</p>
               <input type="time" value={notifHeure} onChange={e => setNotifHeure(e.target.value)}
-                style={{ background: "transparent", border: `1px solid ${theme.accent}40`, borderRadius: 8, padding: "6px 10px", color: theme.accent, fontFamily: "'Space Mono',monospace", fontSize: 14, outline: "none", colorScheme: "dark", cursor: "pointer" }} />
+                style={{ background: "transparent", border: `1px solid ${theme.accent}40`, borderRadius: 8, padding: "6px 10px", color: accentLisible(theme.accent), fontFamily: "'Inter',sans-serif", fontSize: 14, outline: "none", colorScheme: "dark", cursor: "pointer" }} />
             </div>
           )}
         </div>
@@ -4160,7 +4132,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             <div style={{ width: 40, height: 40, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{DS.colors.isDark ? "🌙" : "☀️"}</div>
             <div>
               <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Apparence</p>
-              <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Space Mono',monospace" }}>{DS.colors.isDark ? "THEME SOMBRE" : "THEME LUMINEUX"}</p>
+              <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Inter',sans-serif" }}>{DS.colors.isDark ? "THEME SOMBRE" : "THEME LUMINEUX"}</p>
             </div>
           </div>
           <div onClick={() => { const next = DS.colors.isDark ? "light" : "dark"; DS.colors = THEMES[next]; DS.shadow = THEMES[next].shadow; localStorage.setItem("voltra_theme", next); onThemeChange && onThemeChange(next); }} style={{ width: 50, height: 28, background: DS.colors.isDark ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", border: `1px solid ${DS.colors.border}` }}>
@@ -4216,16 +4188,41 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
 // ─────────────────────────────────────────────
 // PROJECTION SCREEN — la transformation concrète
 // ─────────────────────────────────────────────
+// Nombre qui « compte » jusqu'à sa valeur (ex. "+18%", "24", "0.5T")
+function CountUp({ value, duration = 1100, delay = 0 }) {
+  const m = String(value).match(/^([+-]?)(\d+(?:[.,]\d+)?)(.*)$/);
+  const [shown, setShown] = useState(m ? 0 : value);
+  useEffect(() => {
+    if (!m) return;
+    const target = parseFloat(m[2].replace(",", "."));
+    const decimals = (m[2].split(/[.,]/)[1] || "").length;
+    let raf, start;
+    const t = setTimeout(() => {
+      const step = (ts) => {
+        start = start || ts;
+        const k = Math.min(1, (ts - start) / duration);
+        const eased = 1 - Math.pow(1 - k, 3);
+        setShown((target * eased).toFixed(decimals));
+        if (k < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    }, delay);
+    return () => { clearTimeout(t); cancelAnimationFrame(raf); };
+  }, [value]);
+  if (!m) return <>{value}</>;
+  const sep = m[2].includes(",") ? "," : ".";
+  return <>{m[1]}{String(shown).replace(".", sep)}{m[3]}</>;
+}
+
 function ProjectionScreen({ sport, onboardingData, onContinue }) {
   const theme = getSportTheme(sport);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => { setTimeout(() => setVisible(true), 100); }, []);
+  const accentTexte = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
 
   const frequence = onboardingData?.frequence || 3;
   const totalSeances = frequence * 8; // 8 semaines
   const isBodyweight = onboardingData?.equipement === "maison" || onboardingData?.equipement === "terrain";
-  const kgTotal = Math.round(totalSeances * (18 + Math.random() * 6)); // estimation tonnage (materiel avec charges)
-  const totalReps = Math.round(totalSeances * (85 + Math.random() * 25)); // estimation repetitions (poids du corps)
+  const [kgTotal] = useState(() => Math.round(totalSeances * (18 + Math.random() * 6))); // estimation tonnage (materiel avec charges)
+  const [totalReps] = useState(() => Math.round(totalSeances * (85 + Math.random() * 25))); // estimation repetitions (poids du corps)
 
   // Projection spécifique par objectif
   const projections = {
@@ -4238,59 +4235,53 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
   const proj = projections[onboardingData?.objectif] || { metric: "+20%", label: "de performance estimée", icon: "⚡" };
 
   const stats = [
-    { val: totalSeances, label: "SÉANCES · CYCLE 1", sub: "puis ça continue", icon: "📅" },
+    { val: String(totalSeances), label: "Séances sur le cycle 1", sub: "puis ça continue", icon: "📅" },
     isBodyweight
-      ? { val: `${totalReps}`, label: "RÉPÉTITIONS", sub: "sur ce premier cycle", icon: "💪" }
-      : { val: `${(kgTotal/1000).toFixed(1)}T`, label: "SOULEVÉES", sub: "sur ce premier cycle", icon: "💪" },
-    { val: proj.metric, label: proj.label.toUpperCase(), sub: "à ce rythme", icon: proj.icon },
+      ? { val: `${totalReps}`, label: "Répétitions", sub: "sur ce premier cycle", icon: "💪" }
+      : { val: `${(kgTotal / 1000).toFixed(1)}T`, label: "Soulevées", sub: "sur ce premier cycle", icon: "💪" },
+    { val: proj.metric, label: proj.label.charAt(0).toUpperCase() + proj.label.slice(1), sub: "à ce rythme", icon: proj.icon },
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0E100F 0%, #06060E 100%)", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 20%, ${theme.accent}10, transparent)`, pointerEvents: "none" }} />
+    <div style={{ minHeight: "100vh", background: DS.colors.bg, position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: -140, left: -100, width: 360, height: 360, borderRadius: "50%", background: `radial-gradient(circle, ${theme.accent}22, transparent 70%)`, pointerEvents: "none" }} />
 
-      <div style={{ padding: "56px 24px 0", maxWidth: 430, margin: "0 auto", width: "100%", position: "relative", zIndex: 1, opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(20px)", transition: "all 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
+      <div className="v-stagger" style={{ padding: "56px 24px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: accentTexte, marginBottom: 10 }}>DÈS TON PREMIER CYCLE · 8 SEMAINES</p>
+        <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 38, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 28 }}>
+          Voici ta<br /><span style={{ color: accentTexte }}>transformation</span>
+        </h1>
 
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12, color: theme.accent, letterSpacing: "0.15em", marginBottom: 12 }}>DÈS TON PREMIER CYCLE (8 SEMAINES)</p>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 34, color: "white", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
-            Voici ta<br />transformation
-          </h1>
-        </div>
-
-        {/* Stats projetées */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
-          {stats.map((s, i) => (
-            <div key={i} style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${theme.accent}25`, borderRadius: 20, padding: "18px 20px", display: "flex", alignItems: "center", gap: 16, opacity: visible ? 1 : 0, transform: visible ? "translateX(0)" : "translateX(-20px)", transition: `all 0.5s ease ${i * 0.15 + 0.2}s` }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: `${theme.accent}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{s.icon}</div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 800, fontSize: 28, color: theme.accent, lineHeight: 1, marginBottom: 4 }}>{s.val}</p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{s.label}</p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{s.sub}</p>
-              </div>
+        {stats.map((st, i) => (
+          <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 22, padding: "18px 20px", display: "flex", alignItems: "center", gap: 16, marginBottom: 12, boxShadow: DS.shadow.card }}>
+            <div style={{ width: 52, height: 52, borderRadius: 16, background: `${theme.accent}1F`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>{st.icon}</div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 32, letterSpacing: "-0.02em", color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 4, fontVariantNumeric: "tabular-nums" }}><CountUp value={st.val} delay={250 + i * 150} /></p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary }}>{st.label}</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>{st.sub}</p>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
 
         {/* Continuité — pas juste 8 semaines */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 16px", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: 18, padding: "14px 16px", margin: "4px 0 12px" }}>
           <span style={{ fontSize: 22 }}>♾️</span>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
-            Et ce n'est que le <strong style={{ color: "white" }}>premier cycle</strong>. Ton programme évolue ensuite automatiquement — <strong style={{ color: theme.accent }}>progression continue toute l'année</strong>.
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, lineHeight: 1.5 }}>
+            Et ce n'est que le <strong style={{ color: DS.colors.textPrimary }}>premier cycle</strong>. Ton programme évolue ensuite automatiquement : <strong style={{ color: DS.colors.textPrimary }}>progression continue toute l'année</strong>.
           </p>
         </div>
 
-        {/* Preuve sociale */}
-        <div style={{ background: `${theme.accent}10`, border: `1px solid ${theme.accent}25`, borderRadius: 16, padding: "14px 18px", marginBottom: 28, textAlign: "center" }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>
-            <strong style={{ color: theme.accent }}>87% des athlètes</strong> avec un profil similaire progressent visiblement en 6 semaines
-          </p>
-        </div>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, lineHeight: 1.6, textAlign: "center", marginBottom: 8 }}>
+          <strong style={{ color: DS.colors.textPrimary }}>87% des athlètes</strong> avec un profil similaire progressent visiblement en 6 semaines
+        </p>
+      </div>
 
-        <button onClick={onContinue} style={{ width: "100%", height: 58, background: theme.accent, border: "none", borderRadius: 9999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}45` }}>
-          Voir mon programme complet →
-        </button>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "center", paddingBottom: 32 }}>
+      <div style={{ position: "sticky", bottom: 0, padding: "20px 24px 24px", maxWidth: 430, margin: "0 auto", background: `linear-gradient(transparent, ${DS.colors.bg} 30%)`, zIndex: 2 }}>
+        <PrimaryButton onClick={onContinue} style={{ height: 58 }}>
+          Voir mon programme complet
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </PrimaryButton>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, textAlign: "center", marginTop: 10 }}>
           Estimations basées sur des profils similaires
         </p>
       </div>
@@ -4340,7 +4331,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
     <div style={{ minHeight: "100vh", background: DS.colors.bg, position: "relative" }}>
       <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none", opacity: 0.4 }} />
 
-      <div style={{ padding: "48px 22px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
+      <div className="v-stagger" style={{ padding: "48px 22px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
 
         {/* En-tête façon « sport énergique » */}
         <div style={{ marginBottom: 20 }}>
@@ -4355,7 +4346,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         </div>
 
         {/* Ticket offre de bienvenue */}
-        <div style={{ background: DS.colors.primary, color: "#0B0B0C", borderRadius: 22, padding: "20px 22px", transform: "rotate(-1.5deg)", boxShadow: DS.shadow.primary, margin: "8px 4px 18px", position: "relative", overflow: "hidden" }}>
+        <div className="v-shine" style={{ background: DS.colors.primary, color: "#0B0B0C", borderRadius: 22, padding: "20px 22px", transform: "rotate(-1.5deg)", boxShadow: DS.shadow.primary, margin: "8px 4px 18px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", right: -18, top: -18, width: 90, height: 90, borderRadius: "50%", background: "rgba(0,0,0,0.06)" }} />
           <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em" }}>OFFRE DE BIENVENUE</p>
           <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 64, lineHeight: 1, letterSpacing: "-0.03em", margin: "4px 0 6px" }}>-30%</p>
@@ -4377,13 +4368,13 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
           {[
-            { val: exercices.length || "5+", label: "Exos / séance", color: theme.accent },
+            { val: exercices.length || "5+", label: "Exos / séance", color: accentLisible(theme.accent) },
             { val: frequence * 8, label: "Séances / cycle", color: "#00FF87" },
             { val: "∞", label: "Progression", color: "#FF8C00" },
           ].map((stat, i) => (
             <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 28, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 5 }}>{stat.val}</p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 28, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 5 }}>{stat.val}</p>
               <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, fontWeight: 500 }}>{stat.label}</p>
             </div>
           ))}
@@ -4403,13 +4394,13 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
             {(exercices.length > 0 ? exercices.slice(0, 2) : [{nom: "Squat Barre", muscles: "Quadriceps", sets: 4, reps: "8"}, {nom: "Deadlift Roumain", muscles: "Ischios", sets: 3, reps: "10"}]).map((ex, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: `1px solid ${DS.colors.border}` }}>
                 <div style={{ width: 30, height: 30, borderRadius: 9, background: theme.accent + "20", border: `1px solid ${theme.accent}30`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: theme.accent, fontWeight: 700 }}>{i + 1}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: accentLisible(theme.accent), fontWeight: 700 }}>{i + 1}</p>
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: DS.colors.textPrimary, marginBottom: 2 }}>{ex.nom}</p>
                   <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec }}>{(ex.muscles || "").split(" ")[0]}</p>
                 </div>
-                <p style={{ fontFamily: "'Space Mono',monospace", color: theme.accent, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", color: accentLisible(theme.accent), fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}</p>
               </div>
             ))}
 
@@ -4422,13 +4413,13 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
               ].map((ex, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? `1px solid ${DS.colors.border}` : "none", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>
                   <div style={{ width: 30, height: 30, borderRadius: 9, background: DS.colors.surface, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: DS.colors.textSec, fontWeight: 700 }}>{i + 3}</p>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, fontWeight: 700 }}>{i + 3}</p>
                   </div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: DS.colors.textPrimary, marginBottom: 2 }}>{ex.nom}</p>
                     <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec }}>{ex.muscles}</p>
                   </div>
-                  <p style={{ fontFamily: "'Space Mono',monospace", color: DS.colors.textSec, fontSize: 12 }}>{ex.sets}×{ex.reps}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textSec, fontSize: 12 }}>{ex.sets}×{ex.reps}</p>
                 </div>
               ))}
               {/* Overlay cadenas */}
@@ -4475,7 +4466,29 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
 // ─────────────────────────────────────────────
 function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
   const [selected, setSelected] = useState("annual");
+  const [loading, setLoading] = useState(false);
+  const [stripeError, setStripeError] = useState("");
   const theme = getSportTheme(sportActif);
+
+  // Paiement : même parcours Stripe que la page des offres (le passage en Pro se fait par le webhook Stripe)
+  const handleCheckout = async () => {
+    setLoading(true);
+    setStripeError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ plan: selected, user_id: session?.user?.id, email: session?.user?.email, success_url: window.location.origin + window.location.pathname, cancel_url: window.location.origin + window.location.pathname }),
+      });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; return; }
+      setStripeError("Erreur lors de la redirection. Réessaie.");
+    } catch (err) {
+      setStripeError("Erreur de connexion. Réessaie.");
+    }
+    setLoading(false);
+  };
   const currentPlan = PLANS.find(p => p.id === selected);
   const totalSemaines = programme?.total_semaines || 8;
   const semaineCourante = programme?.semaine_courante || 1;
@@ -4497,26 +4510,26 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
           <div style={{ width: 80, height: 80, borderRadius: 22, background: theme.accent + "20", border: `2px solid ${theme.accent}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 20px", boxShadow: `0 0 60px ${theme.accent}30`, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
             🏆
           </div>
-          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: theme.accent, letterSpacing: "0.3em", marginBottom: 10 }}>SEANCE TERMINEE</div>
-          <h1 style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 32, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 8, letterSpacing: "0.02em" }}>
+          <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent), letterSpacing: "0.06em", marginBottom: 10 }}>SEANCE TERMINEE</div>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 32, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 8, letterSpacing: "0.02em" }}>
             {feedbackMsg}<br />tu progresses !
           </h1>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.12em" }}>{stats?.titre?.toUpperCase()}</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{stats?.titre?.toUpperCase()}</p>
         </div>
 
         {/* Stats personnalisées de la séance */}
         <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
           {[
-            { val: stats?.exercices || 0, label: "EXERCICES", color: theme.accent },
-            { val: `${stats?.duree || 0}min`, label: "DUREE", color: "#00FF87" },
+            { val: stats?.exercices || 0, label: "EXERCICES", color: accentLisible(theme.accent) },
+            { val: `${stats?.duree || 0}min`, label: "DUREE", color: accentLisible("#9BE84F") },
             stats?.totalKg > 0
               ? { val: `${stats.totalKg}kg`, label: "SOULEVE", color: "#FF8C00" }
               : { val: `${stats?.totalReps || 0}`, label: "REPETITIONS", color: "#FF8C00" },
           ].map((stat, i) => (
             <div key={i} style={{ flex: 1, background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 20, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
-              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.1em" }}>{stat.label}</div>
+              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 20, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
+              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{stat.label}</div>
             </div>
           ))}
         </div>
@@ -4524,17 +4537,17 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
         {/* Message accrocheur */}
         <div style={{ background: `linear-gradient(135deg, ${theme.accent}12, ${theme.accent}04)`, border: `1px solid ${theme.accent}25`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 24, position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
-          <p style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 18, color: DS.colors.textPrimary, marginBottom: 6 }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 18, color: DS.colors.textPrimary, marginBottom: 6 }}>
             Ta progression vient de commencer.
           </p>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
             {stats?.totalKg > 0 ? `Tu viens de soulever ${stats.totalKg}kg. ` : stats?.totalReps > 0 ? `Tu viens de faire ${stats.totalReps} répétitions. ` : ""}La vraie transformation commence maintenant — continue avec Pro pour débloquer toutes tes séances.
           </p>
         </div>
 
         {/* Ce qu'il rate */}
         <div style={{ marginBottom: 24 }}>
-          <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 8, color: DS.colors.textSec, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 12 }}>CE QUE TU DEBLOQUES</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>CE QUE TU DEBLOQUES</p>
           {[
             { emoji: "📈", title: "Progression automatique", desc: "Tes charges augmentent intelligemment chaque semaine" },
             { emoji: "🤖", title: "Coach IA illimite", desc: "Adaptation en temps reel pendant chaque seance" },
@@ -4545,7 +4558,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
               <div style={{ width: 36, height: 36, background: theme.accent + "12", border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{f.emoji}</div>
               <div>
                 <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading, marginBottom: 2 }}>{f.title}</p>
-                <p style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{f.desc}</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{f.desc}</p>
               </div>
             </div>
           ))}
@@ -4561,7 +4574,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
                 <div>
                   <p style={{ color: DS.colors.textSec, fontSize: 12, marginBottom: 4 }}>{plan.label}</p>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 28, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
+                    <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
                     <span style={{ color: DS.colors.textSec, fontSize: 13 }}>{plan.unit}</span>
                   </div>
                 </div>
@@ -4578,11 +4591,11 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
           ))}
         </div>
 
-        <button onClick={() => onSelectPlan(selected)} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Rajdhani',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}40` }}>
+        <button onClick={handleCheckout} disabled={loading} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: "0.06em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}40` }}>
           {loading ? "Redirection..." : "CONTINUER MA PROGRESSION →"}
         </button>
         {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>{stripeError}</p>}
-        <p style={{ color: DS.colors.textDim, fontSize: 11, textAlign: "center", marginBottom: 16, fontFamily: "'Space Mono',monospace", letterSpacing: "0.06em" }}>🔒 Paiement sécurisé Stripe · Annulation en 1 clic</p>
+        <p style={{ color: DS.colors.textDim, fontSize: 11, textAlign: "center", marginBottom: 16, fontFamily: "'Inter',sans-serif", letterSpacing: "0.06em" }}>🔒 Paiement sécurisé Stripe · Annulation en 1 clic</p>
         <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", marginTop: 4 }}>
           Non merci, je reste sur le plan gratuit
         </button>
@@ -4604,15 +4617,17 @@ function BottomNav({ activeTab, setTab }) {
     { id: "historique", label: "Progression", icon: Icons.chart },
     { id: "profil", label: "Profil", icon: Icons.user },
   ];
+  const idx = Math.max(0, tabs.findIndex(t => t.id === activeTab));
+  // Barre flottante façon « pilule », avec un repère qui glisse vers l'onglet choisi
   return (
-    <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", zIndex: 100, background: DS.colors.navBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${DS.colors.border}`, padding: "10px 0 28px", display: "flex", width: "100%", maxWidth: 430, boxShadow: DS.colors.isDark ? "none" : "0 -4px 20px rgba(0,0,0,0.06)" }}>
+    <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 100, width: "calc(100% - 32px)", maxWidth: 398, background: DS.colors.navBg, backdropFilter: "blur(24px) saturate(160%)", WebkitBackdropFilter: "blur(24px) saturate(160%)", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, padding: 6, display: "flex", boxShadow: DS.colors.isDark ? "0 12px 40px rgba(0,0,0,0.6)" : "0 12px 36px rgba(0,0,0,0.12)" }}>
+      <div style={{ position: "absolute", top: 6, bottom: 6, left: 6, width: `calc((100% - 12px) / ${tabs.length})`, borderRadius: DS.radius.full, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, transform: `translateX(${idx * 100}%)`, transition: "transform 0.4s cubic-bezier(0.34,1.56,0.64,1)" }} />
       {tabs.map(tab => {
         const isActive = activeTab === tab.id;
         return (
-          <button key={tab.id} onClick={() => setTab(tab.id)} style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, cursor: "pointer", padding: "4px 0", transition: "transform 0.15s ease", transform: isActive ? "scale(1.05)" : "scale(1)" }}>
-            {tab.icon(isActive)}
-            <span style={{ color: isActive ? DS.colors.primaryDark : DS.colors.textSec, fontSize: 10, fontFamily: "'Inter',sans-serif", fontWeight: isActive ? 700 : 500, letterSpacing: "0.02em", transition: "color 0.2s ease" }}>{tab.label}</span>
-            {isActive && <div style={{ width: 20, height: 3, borderRadius: DS.radius.full, background: DS.colors.primary, marginTop: -2 }} />}
+          <button key={tab.id} onClick={() => setTab(tab.id)} style={{ position: "relative", zIndex: 1, flex: 1, height: 52, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, cursor: "pointer" }}>
+            <span style={{ display: "flex", transform: isActive ? "translateY(-1px) scale(1.08)" : "none", transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}>{tab.icon(isActive)}</span>
+            <span style={{ color: isActive ? DS.colors.textPrimary : DS.colors.textSec, fontSize: 11, fontFamily: "'Inter',sans-serif", fontWeight: isActive ? 800 : 600, transition: "color 0.2s ease" }}>{tab.label}</span>
           </button>
         );
       })}
@@ -4690,12 +4705,19 @@ export default function VoltraApp() {
     document.body.style.color = DS.colors.textPrimary;
   }, [appTheme]);
 
+  // Transition douce à chaque changement d'écran ou d'onglet (opacité seulement, pour ne pas décaler les éléments fixés)
+  useEffect(() => {
+    const el = document.getElementById("root")?.firstElementChild;
+    if (!el || !el.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: "ease-out" });
+  }, [screen, activeTab, !!seanceActive]);
+
   useEffect(() => {
     const style = document.createElement("style");
     style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Bebas+Neue&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
       * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-      body { background: ${DS.colors.bg}; color: ${DS.colors.textPrimary}; font-family: 'Inter', system-ui, sans-serif; }
+      body { background: ${DS.colors.bg}; color: ${DS.colors.textPrimary}; font-family: 'Inter',sans-serif; }
       ::-webkit-scrollbar { display: none; }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -4705,6 +4727,29 @@ export default function VoltraApp() {
       @keyframes splashPulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(0,255,135,0.5)); } 50% { transform: scale(1.08); filter: drop-shadow(0 0 40px rgba(0,255,135,0.8)); } }
       @keyframes celebrate { 0% { transform: scale(0) rotate(-10deg); opacity: 0; } 50% { transform: scale(1.2) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
       @keyframes floatUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-60px); opacity: 0; } }
+      /* Motion design : apparitions, relief au toucher, brillance */
+      @keyframes vFadeUp { from { opacity: 0; translate: 0 16px; } }
+      @keyframes vScaleIn { from { opacity: 0; scale: 0.92; } }
+      @keyframes vFloat { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+      @keyframes vGlow { 0% { box-shadow: 0 0 0 0 rgba(155,232,79,0.45); } 100% { box-shadow: 0 0 0 14px rgba(155,232,79,0); } }
+      @keyframes vMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      @keyframes vProgress { from { width: 0%; } to { width: 100%; } }
+      @keyframes vShine { from { transform: translateX(-120%) skewX(-20deg); } to { transform: translateX(260%) skewX(-20deg); } }
+      .v-stagger > * { animation: vFadeUp 0.55s cubic-bezier(0.2,0.8,0.2,1) both; }
+      ${Array.from({ length: 12 }, (_, i) => `.v-stagger > *:nth-child(${i + 1}) { animation-delay: ${(i * 0.05).toFixed(2)}s; }`).join("\n      ")}
+      .v-up { animation: vFadeUp 0.6s cubic-bezier(0.2,0.8,0.2,1) both; }
+      .v-pop { animation: vScaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+      .v-float { animation: vFloat 3.2s ease-in-out infinite; }
+      .v-glow { animation: vGlow 2.2s ease-out infinite; }
+      .v-shine { position: relative; overflow: hidden; }
+      .v-shine::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent); animation: vShine 3.5s ease-in-out 1s infinite; pointer-events: none; }
+      button { transition: transform 0.15s ease, opacity 0.2s ease, background 0.25s ease, box-shadow 0.25s ease; }
+      button:not(:disabled):active { transform: scale(0.97); }
+      [style*="cursor: pointer"]:not(button) { transition: transform 0.15s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; }
+      [style*="cursor: pointer"]:not(button):active { transform: scale(0.98); }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: 0.001ms !important; }
+      }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
