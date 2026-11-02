@@ -2,6 +2,12 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+// Lien de confirmation d'email : on lit l'URL tout de suite, avant que Supabase ne la nettoie
+const URL_AU_CHARGEMENT = window.location.hash + window.location.search;
+let confirmationEmail = /type=signup|confirmed=true/.test(URL_AU_CHARGEMENT) ? "ok"
+  : /error_code=/.test(URL_AU_CHARGEMENT) && !/type=recovery/.test(URL_AU_CHARGEMENT) ? "erreur"
+  : null;
+
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -1799,7 +1805,7 @@ function LegalScreen({ initial = "cgu", onBack }) {
   );
 }
 
-function AuthScreen({ onAuth }) {
+function AuthScreen({ onAuth, confirmation }) {
   const [accepted, setAccepted] = useState(false);
   const [showLegal, setShowLegal] = useState(null);
   const [mode, setMode] = useState("login");
@@ -1807,8 +1813,8 @@ function AuthScreen({ onAuth }) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState(confirmation === "erreur" ? "Ce lien de confirmation a expiré ou a déjà servi. Essaie de te connecter ; sinon, recrée ton compte." : "");
+  const [success, setSuccess] = useState(confirmation === "ok" ? "Compte confirmé ! Connecte-toi pour continuer." : "");
 
   // Detecter si on vient d'un lien reset password
   const isPasswordRecovery = window.location.hash.includes("type=recovery");
@@ -1823,7 +1829,7 @@ function AuthScreen({ onAuth }) {
     if (password.length < 6) { setError("Mot de passe : 6 caractères minimum."); return; }
     setLoading(true);
     if (mode === "signup") {
-      const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+      const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { name }, emailRedirectTo: `${window.location.origin}/?confirmed=true` } });
       if (e) { setError(e.message === "User already registered" ? "Email déjà utilisé." : e.message); setLoading(false); return; }
       if (data.user && !data.session) { setSuccess("Vérifie ta boîte mail pour confirmer ton compte !"); setLoading(false); return; }
       onAuth(data.user);
@@ -4569,6 +4575,7 @@ export default function VoltraApp() {
   const [isPro, setIsPro] = useState(false);
   const [showDoubleSessionWarning, setShowDoubleSessionWarning] = useState(false);
   const [pendingSeance, setPendingSeance] = useState(null);
+  const [authConfirmation, setAuthConfirmation] = useState(null);
 
   const launchSeance = (rawSeance) => {
     const seance = {
@@ -4664,17 +4671,7 @@ export default function VoltraApp() {
       } else if (_event === "SIGNED_IN" && session?.user) {
         setUser(session.user);
         userRef.current = session.user;
-        const fromEmail = window.location.hash.includes("access_token") || window.location.search.includes("confirmed=true");
-        if (fromEmail) {
-          window.history.replaceState({}, document.title, window.location.pathname);
-          if (onboardingData) {
-            setScreen("pricing");
-            startGeneration(onboardingData);
-          } else {
-            setScreen("app");
-          }
-        }
-        // Ne pas rediriger vers app ici — onAuth ou splashDone s'en charge
+        // Ne pas rediriger ici — onAuth ou splashDone s'en charge (y compris après la confirmation d'email)
       } else if (_event === "PASSWORD_RECOVERY") {
         // Laisser AuthScreen gérer via isPasswordRecovery
         setScreen("auth");
@@ -4699,6 +4696,14 @@ export default function VoltraApp() {
         setIsPro(true);
         setPaidPlan(paidPlanParam);
         setScreen("payment-success");
+        return;
+      }
+      if (confirmationEmail) {
+        // Vient du lien de confirmation d'email → page de connexion, même si l'onboarding n'a pas été fait sur cet appareil
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setAuthConfirmation(confirmationEmail);
+        confirmationEmail = null;
+        setScreen("auth");
         return;
       }
       if (!themeOk) {
@@ -4830,7 +4835,7 @@ export default function VoltraApp() {
     onboardingData={onboardingData}
     onContinue={() => setScreen("auth")}
   />;
-  if (screen === "auth") return <AuthScreen onAuth={async (u) => {
+  if (screen === "auth") return <AuthScreen confirmation={authConfirmation} onAuth={async (u) => {
     setUser(u);
     userRef.current = u;
     // Sauvegarder le sport dans le profil
