@@ -725,115 +725,222 @@ function RestTimer({ seconds, onComplete }) {
 }
 
 // Cache local + Edge Function pour les GIFs animés ExerciseDB
-const gifCache = {};
-async function getExerciseGif(nomFr, nomEn, materiel) {
-  const key = (nomEn || nomFr || "").toLowerCase().trim();
-  if (!key) return null;
-  if (gifCache[key]) return gifCache[key];
-  try {
-    const stored = localStorage.getItem(`voltra_gif2_${key}`);
-    if (stored) { gifCache[key] = stored; return stored; }
-  } catch (e) {}
-  try {
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/exercise-gif`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
-      body: JSON.stringify({ nom: nomFr, nomEn: nomEn, materiel }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.gifUrl) {
-      gifCache[key] = data.gifUrl;
-      try { localStorage.setItem(`voltra_gif2_${key}`, data.gifUrl); } catch (e) {}
-      return data.gifUrl;
-    }
-  } catch (e) {}
-  return null;
-}
-
-async function getExercicePhoto(nom) {
-  const n = (nom || "").toLowerCase();
-
-  // Mapping precis par exercice
-  const exactMatch = [
-    { keys: ["squat barre", "back squat", "squat"], q: "barbell back squat gym" },
-    { keys: ["front squat"], q: "front squat barbell" },
-    { keys: ["goblet squat"], q: "goblet squat dumbbell" },
-    { keys: ["romanian deadlift", "rdl", "soulevé de terre roumain"], q: "romanian deadlift barbell gym" },
-    { keys: ["soulevé de terre", "deadlift"], q: "deadlift barbell powerlifting" },
-    { keys: ["sumo deadlift"], q: "sumo deadlift barbell" },
-    { keys: ["développé couché", "bench press", "developpe couche"], q: "bench press barbell chest gym" },
-    { keys: ["développé incliné", "incline bench", "developpe incline"], q: "incline bench press dumbbell" },
-    { keys: ["développé épaules", "overhead press", "military press", "developpe epaules"], q: "overhead press barbell shoulders" },
-    { keys: ["traction", "pull up", "tractions"], q: "pull up bar athlete calisthenics" },
-    { keys: ["lat pulldown", "tirage nuque", "tirage poitrine"], q: "lat pulldown cable machine" },
-    { keys: ["rowing barre", "bent over row"], q: "barbell row bent over back" },
-    { keys: ["rowing haltere", "dumbbell row"], q: "dumbbell row single arm back" },
-    { keys: ["box jump", "saut boite"], q: "box jump athlete explosive training" },
-    { keys: ["saut en longueur", "broad jump"], q: "broad jump athlete training" },
-    { keys: ["burpee", "burpees"], q: "burpees athlete hiit training" },
-    { keys: ["hip thrust", "pont fessier"], q: "hip thrust barbell glutes gym" },
-    { keys: ["fente", "lunge"], q: "lunges barbell dumbbell legs gym" },
-    { keys: ["leg press", "presse a cuisses"], q: "leg press machine gym" },
-    { keys: ["leg extension", "extension jambes"], q: "leg extension machine quadriceps" },
-    { keys: ["leg curl", "curl jambes"], q: "leg curl machine hamstrings" },
-    { keys: ["mollet", "calf raise", "mollets"], q: "calf raise standing machine" },
-    { keys: ["kettlebell swing", "swing kettlebell"], q: "kettlebell swing athlete training" },
-    { keys: ["kettlebell", "girevoy"], q: "kettlebell workout training" },
-    { keys: ["planche", "plank", "gainage"], q: "plank core strength athlete" },
-    { keys: ["abdos", "crunch", "sit up"], q: "abs workout crunch core athlete" },
-    { keys: ["curl biceps", "bicep curl", "curl haltere"], q: "bicep curl dumbbell gym" },
-    { keys: ["triceps", "dips triceps", "extension triceps"], q: "triceps extension pushdown gym" },
-    { keys: ["pompes", "push up", "pushup"], q: "push ups athlete workout" },
-    { keys: ["dips", "dip"], q: "dips parallel bars triceps gym" },
-    { keys: ["sprint", "vitesse"], q: "sprint athlete track speed training" },
-    { keys: ["corde a sauter", "jump rope", "corde"], q: "jump rope athlete training cardio" },
-    { keys: ["sled", "traineau"], q: "sled push athlete power training" },
-    { keys: ["battle rope", "corde ondulatoire"], q: "battle ropes athlete training" },
-    { keys: ["oiseau", "rear delt", "oiseau haltere"], q: "rear delt fly dumbbell" },
-    { keys: ["elevation laterale", "lateral raise"], q: "lateral raise dumbbell shoulders" },
-    { keys: ["face pull", "tirage visage"], q: "face pull cable rear deltoid" },
-    { keys: ["rowing poulie", "cable row"], q: "seated cable row back machine" },
-    { keys: ["step up", "montee marche"], q: "step up box dumbbell legs" },
-  ];
-
-  let query = null;
-  for (const entry of exactMatch) {
-    if (entry.keys.some(k => n.includes(k))) {
-      query = entry.q;
-      break;
-    }
-  }
-
-  // Fallback: utilise le nom directement
-  if (!query) query = `${nom} exercise gym workout`;
-
-  try {
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5&orientation=landscape`,
-      { headers: { Authorization: import.meta.env.VITE_PEXELS_API_KEY } }
-    );
-    const data = await res.json();
-    if (!data.photos || data.photos.length === 0) return null;
-    // Prend une photo aleatoire parmi les 3 premieres
-    const idx = Math.floor(Math.random() * Math.min(3, data.photos.length));
-    return data.photos[idx]?.src?.large || null;
-  } catch { return null; }
-}
-
 // ─────────────────────────────────────────────
 // ECRAN SEANCE LIVE
 // ─────────────────────────────────────────────
-// Verifie qu'une image se charge vraiment avant de l'utiliser (evite images cassees/404)
-function preloadImage(url) {
-  return new Promise((resolve) => {
-    if (!url) { resolve(false); return; }
-    const img = new Image();
-    const timeout = setTimeout(() => resolve(false), 4000);
-    img.onload = () => { clearTimeout(timeout); resolve(true); };
-    img.onerror = () => { clearTimeout(timeout); resolve(false); };
-    img.src = url;
+// ─────────────────────────────────────────────
+// ANIMATIONS D'EXERCICES — motion design dessiné par l'app (rien à télécharger)
+// Un athlète vectoriel, vu de profil, fait le mouvement en boucle avec son matériel.
+// Une pose = position du bassin, inclinaison du buste, cibles des mains et des pieds ;
+// genoux et coudes sont calculés automatiquement (cinématique inverse).
+// Cible : [x, y] absolu, ["S", dx, dy] relatif à l'épaule, ["H", dx, dy] relatif au bassin.
+// ─────────────────────────────────────────────
+const SEG = { buste: 28, cou: 4, tete: 6, bras: 14, avantBras: 13, cuisse: 21, tibia: 20 };
+const SOL = 92;
+
+// Articulation intermédiaire (genou, coude) entre une origine et une cible ; sens = côté du pli
+function ik2(o, cible, a, b, sens) {
+  const dx = cible[0] - o[0], dy = cible[1] - o[1];
+  const d = Math.min(Math.max(Math.hypot(dx, dy), Math.abs(a - b) + 0.01), a + b - 0.01);
+  const t = Math.atan2(dy, dx) + sens * Math.acos((a * a + d * d - b * b) / (2 * a * d));
+  const mid = [o[0] + a * Math.cos(t), o[1] + a * Math.sin(t)];
+  const dir = Math.atan2(cible[1] - mid[1], cible[0] - mid[0]);
+  return [mid, [mid[0] + b * Math.cos(dir), mid[1] + b * Math.sin(dir)]];
+}
+
+const lerp = (a, b, k) => a + (b - a) * k;
+function lerpCible(a, b, k) {
+  if (typeof a[0] === "string" && a[0] === b[0]) return [a[0], lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
+  return [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
+}
+function resoudre(c, epaule, bassin) {
+  if (c[0] === "S") return [epaule[0] + c[1], epaule[1] + c[2]];
+  if (c[0] === "H") return [bassin[0] + c[1], bassin[1] + c[2]];
+  return c;
+}
+
+const epauleDe = (hip, tDeg) => [hip[0] + SEG.buste * Math.sin(tDeg * Math.PI / 180), hip[1] - SEG.buste * Math.cos(tDeg * Math.PI / 180)];
+
+// Cible intermédiaire : même repère -> on interpole dans ce repère ; repères différents -> on interpole les positions réelles
+function cibleEntre(a, b, k, A, B, epaule, bassin) {
+  if (typeof a[0] === "string" && a[0] === b[0]) return resoudre(lerpCible(a, b, k), epaule, bassin);
+  const pa = resoudre(a, epauleDe(A.hip, A.t), A.hip), pb = resoudre(b, epauleDe(B.hip, B.t), B.hip);
+  return [lerp(pa[0], pb[0], k), lerp(pa[1], pb[1], k)];
+}
+
+function calculerPose(A, B, k, def) {
+  const bassin = [lerp(A.hip[0], B.hip[0], k), lerp(A.hip[1], B.hip[1], k)];
+  const t = lerp(A.t, B.t, k) * Math.PI / 180;
+  const epaule = epauleDe(bassin, lerp(A.t, B.t, k));
+  const r = SEG.cou + SEG.tete;
+  const tete = [epaule[0] + r * Math.sin(t + 0.12), epaule[1] - r * Math.cos(t + 0.12)];
+  const jambes = [0, 1].map(i => {
+    const pied = cibleEntre(A.pieds[i], B.pieds[i], k, A, B, epaule, bassin);
+    return [bassin, ...ik2(bassin, pied, SEG.cuisse, SEG.tibia, def.sensJambe ?? -1)];
   });
+  const bras = [0, 1].map(i => {
+    const main = cibleEntre(A.mains[i], B.mains[i], k, A, B, epaule, bassin);
+    return [epaule, ...ik2(epaule, main, SEG.bras, SEG.avantBras, def.sensBras ?? 1)];
+  });
+  return { bassin, epaule, tete, t, jambes, bras };
+}
+
+// Bibliothèque de mouvements (varie selon le matériel)
+const DEBOUT = { hip: [50, 52], t: 2, pieds: [[52, SOL], [49, SOL]] };
+const PEND = [["S", 1, 26], ["S", 0, 26]];
+function construireMotif(motif, materiel) {
+  switch (motif) {
+    case "squat": {
+      const mainsA = materiel === "barre" ? [["S", -6, -1], ["S", -5, -1]]
+        : materiel === "haltere_unique" || materiel === "kettlebell" ? [["S", 9, 6], ["S", 8, 6]]
+        : materiel === "halteres" ? PEND : [["S", 4, 24], ["S", 3, 24]];
+      const mainsB = materiel === "poids_du_corps" || materiel === "inconnu" ? [["S", 25, 2], ["S", 24, 2]] : mainsA;
+      return { periode: 2.6, A: { ...DEBOUT, t: 4, mains: mainsA }, B: { hip: [40, 70], t: 40, pieds: DEBOUT.pieds, mains: mainsB }, equipDos: materiel === "barre" };
+    }
+    case "hinge":
+      return { periode: 2.8, A: { ...DEBOUT, t: 4, mains: PEND }, B: { hip: [35, 58], t: 72, pieds: DEBOUT.pieds, mains: [["S", -2, 26], ["S", -3, 26]] } };
+    case "swing":
+      return { periode: 1.6, A: { hip: [37, 60], t: 62, pieds: DEBOUT.pieds, mains: [["H", 9, 13], ["H", 8, 13]] }, B: { ...DEBOUT, t: -3, mains: [["S", 25, 3], ["S", 24, 3]] } };
+    case "ohp":
+      return { periode: 2.4, A: { ...DEBOUT, t: 0, mains: [["S", 7, -1], ["S", 6, -1]] }, B: { ...DEBOUT, t: 0, mains: [["S", 2, -26], ["S", 1, -26]] } };
+    case "bench":
+      return { periode: 2.4, scene: "banc", sensBras: 1, A: { hip: [58, 63], t: -90, pieds: [[78, SOL], [75, SOL]], mains: [[39, 52], [38, 52]] }, B: { hip: [58, 63], t: -90, pieds: [[78, SOL], [75, SOL]], mains: [[30, 37], [29, 37]] } };
+    case "row":
+      return { periode: 2.2, A: { hip: [38, 57], t: 68, pieds: DEBOUT.pieds, mains: [["S", 0, 25], ["S", -1, 25]] }, B: { hip: [38, 57], t: 68, pieds: DEBOUT.pieds, mains: [["S", -7, 9], ["S", -8, 9]] } };
+    case "lunge":
+      return { periode: 2.6, A: { hip: [48, 55], t: 3, pieds: [[62, SOL], [32, SOL]], mains: materiel === "barre" ? [["S", -6, -1], ["S", -5, -1]] : PEND }, B: { hip: [46, 70], t: 4, pieds: [[62, SOL], [32, SOL]], mains: materiel === "barre" ? [["S", -6, -1], ["S", -5, -1]] : PEND }, equipDos: materiel === "barre" };
+    case "jump":
+      return { periode: 1.5, ombre: true, A: { hip: [46, 65], t: 38, pieds: DEBOUT.pieds, mains: [["S", -12, 20], ["S", -13, 20]] }, B: { hip: [50, 36], t: 2, pieds: [[52, 76], [49, 76]], mains: [["S", 4, -25], ["S", 3, -25]] } };
+    case "slam":
+      return { periode: 1.4, A: { ...DEBOUT, t: -4, mains: [["S", 3, -25], ["S", 2, -25]] }, B: { hip: [40, 64], t: 55, pieds: DEBOUT.pieds, mains: [[63, 85], [62, 85]] } };
+    case "pushup":
+      return { periode: 2.2, A: { hip: [43, 74], t: 64, pieds: [[6, SOL], [7, SOL]], mains: [[68, SOL], [66, SOL]] }, B: { hip: [45, 85], t: 82, pieds: [[6, SOL], [7, SOL]], mains: [[68, SOL], [66, SOL]] } };
+    case "plank":
+      return { periode: 3.2, A: { hip: [40, 80], t: 74, pieds: [[6, SOL], [7, SOL]], mains: [[80, SOL], [78, SOL]] }, B: { hip: [40, 78], t: 73, pieds: [[6, SOL], [7, SOL]], mains: [[80, SOL], [78, SOL]] } };
+    case "pullup":
+      return { periode: 2.6, scene: "barre_traction", A: { hip: [50, 54], t: 0, pieds: [["H", -10, 36], ["H", -12, 36]], mains: [[46, -4], [54, -4]] }, B: { hip: [50, 30], t: 4, pieds: [["H", -10, 36], ["H", -12, 36]], mains: [[46, -4], [54, -4]] } };
+    case "curl":
+      return { periode: 2.2, A: { ...DEBOUT, t: 0, mains: [["S", 2, 26], ["S", 1, 26]] }, B: { ...DEBOUT, t: 0, mains: [["S", 9, 5], ["S", 8, 5]] } };
+    case "raise":
+      return { periode: 2.4, A: { ...DEBOUT, t: 0, mains: [["S", 1, 26], ["S", 0, 26]] }, B: { ...DEBOUT, t: 0, mains: [["S", 26, 0], ["S", 25, 0]] } };
+    case "sprint":
+      return { periode: 0.8, aller: true, A: { hip: [50, 54], t: 12, pieds: [[62, 80], [34, SOL]], mains: [["S", -10, 17], ["S", 13, 8]] }, B: { hip: [50, 54], t: 12, pieds: [[34, SOL], [62, 80]], mains: [["S", 13, 8], ["S", -10, 17]] } };
+    case "thrust":
+      return { periode: 2.4, scene: "banc_thrust", A: { hip: [48, 84], t: -45, pieds: [[72, SOL], [69, SOL]], mains: [["H", -2, -3], ["H", -3, -3]] }, B: { hip: [52, 64], t: -88, pieds: [[72, SOL], [69, SOL]], mains: [["H", -2, -3], ["H", -3, -3]] } };
+    default:
+      return construireMotif("squat", materiel);
+  }
+}
+
+// Quel mouvement montrer pour cet exercice
+function motifExercice(ex) {
+  const n = `${ex?.nomEn || ""} ${ex?.nom || ""}`.toLowerCase();
+  const materiel = detecterMateriel(ex || {});
+  let motif = detecterMouvement(ex || {});
+  if (/push[- ]?up|pompe/.test(n)) motif = "pushup";
+  else if (/pull[- ]?up|chin[- ]?up|traction|pulldown|pull-down/.test(n)) motif = "pullup";
+  else if (/plank|gainage|dead bug|bird dog|hollow|crunch|sit[- ]?up|pallof|mountain climber/.test(n)) motif = "plank";
+  else if (/sprint|run|course|skip|high knee|carioca|shuffle|accel/.test(n)) motif = "sprint";
+  else if (/jump|saut|hop|bound|burpee|plyo/.test(n)) motif = "jump";
+  else if (materiel === "medball" || /slam|throw|lancer/.test(n)) motif = "slam";
+  else if (motif === "olympic") motif = "jump";
+  else if (motif === "legpress") motif = "squat";
+  else if (motif === "defaut") motif = "squat";
+  return { motif, materiel };
+}
+
+function ExerciseAnimation({ exercice, accent = "#9BE84F", couleur = "#F4F4F5" }) {
+  const { motif, materiel } = motifExercice(exercice);
+  const def = construireMotif(motif, materiel);
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setPhase(0.46); return; }
+    let raf, debut;
+    const boucle = (ts) => {
+      debut = debut ?? ts;
+      setPhase(((ts - debut) / (def.periode * 1000)) % 1);
+      raf = requestAnimationFrame(boucle);
+    };
+    raf = requestAnimationFrame(boucle);
+    return () => cancelAnimationFrame(raf);
+  }, [motif, materiel]);
+
+  // Aller (42 %), pause, retour (42 %), pause — courbe douce ; la course alterne sans pause
+  const doux = (x) => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+  const k = def.aller
+    ? (phase < 0.5 ? doux(phase * 2) : 1 - doux((phase - 0.5) * 2))
+    : phase < 0.42 ? doux(phase / 0.42) : phase < 0.5 ? 1 : phase < 0.92 ? 1 - doux((phase - 0.5) / 0.42) : 0;
+  const p = calculerPose(def.A, def.B, k, def);
+
+  const membre = (pts, w, op) => <polyline points={pts.map(q => q.join(",")).join(" ")} fill="none" stroke={couleur} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" opacity={op} />;
+  const mainsMilieu = [(p.bras[0][2][0] + p.bras[1][2][0]) / 2, (p.bras[0][2][1] + p.bras[1][2][1]) / 2];
+
+  // Matériel dessiné dans les mains (ou sur le dos)
+  const disque = (c, r) => (
+    <g>
+      <circle cx={c[0]} cy={c[1]} r={r} fill="#14161A" stroke={accent} strokeWidth="2.4" />
+      <circle cx={c[0]} cy={c[1]} r={r * 0.28} fill={accent} />
+    </g>
+  );
+  const haltere = (c, op) => (
+    <g opacity={op} transform={`translate(${c[0]},${c[1]})`}>
+      <rect x="-4.5" y="-0.9" width="9" height="1.8" rx="0.9" fill={accent} />
+      <rect x="-5.5" y="-2.8" width="2.6" height="5.6" rx="1" fill={accent} />
+      <rect x="2.9" y="-2.8" width="2.6" height="5.6" rx="1" fill={accent} />
+    </g>
+  );
+  let equip = null;
+  if (materiel === "barre") {
+    const dos = def.equipDos ? [p.epaule[0] - 6 * Math.cos(p.t), p.epaule[1] - 6 * Math.sin(p.t) + 1] : mainsMilieu;
+    equip = disque(dos, 8.5);
+  } else if (materiel === "halteres") {
+    equip = <>{haltere(p.bras[1][2], 0.45)}{haltere(p.bras[0][2], 1)}</>;
+  } else if (materiel === "haltere_unique") {
+    equip = <g transform={`rotate(90 ${mainsMilieu[0]} ${mainsMilieu[1]})`}>{haltere(mainsMilieu, 1)}</g>;
+  } else if (materiel === "kettlebell") {
+    equip = (
+      <g>
+        <path d={`M ${mainsMilieu[0] - 2.6} ${mainsMilieu[1] + 1.5} Q ${mainsMilieu[0]} ${mainsMilieu[1] - 3} ${mainsMilieu[0] + 2.6} ${mainsMilieu[1] + 1.5}`} fill="none" stroke={accent} strokeWidth="1.6" />
+        <circle cx={mainsMilieu[0]} cy={mainsMilieu[1] + 5.5} r="4.6" fill={accent} />
+      </g>
+    );
+  } else if (materiel === "medball") {
+    equip = <circle cx={mainsMilieu[0]} cy={mainsMilieu[1] + 1} r="5.2" fill={accent} />;
+  } else if (materiel === "poulie") {
+    equip = <><line x1={mainsMilieu[0]} y1={mainsMilieu[1]} x2="96" y2="30" stroke={accent} strokeWidth="1.2" strokeDasharray="2 1.5" /><circle cx="96" cy="30" r="2.6" fill={accent} /></>;
+  }
+
+  const sceneCouleur = "rgba(255,255,255,0.14)";
+  const hauteurSaut = Math.max(0, SOL - Math.max(p.jambes[0][2][1], p.jambes[1][2][1]));
+
+  return (
+    <svg viewBox="0 -14 100 112" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: "100%", overflow: "visible" }} aria-label={`Animation : ${exercice?.nom || "exercice"}`} role="img">
+      <defs>
+        <radialGradient id="voltraSol" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={accent} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      {/* Sol et ombre */}
+      <line x1="2" y1={SOL + 1.6} x2="98" y2={SOL + 1.6} stroke={sceneCouleur} strokeWidth="0.8" />
+      <ellipse cx={p.bassin[0] + 2} cy={SOL + 1.6} rx={Math.max(8, 20 - hauteurSaut * 0.5)} ry="2.4" fill="url(#voltraSol)" />
+      {/* Décor selon l'exercice */}
+      {def.scene === "banc" && <g fill={sceneCouleur}><rect x="14" y="66" width="58" height="4.5" rx="2" /><rect x="20" y="70" width="2.5" height="22" /><rect x="64" y="70" width="2.5" height="22" /></g>}
+      {def.scene === "banc_thrust" && <g fill={sceneCouleur}><rect x="4" y="66" width="28" height="4.5" rx="2" /><rect x="8" y="70" width="2.5" height="22" /><rect x="26" y="70" width="2.5" height="22" /></g>}
+      {def.scene === "barre_traction" && <g><line x1="22" y1="-4" x2="78" y2="-4" stroke={sceneCouleur} strokeWidth="2.4" strokeLinecap="round" /><line x1="24" y1="-4" x2="24" y2={SOL} stroke={sceneCouleur} strokeWidth="1.2" /><line x1="76" y1="-4" x2="76" y2={SOL} stroke={sceneCouleur} strokeWidth="1.2" /></g>}
+      {/* Membres du côté éloigné (en retrait) */}
+      {membre(p.jambes[1], 6.4, 0.32)}
+      {membre(p.bras[1], 5, 0.32)}
+      {def.equipDos && equip}
+      {/* Corps */}
+      <line x1={p.bassin[0]} y1={p.bassin[1]} x2={p.epaule[0]} y2={p.epaule[1]} stroke={couleur} strokeWidth="9" strokeLinecap="round" />
+      <circle cx={p.tete[0]} cy={p.tete[1]} r={SEG.tete} fill={couleur} />
+      {membre(p.jambes[0], 7, 1)}
+      {membre(p.bras[0], 5.4, 1)}
+      {!def.equipDos && equip}
+    </svg>
+  );
 }
 
 function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
@@ -852,8 +959,6 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
   const [coachMessages, setCoachMessages] = useState([]);
   const [coachInput, setCoachInput] = useState("");
   const [coachLoading, setCoachLoading] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState(null);
-  const [gifUrl, setGifUrl] = useState(null);
   const [startTime] = useState(() => resumeState?.elapsed ? Date.now() - resumeState.elapsed * 1000 : Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [celebrate, setCelebrate] = useState(false);
@@ -892,18 +997,6 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
   // Message coach proactif quand exercice change
   useEffect(() => {
     if (!currentEx) return;
-    setPhotoUrl(null);
-    setGifUrl(null);
-    // Priorite au GIF anime, verifie qu'il charge vraiment avant de l'afficher
-    getExerciseGif(currentEx.nom, currentEx.nomEn, currentEx.materiel).then(async url => {
-      if (url && await preloadImage(url)) {
-        setGifUrl(url);
-      } else {
-        // Fallback photo, verifie aussi qu'elle charge
-        const photo = await getExercicePhoto(currentEx.nom);
-        if (photo && await preloadImage(photo)) setPhotoUrl(photo);
-      }
-    });
     const intro = exIdx === 0
       ? `Séance lancée ! On commence par **${currentEx.nom}** — ${currentEx.sets} séries de ${currentEx.reps} reps. ${currentEx.chargeKg > 0 ? `Charge : ${currentEx.chargeKg}kg.` : ""} Je suis là si tu as besoin d'adapter. 💪`
       : `Exercice ${exIdx + 1}/${exercices.length} — **${currentEx.nom}**. ${currentEx.muscles ? `Muscles ciblés : ${currentEx.muscles}.` : ""} ${currentEx.chargeKg > 0 ? `${currentEx.chargeKg}kg, ${currentEx.sets}×${currentEx.reps}.` : `${currentEx.sets}×${currentEx.reps}.`}`;
@@ -1171,8 +1264,11 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
       {/* ── Photo immersive ── */}
       <div key={animKey} style={{ position: "relative", height: "36vh", minHeight: 260, overflow: "hidden", flexShrink: 0 }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: gifUrl ? `url(${gifUrl})` : photoUrl ? `url(${photoUrl})` : "none", backgroundSize: gifUrl ? "contain" : "cover", backgroundRepeat: "no-repeat", backgroundPosition: "center", backgroundColor: gifUrl ? "#FFFFFF" : "#101418" }} />
-        <div style={{ position: "absolute", inset: 0, background: gifUrl ? "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 70%, #000 100%)" : "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 35%, transparent 55%, #000 100%)" }} />
+        {/* Démo animée du mouvement (dessinée par l'app, instantanée) */}
+        <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 70% 60% at 50% 62%, ${accentColor}26, transparent 70%), linear-gradient(180deg, #0B0D10 0%, #000 100%)` }} />
+        <div key={currentEx?.nom} className="v-pop" style={{ position: "absolute", left: "10%", right: "10%", top: 78, bottom: 30 }}>
+          <ExerciseAnimation exercice={currentEx} accent={accentColor} />
+        </div>
 
         {/* Header sur la photo */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "50px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
