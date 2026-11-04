@@ -16,10 +16,13 @@ const LIVE: Record<string, string> = {
   annual: "price_1UY4vE8P7FaKivcttzImHDEx",
 };
 
-// Réduction de bienvenue : 1er mois du mensuel, 1ère année de l'annuel
+// Essai gratuit sur toutes les offres
+const JOURS_ESSAI = 7;
+
+// Réduction de bienvenue : annuel uniquement. Valable 1 mois à partir de l'inscription :
+// elle tombe sur le 1er vrai paiement (fin d'essai) et pas sur le renouvellement suivant.
 const COUPONS: Record<string, string> = {
-  monthly: "WELCOME30",
-  annual: "WELCOME25",
+  annual: "WELCOME25_ESSAI",
 };
 
 serve(async (req) => {
@@ -51,7 +54,8 @@ serve(async (req) => {
       params.append("subscription_data[metadata][user_id]", user_id);
       params.append("subscription_data[metadata][plan]", plan);
     }
-    params.append("discounts[0][coupon]", COUPONS[plan]);
+    params.append("subscription_data[trial_period_days]", String(JOURS_ESSAI));
+    if (COUPONS[plan]) params.append("discounts[0][coupon]", COUPONS[plan]);
 
     const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",

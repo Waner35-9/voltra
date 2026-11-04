@@ -35,6 +35,31 @@ async function verifyStripeSignature(body: string, header: string | null, secret
   return v1.some((x) => safeEqual(x, hex));
 }
 
+// E-mail envoyé 3 jours avant la fin de l'essai
+async function envoyerRappelEssai(abonnement: any) {
+  const cle = Deno.env.get("RESEND_API_KEY");
+  if (!cle) { console.warn("RESEND_API_KEY absente : rappel non envoyé"); return; }
+  const res = await fetch(`https://api.stripe.com/v1/customers/${abonnement.customer}`, {
+    headers: { Authorization: `Bearer ${Deno.env.get("STRIPE_SECRET_KEY")}` },
+  });
+  const client = await res.json();
+  if (!client?.email) { console.warn("Client sans e-mail :", abonnement.customer); return; }
+  const annuel = abonnement.items?.data?.[0]?.price?.recurring?.interval === "year";
+  const date = new Date(abonnement.trial_end * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  const montant = annuel ? "56,24 € pour ta première année" : "14,99 € par mois";
+  const envoi = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${cle}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Voltra <contact@voltra-app.fr>",
+      to: client.email,
+      subject: `Ton essai Voltra se termine le ${date}`,
+      html: `<p>Salut,</p><p>Ton essai gratuit de Voltra se termine le <b>${date}</b>.</p><p>Sans action de ta part, ton abonnement démarre à cette date : ${montant}.</p><p>Tu veux arrêter ? Résilie avant le ${date} depuis ton profil, dans « Gérer mon abonnement » : tu ne paieras rien.</p><p><a href="https://www.voltra-app.fr">Ouvrir Voltra</a></p>`,
+    }),
+  });
+  if (!envoi.ok) console.error("Erreur envoi rappel :", await envoi.text());
+}
+
 serve(async (req) => {
   const body = await req.text();
 
@@ -83,6 +108,11 @@ serve(async (req) => {
           if (error) throw error;
           console.log("Renouvellement OK pour:", profile.id);
         }
+        break;
+      }
+
+      case "customer.subscription.trial_will_end": {
+        await envoyerRappelEssai(event.data?.object);
         break;
       }
 

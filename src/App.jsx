@@ -428,18 +428,6 @@ function useStaggerUneFois(cle) {
   return premiere ? "v-stagger" : undefined;
 }
 
-// Case obligatoire avant paiement : accès immédiat et renonciation au droit de rétractation (contenu numérique)
-function ConsentementAchat({ coche, onChange }) {
-  return (
-    <div onClick={() => onChange(!coche)} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, cursor: "pointer", textAlign: "left" }}>
-      <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1, background: coche ? DS.colors.primary : "transparent", border: `2px solid ${coche ? DS.colors.primary : DS.colors.textDim}`, display: "flex", alignItems: "center", justifyContent: "center", color: "#0B0B0C", fontSize: 13, fontWeight: 800, transition: "var(--t-choix)" }}>{coche ? "✓" : ""}</div>
-      <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, lineHeight: 1.45, color: DS.colors.textSec, margin: 0 }}>
-        Je demande l'accès immédiat à Voltra Pro et je renonce à mon droit de rétractation de 14 jours dès le début de cet accès.
-      </p>
-    </div>
-  );
-}
-
 function PrimaryButton({ children, onClick, disabled, style = {} }) {
   return (
     <button onClick={onClick} disabled={disabled}
@@ -613,8 +601,8 @@ const OBJECTIFS_PAR_SPORT = {
 const OBJECTIFS = [];
 const NIVEAUX = ["Debutant", "Intermediaire", "Avance"];
 const PLANS = [
-  { id: "annual", label: "Annuel", price: 74.99, displayPrice: "6,25 €", unit: "/ mois", priceDetail: "Facturé 74,99 € par an", bienvenue: "-25 % la 1ère année : 56,24 €, puis 74,99 €/an", savings: "−58 %", color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: "LE PLUS POPULAIRE", highlight: true },
-  { id: "monthly", label: "Mensuel", price: 14.99, displayPrice: "14,99 €", unit: "/ mois", priceDetail: "Facturé chaque mois", bienvenue: "-30 % le 1er mois : 10,49 €, puis 14,99 €/mois", savings: null, color: DS.colors.success, colorSoft: DS.colors.successSoft, colorBorder: "rgba(0,229,160,0.35)", badge: null, highlight: false },
+  { id: "annual", label: "Annuel", price: 74.99, displayPrice: "6,25 €", unit: "/ mois", priceDetail: "7 jours gratuits, puis 56,24 € la 1ère année (−25 %), puis 74,99 €/an", savings: "−58 %", badge: "LE PLUS POPULAIRE" },
+  { id: "monthly", label: "Mensuel", price: 14.99, displayPrice: "14,99 €", unit: "/ mois", priceDetail: "7 jours gratuits, puis 14,99 €/mois", savings: null, badge: null },
 ];
 
 // ─────────────────────────────────────────────
@@ -1028,7 +1016,8 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
   if (exercices.length === 0 && !showSummary) {
     return (
-      <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", textAlign: "center" }}>
+      <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", textAlign: "center" }}>
+        <Bloom echelle={0.8} />
         <p style={{ fontSize: 48, marginBottom: 16 }}>⚠️</p>
         <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 24, color: DS.colors.textPrimary, marginBottom: 8 }}>Séance introuvable</h2>
         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, marginBottom: 24 }}>Le programme n'a pas encore d'exercices. Attends que la génération soit terminée.</p>
@@ -1137,7 +1126,8 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
     const totalSetsCount = exercices.reduce((acc, ex) => acc + (ex.sets || 3), 0);
     const durationMin = Math.max(1, Math.round((Date.now() - startTime) / 60000));
     return (
-      <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", maxWidth: 430, margin: "0 auto", position: "relative", overflow: "hidden" }}>
+      <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: "0 20px", maxWidth: 430, margin: "0 auto", overflow: "hidden" }}>
+        <Bloom echelle={0.8} />
         <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 300px 300px at 50% 30%, ${accentColor}08, transparent)`, pointerEvents: "none" }} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 40, position: "relative" }}>
 
@@ -1413,7 +1403,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
             {coachBlocked && (
               <div style={{ margin: "8px 16px", background: "rgba(155,232,79,0.08)", border: "1px solid rgba(155,232,79,0.2)", borderRadius: DS.radius.lg, padding: "12px 14px", textAlign: "center" }}>
                 <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: accentColor, fontWeight: 600, marginBottom: 4 }}>⚡ Limite gratuite atteinte</p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, marginBottom: 8 }}>2 messages gratuits par séance. Passe en Pro pour un coach illimité.</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, marginBottom: 8 }}>Démarre ton essai de 7 jours pour un coach illimité.</p>
                 <button onClick={() => setShowUpsell(true)} style={{ background: accentColor, border: "none", borderRadius: DS.radius.full, padding: "6px 16px", color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Débloquer le coach →</button>
               </div>
             )}
@@ -1457,7 +1447,8 @@ function PaymentSuccessScreen({ plan, onContinue }) {
   const planEmoji = plan === "annual" ? "⚡" : "🚀";
 
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", overflow: "hidden" }}>
+      <Bloom echelle={0.8} />
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.1), transparent)", pointerEvents: "none" }} />
 
       <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
@@ -1475,7 +1466,7 @@ function PaymentSuccessScreen({ plan, onContinue }) {
             BIENVENUE DANS<br />L'ÉQUIPE PRO ⚡
           </h1>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, marginBottom: 8, lineHeight: 1.6 }}>
-            Plan <strong style={{ color: DS.colors.textPrimary }}>{planLabel}</strong> activé. Ton programme personnalisé est en cours de génération.
+            Essai de 7 jours lancé sur le plan <strong style={{ color: DS.colors.textPrimary }}>{planLabel}</strong>. Ton programme personnalisé est en cours de génération.
           </p>
 
           {/* Features débloquées */}
@@ -1569,7 +1560,8 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
   const progress = Math.round((step / (steps.length - 1)) * 100);
 
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", overflow: "hidden" }}>
+      <Bloom echelle={0.8} />
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sport] || "⚡"}
@@ -1656,7 +1648,8 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
   const msg = getCycleMsg(cycle);
 
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", overflow: "hidden" }}>
+      <Bloom echelle={0.8} />
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sport] || "⚡"}
@@ -1863,7 +1856,8 @@ function WelcomeScreen({ onStart }) {
   const f = features[featureIdx];
 
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <Bloom echelle={0.8} />
       <div style={{ position: "absolute", top: -160, right: -120, width: 380, height: 380, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, pointerEvents: "none" }} />
 
       <div className="v-stagger" style={{ flex: 1, padding: "56px 24px 0", position: "relative", zIndex: 1 }}>
@@ -1917,7 +1911,7 @@ function WelcomeScreen({ onStart }) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </PrimaryButton>
         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, textAlign: "center", marginTop: 12 }}>
-          Gratuit · 2 minutes · Sans carte bancaire
+          2 minutes · 7 jours d'essai gratuit
         </p>
       </div>
     </div>
@@ -1938,7 +1932,8 @@ function SplashScreen({ onDone }) {
   }, []);
 
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      <Bloom echelle={0.8} />
       <div style={{ position: "absolute", width: 420, height: 420, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.8)", transition: "opacity 800ms var(--ease-out), transform 800ms var(--ease-out)", pointerEvents: "none" }} />
 
       {phase >= 1 && (
@@ -1980,11 +1975,11 @@ const LEGAL_DOCS = {
       ["1. Objet", "Voltra est une application web de préparation physique qui génère des programmes d'entraînement personnalisés grâce à l'intelligence artificielle, et propose un coach virtuel (Ace). Les présentes conditions encadrent l'utilisation de l'application et la vente des abonnements. En créant un compte, tu les acceptes."],
       ["2. Éditeur", `Voltra, édité par Erwan Mantouba, Rennes (35000), France. Contact : ${LEGAL_EMAIL}.`],
       ["3. Compte", "Tu dois avoir au moins 12 ans pour créer un compte. Les moins de 15 ans doivent avoir l'accord de leur représentant légal pour l'utilisation de leurs données personnelles, et les mineurs doivent avoir l'accord de leur représentant légal pour tout achat. Tu es responsable de la confidentialité de tes identifiants et des informations que tu fournis, qui doivent être exactes."],
-      ["4. Offres et prix", "Voltra propose une offre gratuite (accès limité) et des offres payantes (abonnement mensuel, abonnement annuel). Les tarifs en vigueur sont affichés dans l'application, toutes taxes comprises, avant le paiement. Les paiements sont traités de façon sécurisée par Stripe ; Voltra n'a jamais accès à tes données bancaires."],
-      ["5. Abonnements et résiliation", `Les abonnements se renouvellent automatiquement à chaque échéance (mensuelle ou annuelle) jusqu'à résiliation. Tu peux résilier à tout moment, en quelques clics, depuis ton profil (« Gérer mon abonnement »), ou en écrivant à ${LEGAL_EMAIL} ; la résiliation prend effet à la prochaine échéance et l'accès Pro reste actif jusqu'à la fin de la période déjà payée. Une réduction de bienvenue peut s'appliquer au premier mois de l'abonnement mensuel ou à la première année de l'abonnement annuel uniquement, dans les conditions affichées lors de l'offre.`],
+      ["4. Offres et prix", "Voltra propose deux abonnements, mensuel et annuel, avec un essai gratuit de 7 jours. Une carte bancaire est demandée pour démarrer l'essai, mais aucun paiement n'est prélevé pendant celui-ci. Sans résiliation avant la fin de l'essai, l'abonnement démarre automatiquement et le premier paiement est prélevé. Un e-mail de rappel est envoyé avant la fin de l'essai. Les tarifs en vigueur sont affichés dans l'application, toutes taxes comprises, avant le paiement. Les paiements sont traités de façon sécurisée par Stripe ; Voltra n'a jamais accès à tes données bancaires."],
+      ["5. Abonnements et résiliation", `Les abonnements se renouvellent automatiquement à chaque échéance (mensuelle ou annuelle) jusqu'à résiliation. Tu peux résilier à tout moment, en quelques clics, depuis ton profil (« Gérer mon abonnement »), ou en écrivant à ${LEGAL_EMAIL} ; la résiliation prend effet à la prochaine échéance et l'accès Pro reste actif jusqu'à la fin de la période déjà payée. Une réduction de bienvenue peut s'appliquer à la première année de l'abonnement annuel uniquement, dans les conditions affichées lors de l'offre.`],
       ["6. Droit de rétractation", `Conformément au Code de la consommation, tu disposes de 14 jours à compter de ta souscription pour te rétracter, sans avoir à te justifier, en écrivant à ${LEGAL_EMAIL}. Le contenu numérique (programme généré, accès Pro) étant fourni immédiatement, en validant ton achat tu demandes l'exécution immédiate du service et reconnais perdre ton droit de rétractation une fois le service pleinement exécuté ; en cas de rétractation dans le délai, tu ne paies que la part de service déjà utilisée.`],
       ["7. Santé et sécurité — important", "Voltra fournit des conseils sportifs généraux et ne remplace en aucun cas un avis médical. Avant de commencer un programme, consulte un médecin, surtout en cas de blessure, de douleur, de pathologie, de grossesse ou de reprise après une longue pause. Les programmes et les réponses du coach IA sont générés automatiquement : ils peuvent comporter des erreurs et doivent être adaptés à ta condition. Tu t'entraînes sous ta seule responsabilité et tu arrêtes immédiatement en cas de douleur ou de malaise. Dans la mesure permise par la loi, Voltra ne peut être tenu responsable des blessures liées à une mauvaise utilisation du service."],
-      ["8. Utilisation acceptable", "Tu t'engages à ne pas détourner l'application (piratage, extraction automatisée, partage de ton compte, contournement des limites de l'offre gratuite) ni à demander au coach IA des contenus illicites ou dangereux. Voltra peut suspendre un compte en cas d'abus."],
+      ["8. Utilisation acceptable", "Tu t'engages à ne pas détourner l'application (piratage, extraction automatisée, partage de ton compte, contournement des limites de l'essai gratuit) ni à demander au coach IA des contenus illicites ou dangereux. Voltra peut suspendre un compte en cas d'abus."],
       ["9. Propriété intellectuelle", "L'application, son design, sa marque et ses contenus sont protégés. Tu bénéficies d'un droit d'usage personnel, non exclusif et non transférable. Les programmes générés pour toi sont à ton usage personnel."],
       ["10. Disponibilité", "Voltra met tout en œuvre pour assurer un service continu mais ne garantit pas une disponibilité permanente (maintenance, incident, dépendance à des services tiers). Les fonctionnalités peuvent évoluer."],
       ["11. Suppression du compte", `Tu peux demander la suppression de ton compte et de tes données à tout moment à ${LEGAL_EMAIL}. Elle est effectuée dans un délai maximum de 30 jours.`],
@@ -2120,7 +2115,8 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
   // Ecran reset password (vient du lien email)
   if (isPasswordRecovery) {
     return (
-      <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+      <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: "0 24px" }}>
+        <Bloom echelle={0.8} />
         <div style={{ paddingTop: 80, paddingBottom: 40, textAlign: "center" }}>
           <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>🔑</div>
           <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Nouveau mot de passe</h1>
@@ -2147,7 +2143,8 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
   // Mode mot de passe oublié
   if (mode === "forgot") {
     return (
-      <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+      <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: "0 24px" }}>
+        <Bloom echelle={0.8} />
         <div style={{ paddingTop: 80, paddingBottom: 40, textAlign: "center" }}>
           <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>📧</div>
           <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Mot de passe oublié ?</h1>
@@ -2182,7 +2179,8 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
   }
 
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: "0 24px" }}>
+      <Bloom echelle={0.8} />
       <div className="v-stagger" style={{ paddingTop: 64, paddingBottom: 32 }}>
         <div style={{ width: 52, height: 52, borderRadius: 16, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 24 }}>⚡</div>
         <h1 key={mode} className="v-up" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 10 }}>
@@ -2434,7 +2432,8 @@ function OnboardingScreen({ onComplete }) {
   const isLastStep = step === totalSteps - 1;
 
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: "0 20px" }}>
+      <Bloom echelle={0.8} />
 
       {/* Écran demo coach IA — avant génération */}
       {showCoachDemo && (() => {
@@ -2874,164 +2873,123 @@ function OnboardingScreen({ onComplete }) {
 // ─────────────────────────────────────────────
 // ECRAN PRICING
 // ─────────────────────────────────────────────
-function PricingScreen({ onSelectPlan, programme, frequence, user }) {
+function PricingScreen({ programme, user, cible, onBack, onLogout }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
   const [selected, setSelected] = useState("annual");
-  const [showFeatures, setShowFeatures] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stripeError, setStripeError] = useState("");
-  const [consentAchat, setConsentAchat] = useState(false);
-
-  // Bouton "Plus tard" visible en haut à gauche
-  const SkipButton = () => (
-    <button onClick={() => onSelectPlan("free")} style={{
-      position: "fixed", top: 52, left: 16, zIndex: 200,
-      display: "flex", alignItems: "center", gap: 6,
-      background: DS.colors.surface,
-      border: `1px solid ${DS.colors.border}`,
-      borderRadius: DS.radius.full,
-      padding: "8px 14px",
-      color: DS.colors.textSec,
-      fontFamily: "'Inter',sans-serif",
-      fontSize: 13, fontWeight: 600,
-      cursor: "pointer",
-      boxShadow: DS.shadow.card,
-    }}>
-      ✕ <span>Plus tard</span>
-    </button>
-  );
+  const annuel = selected === "annual";
+  const premierPaiement = new Date(Date.now() + 7 * JOUR_MS).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  const aDate = cible?.date && !cible.open && joursAvant(cible.date) >= 0;
+  const seances = programme?.data_json?.semaines?.[0]?.seances || [];
 
   const handleStripeCheckout = async (planId) => {
-    if (planId === "free") { onSelectPlan("free"); return; }
     setLoading(true);
     setStripeError("");
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setStripeError("Connecte-toi pour continuer."); setLoading(false); return; }
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token}`,
+            "Authorization": `Bearer ${session.access_token}`,
             "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
             plan: planId,
-            user_id: session?.user?.id,
-            email: session?.user?.email,
+            user_id: session.user.id,
+            email: session.user.email,
             success_url: window.location.origin + window.location.pathname,
             cancel_url: window.location.origin + window.location.pathname,
           }),
         }
       );
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setStripeError("Erreur lors de la redirection. Réessaie.");
-      }
+      if (data.url) { window.location.href = data.url; return; }
+      setStripeError("Erreur lors de la redirection. Réessaie.");
     } catch (err) {
       setStripeError("Erreur de connexion. Réessaie.");
     }
     setLoading(false);
   };
 
-
-  const pad = n => String(n).padStart(2, "0");
-  const currentPlan = PLANS.find(p => p.id === selected);
-  const featuresPro = ["Progression automatique des charges", "Nouveau programme IA genere a chaque cycle", "Adaptation si seance skippee", "Deload automatique intelligent", "Historique complet + graphiques", "Jusqu'a 5 seances / semaine", "Coach IA integre", "Export PDF du programme"];
-
-  const accentTexte = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
-  const statsProg = [
-    { val: String(programme?.data_json?.semaines?.length || 8), label: "semaines" },
-    { val: String(programme?.data_json?.semaines?.[0]?.seances?.[0]?.exercices?.length || 5), label: "exos / séance" },
-    { val: String(frequence || programme?.data_json?.semaines?.[0]?.seances?.length || 3), label: "séances / sem" },
+  const avantages = [
+    ["🗓️", "Ton plan complet, semaine par semaine"],
+    ["🏆", "Séances adaptées à tes matchs"],
+    ["📈", "Test de performance chaque mois"],
+    ["🤖", "Coach IA illimité pendant tes séances"],
   ];
 
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", top: -150, right: -120, width: 380, height: 380, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, pointerEvents: "none" }} />
-      <div className="v-stagger" style={{ padding: "104px 20px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <div style={{ marginBottom: 22 }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: accentTexte, marginBottom: 10 }}>PROGRAMME PRÊT</p>
-          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 12 }}>
-            Débloque<br /><span style={{ color: accentTexte }}>tout Voltra</span>
-          </h1>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 15, color: DS.colors.textSec }}>{programme?.titre || "Ton programme"} · accès complet, coach Ace inclus.</p>
-        </div>
+    <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", background: DS.colors.bg, color: DS.colors.textPrimary, position: "relative", isolation: "isolate", overflowX: "clip", padding: "48px 22px calc(24px + env(safe-area-inset-bottom, 0px))", fontFamily: "'Inter',sans-serif" }}>
+      <Bloom echelle={0.9} />
+      {onBack && <button onClick={onBack} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0 }}>← Retour</button>}
+      <p className="v-in" style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: ac }}>TON PLAN T'ATTEND</p>
+      <h1 className="v-in" style={{ "--i": 1, fontWeight: 900, fontSize: 32, lineHeight: 1.02, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "8px 0" }}>
+        {aDate ? <>Sois prêt<br />le <span style={{ color: ac }}>{dateLongue(cible.date)}</span></> : <>Lance <span style={{ color: ac }}>ton plan</span></>}
+      </h1>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
-          {statsProg.map((st, i) => (
-            <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 18, padding: "12px 6px", textAlign: "center", boxShadow: DS.shadow.card }}>
-              <div style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 24, color: DS.colors.textPrimary, fontVariantNumeric: "tabular-nums" }}><CountUp value={st.val} delay={200 + i * 120} /></div>
-              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec }}>{st.label}</div>
+      <div className="v-in" style={{ "--i": 2, marginTop: 8 }}>
+        {avantages.map(([ic, t]) => (
+          <div key={t} style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 14, fontWeight: 700, padding: "8px 0" }}>
+            <span style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 12, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>{ic}</span>{t}
+          </div>
+        ))}
+      </div>
+
+      {seances.length > 0 && (
+        <div className="v-in" style={{ "--i": 3, background: DS.colors.surface, borderRadius: 18, boxShadow: DS.shadow.card, marginTop: 10, overflow: "hidden" }}>
+          <p style={{ fontSize: 12, fontWeight: 800, color: ac, padding: "12px 14px 4px" }}>TA PREMIÈRE SEMAINE EST PRÊTE</p>
+          {seances.slice(0, 4).map((s, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "9px 14px", fontSize: 13, fontWeight: 600, borderTop: i ? `1px solid ${DS.colors.border}` : "none" }}>
+              <span>{s.titre || `Séance ${i + 1}`}</span><span style={{ color: DS.colors.textSec, fontWeight: 500, whiteSpace: "nowrap" }}>{s.dureeMin || 45} min</span>
             </div>
           ))}
         </div>
+      )}
 
-        {/* Offres */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-          {PLANS.map(plan => {
-            const on = selected === plan.id;
-            return (
-              <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: DS.colors.surface, border: `2px solid ${on ? DS.colors.primary : DS.colors.border}`, borderRadius: 22, padding: "18px 20px", cursor: "pointer", boxShadow: on ? DS.shadow.primary : DS.shadow.card, transform: on ? "scale(1.02)" : "scale(1)", transition: "var(--t-choix), transform 160ms var(--ease-out)" }}>
-                {plan.badge && <div style={{ position: "absolute", top: -11, left: 18, padding: "4px 10px", background: DS.colors.primary, borderRadius: DS.radius.full, color: "#0B0B0C", fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 800, letterSpacing: "0.06em" }}>{plan.badge}</div>}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                  <div>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 14, color: DS.colors.textSec, marginBottom: 2 }}>{plan.label}</p>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                      <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 30, letterSpacing: "-0.02em", color: DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
-                      <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec }}>{plan.unit}</span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-                      <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>{plan.priceDetail}</span>
-                      {plan.savings && <span style={{ padding: "2px 8px", background: DS.colors.primarySoft, borderRadius: DS.radius.full, color: accentTexte, fontFamily: "'Inter',sans-serif", fontSize: 11, fontWeight: 700 }}>{plan.savings}</span>}
-                    </div>
-                    {plan.bienvenue && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, color: accentTexte, marginTop: 4 }}>{plan.bienvenue}</p>}
+      <div className="v-in" style={{ "--i": 4, display: "flex", flexDirection: "column", gap: 12, marginTop: 18 }}>
+        {PLANS.map(plan => {
+          const on = selected === plan.id;
+          return (
+            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", padding: "16px 18px", borderRadius: 22, background: DS.colors.surface, border: `2px solid ${on ? DS.colors.primary : DS.colors.border}`, boxShadow: on ? `0 0 0 4px ${DS.colors.primarySoft}` : DS.shadow.card, cursor: "pointer" }}>
+              {plan.badge && <span style={{ position: "absolute", top: -11, left: 16, padding: "4px 10px", borderRadius: 99, background: DS.colors.primary, color: "#0B0B0C", fontSize: 10, fontWeight: 800, letterSpacing: "0.04em" }}>{plan.badge}</span>}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: DS.colors.textSec }}>{plan.label}</p>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.02em" }}>{plan.displayPrice}</span>
+                    <span style={{ fontSize: 13, color: DS.colors.textSec }}>{plan.unit}</span>
+                    {plan.savings && <span style={{ padding: "2px 8px", borderRadius: 99, background: DS.colors.primarySoft, color: ac, fontSize: 11, fontWeight: 800 }}>{plan.savings}</span>}
                   </div>
-                  <div style={{ width: 26, height: 26, flexShrink: 0, borderRadius: DS.radius.full, border: `2px solid ${on ? DS.colors.primary : DS.colors.textDim}`, background: on ? DS.colors.primary : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "var(--t-choix)" }}>
-                    {on && <svg className="v-pop" width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#0B0B0C" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                  </div>
+                  <p style={{ fontSize: 12, color: DS.colors.textSec, marginTop: 3, lineHeight: 1.4 }}>{plan.priceDetail}</p>
                 </div>
+                <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${on ? DS.colors.primary : DS.colors.textDim}`, background: on ? DS.colors.primary : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#0B0B0C", fontSize: 13, fontWeight: 900 }}>{on ? "✓" : ""}</span>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
+      </div>
 
-
-        {/* Ce qui est inclus */}
-        <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 18, padding: "14px 18px", color: DS.colors.textPrimary, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "'Inter',sans-serif", marginBottom: 8 }}>
-          <span>Voir ce qui est inclus</span>
-          <span style={{ transform: showFeatures ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms var(--ease-out)" }}>⌄</span>
-        </button>
-        {showFeatures && (
-          <div className="v-stagger" style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 18, padding: "6px 16px", marginBottom: 16 }}>
-            {featuresPro.map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderBottom: i < featuresPro.length - 1 ? `1px solid ${DS.colors.border}` : "none" }}>
-                <div style={{ width: 22, height: 22, borderRadius: DS.radius.full, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={accentTexte} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </div>
-                <span style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textPrimary, fontSize: 14 }}>{f}</span>
-              </div>
-            ))}
+      <div className="v-in" style={{ "--i": 5, display: "flex", margin: "18px 0 16px" }}>
+        {[["Aujourd'hui", "Accès complet"], ["Jour 4", "Rappel par e-mail"], [premierPaiement, `1er paiement : ${annuel ? "56,24 €" : "14,99 €"}`]].map(([t, d], i) => (
+          <div key={t} style={{ flex: 1, position: "relative", paddingTop: 18, fontSize: 11, color: DS.colors.textSec, lineHeight: 1.3 }}>
+            <span style={{ position: "absolute", top: 3, left: 0, width: 10, height: 10, borderRadius: "50%", background: DS.colors.primary }} />
+            {i < 2 && <span style={{ position: "absolute", top: 7, left: 10, right: 0, height: 2, background: DS.colors.surfaceHigh }} />}
+            <b style={{ display: "block", color: DS.colors.textPrimary, fontSize: 12 }}>{t}</b>{d}
           </div>
-        )}
+        ))}
       </div>
 
-      {/* Bouton de paiement, toujours visible */}
-      <div style={{ position: "sticky", bottom: 0, padding: "20px 20px calc(24px + env(safe-area-inset-bottom, 0px))", maxWidth: 430, margin: "0 auto", background: fonduBas(), zIndex: 2 }}>
-        {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>⚠ {stripeError}</p>}
-        <ConsentementAchat coche={consentAchat} onChange={setConsentAchat} />
-        <PrimaryButton onClick={() => handleStripeCheckout(selected)} disabled={loading || !consentAchat} style={{ height: 58 }}>
-          {!loading && <span className="v-shine" style={{ position: "absolute", inset: 0, borderRadius: DS.radius.full }} />}
-          {loading ? "Redirection vers Stripe..." : `Continuer avec ${currentPlan.label}`}
-        </PrimaryButton>
-        <p style={{ color: DS.colors.textSec, fontSize: 12, textAlign: "center", margin: "10px 0 6px", fontFamily: "'Inter',sans-serif" }}>🔒 Paiement sécurisé Stripe · Résiliable à tout moment</p>
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textSec, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", textDecoration: "underline" }}>
-          Non merci, je veux juste essayer gratuitement
-        </button>
-      </div>
-      <SkipButton />
+      {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8 }}>⚠ {stripeError}</p>}
+      <PrimaryButton onClick={() => handleStripeCheckout(selected)} disabled={loading} style={{ height: 58 }}>
+        {loading ? "Redirection vers Stripe..." : "Essayer 7 jours gratuitement"}
+      </PrimaryButton>
+      <p style={{ fontSize: 12, color: DS.colors.textSec, textAlign: "center", marginTop: 10, lineHeight: 1.4 }}>Carte demandée · Rien à payer aujourd'hui · Annule avant le {premierPaiement} en quelques clics</p>
+      {onLogout && <button onClick={onLogout} style={{ display: "block", width: "100%", marginTop: 12, padding: 8, background: "none", border: "none", color: DS.colors.textSec, fontSize: 13, cursor: "pointer" }}>Se déconnecter</button>}
     </div>
   );
 }
@@ -3093,7 +3051,8 @@ function MatchsScreen({ user, onBack }) {
   };
 
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, paddingBottom: 100 }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", paddingBottom: 100 }}>
+      <Bloom echelle={0.8} />
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "14px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
@@ -3183,8 +3142,10 @@ function MatchsScreen({ user, onBack }) {
 
 // ─────────────────────────────────────────────
 // DASHBOARD
-function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs, onResumeSession }) {
+function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs, onResumeSession, cible, onEditCible }) {
   const stagger = useStaggerUneFois("dashboard");
+  const { tests, charger: chargerTests } = useTests(user);
+  const [vueTest, setVueTest] = useState(null);
   // Séance en pause récupérable (< 2h)
   const [pausedSession] = useState(() => {
     try {
@@ -3235,6 +3196,9 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
   const currentCycle = programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
   const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
 
+  if (vueTest === "carrousel") return <CarrouselScreen tests={tests} onBack={() => setVueTest("test")} />;
+  if (vueTest === "test") return <TestScreen user={user} tests={tests} onSaved={async () => { await chargerTests(); }} onBack={() => setVueTest(null)} onCarrousel={() => setVueTest("carrousel")} />;
+
   return (
     <div style={{ minHeight: "100dvh", background: DS.colors.bg, paddingBottom: 130 }}>
 
@@ -3278,21 +3242,8 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           </div>
         )}
 
-        {/* Jour prévu / repos selon les jours choisis */}
-        {seance && progData?.jours?.length > 0 && (() => {
-          const todayI = new Date().getDay();
-          const prevu = progData.jours.includes(todayI);
-          let next = null;
-          for (let k = 1; k <= 7; k++) { const d = (todayI + k) % 7; if (progData.jours.includes(d)) { next = d; break; } }
-          return (
-            <div style={{ background: prevu ? `${theme.accent}15` : DS.colors.surface, border: `1px solid ${prevu ? theme.accent + "50" : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "12px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 18 }}>{prevu ? "💪" : "😴"}</span>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textPrimary, margin: 0, fontWeight: 600 }}>
-                {prevu ? "Séance prévue aujourd'hui" : `Jour de repos prévu · prochaine séance ${DAY_NAMES[next]}`}
-              </p>
-            </div>
-          );
-        })()}
+        <MissionCard cible={cible} onEdit={onEditCible} />
+        <SemaineCard jours={progData?.jours || DEFAULT_JOURS[Math.min(programme?.frequence || 3, 5)]} matchs={matchs} cible={cible} onAjouterMatch={onOpenMatchs} />
 
         {/* Séance du jour — card sombre */}
         {!seance ? (
@@ -3353,6 +3304,10 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           </div>
         )}
 
+        <TestCard tests={tests} onOpen={() => setVueTest("test")} />
+
+        {/* Sans objectif daté : progression par cycle. Avec objectif : la carte du haut suffit */}
+        {!cible?.date && <>
         {/* Progression cycle */}
         <div style={{ background: DS.colors.surface, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 16, boxShadow: DS.shadow.card }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -3398,6 +3353,8 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
             })()}
           </div>
         </div>
+
+        </>}
 
         {/* Dernière séance */}
         <div style={{ marginBottom: 16 }}>
@@ -3515,7 +3472,8 @@ function HistoriqueScreen() {
   const accentColor = "#FF2D55";
 
   return (
-    <div className={stagger} style={{ minHeight: "100dvh", background: DS.colors.bg, paddingBottom: 130 }}>
+    <div className={stagger} style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", paddingBottom: 130 }}>
+      <Bloom echelle={0.8} />
 
       {/* Drawer detail seance */}
       {selectedSeance && (
@@ -3903,7 +3861,6 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
   const [seancesCount, setSeancesCount] = useState(0);
   const [programmeLoading, setProgrammeLoading] = useState(false);
   const [paidPlan, setPaidPlan] = useState(null);
-  const [lastSessionStats, setLastSessionStats] = useState(null);
   const [cycleComplete, setCycleComplete] = useState(false);
   const [streak, setStreak] = useState(0);
   const [recordKg, setRecordKg] = useState(0);
@@ -4027,7 +3984,8 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
   };
 
   return (
-    <div className={stagger} style={{ minHeight: "100dvh", background: DS.colors.bg, paddingBottom: 130, position: "relative", overflow: "hidden" }}>
+    <div className={stagger} style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", paddingBottom: 130, overflow: "hidden" }}>
+      <Bloom echelle={0.8} />
 
       {/* Sport bg */}
       <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
@@ -4341,224 +4299,410 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
 // PROJECTION SCREEN — la transformation concrète
 // ─────────────────────────────────────────────
 // Nombre qui « compte » jusqu'à sa valeur (ex. "+18%", "24", "0.5T")
-function CountUp({ value, duration = 1100, delay = 0 }) {
-  const m = String(value).match(/^([+-]?)(\d+(?:[.,]\d+)?)(.*)$/);
-  const [shown, setShown] = useState(m ? 0 : value);
-  useEffect(() => {
-    if (!m) return;
-    const target = parseFloat(m[2].replace(",", "."));
-    const decimals = (m[2].split(/[.,]/)[1] || "").length;
-    let raf, start;
-    const t = setTimeout(() => {
-      const step = (ts) => {
-        start = start || ts;
-        const k = Math.min(1, (ts - start) / duration);
-        const eased = 1 - Math.pow(1 - k, 3);
-        setShown((target * eased).toFixed(decimals));
-        if (k < 1) raf = requestAnimationFrame(step);
-      };
-      raf = requestAnimationFrame(step);
-    }, delay);
-    return () => { clearTimeout(t); cancelAnimationFrame(raf); };
-  }, [value]);
-  if (!m) return <>{value}</>;
-  const sep = m[2].includes(",") ? "," : ".";
-  return <>{m[1]}{String(shown).replace(".", sep)}{m[3]}</>;
+// ─────────────────────────────────────────────
+// OBJECTIF : le plan part de la date et remonte
+// ─────────────────────────────────────────────
+const JOUR_MS = 86400000;
+const CIBLES = {
+  match: { ic: "🏆", t: "Un match important", s: "Championnat, tournoi, finale", fin: "ton match" },
+  test: { ic: "🎯", t: "Une détection ou un test", s: "Sélection, centre de formation", fin: "ta détection" },
+  saison: { ic: "📅", t: "La reprise de saison", s: "Arriver prêt dès le premier jour", fin: "ta reprise" },
+  perso: { ic: "🚀", t: "Un cap personnel", s: "Sauter plus haut, courir plus vite", fin: "ton objectif" },
+};
+const dateLocale = (iso) => new Date(`${iso}T12:00:00`);
+const isoDans = (jours) => { const d = new Date(Date.now() + jours * JOUR_MS); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const joursAvant = (iso) => { const a = new Date(); a.setHours(12, 0, 0, 0); return Math.round((dateLocale(iso) - a) / JOUR_MS); };
+const dateLongue = (iso) => dateLocale(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+
+// La dernière semaine est toujours l'affûtage
+function phasesObjectif(semaines) {
+  const w = Math.max(1, semaines);
+  if (w <= 2) return [
+    { n: "Activation", w: Math.max(w - 1, 1), d: "Réveiller la vitesse sans te fatiguer", c: "#C9F299" },
+    { n: "Affûtage", w: 1, d: "Charges réduites, fraîcheur maximale", c: "#FFB25C" },
+  ];
+  const reste = w - 1;
+  const f = Math.max(1, Math.round(reste * 0.34)), fo = Math.max(1, Math.round(reste * 0.33)), p = Math.max(reste - f - fo, 1);
+  return [
+    { n: "Fondations", w: f, d: "Technique, appuis et bases solides", c: "#C9F299" },
+    { n: "Force", w: fo, d: "Charges plus lourdes, moins de répétitions", c: "#9BE84F" },
+    { n: "Puissance", w: p, d: "Explosivité, sauts et vitesse", c: "#6FCF3D" },
+    { n: "Affûtage", w: 1, d: "Volume réduit pour arriver frais", c: "#FFB25C" },
+  ];
 }
 
-function ProjectionScreen({ sport, onboardingData, onContinue }) {
-  const theme = getSportTheme(sport);
-  const accentTexte = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+// Où en est l'athlète dans son plan
+function etatPlan(cible) {
+  const total = Math.max(1, Math.round((dateLocale(cible.date) - new Date(cible.debut)) / (7 * JOUR_MS)));
+  const semaine = Math.min(total, Math.max(1, Math.floor((Date.now() - new Date(cible.debut)) / (7 * JOUR_MS)) + 1));
+  const phases = phasesObjectif(total);
+  let debut = 1, index = 0;
+  for (let i = 0; i < phases.length; i++) {
+    if (semaine < debut + phases[i].w) { index = i; break; }
+    debut += phases[i].w;
+    index = i;
+  }
+  return { total, semaine, phases, index, dansPhase: (semaine - debut + 1) / phases[index].w };
+}
 
-  const frequence = onboardingData?.frequence || 3;
-  const totalSeances = frequence * 4; // 1 cycle = 4 semaines
+// Dates où l'athlète joue : ses matchs, et son objectif si c'est un match
+function datesDeMatch(matchs, cible) {
+  const dates = (matchs || []).map(m => m.date_match).filter(Boolean).map(d => String(d).slice(0, 10));
+  if (cible?.type === "match" && cible.date) dates.push(cible.date);
+  return [...new Set(dates)];
+}
 
-  const stats = [
-    { val: String(totalSeances), label: "Séances sur le cycle 1", sub: "puis ça continue", icon: "📅" },
-    { val: "4", label: "Semaines de progression", sub: "charges ajustées au fil des séances", icon: "📈" },
-    { val: "100%", label: "Adapté à ton profil", sub: "sport, niveau et matériel", icon: "🎯" },
-  ];
+// Comment la séance change selon le prochain match (0 = rien à changer)
+function adaptationDuJour(matchs, cible, decalage = 0) {
+  const ecarts = datesDeMatch(matchs, cible).map(d => joursAvant(d) - decalage);
+  const avant = ecarts.filter(e => e >= 0).sort((a, b) => a - b)[0];
+  if (avant === 0) return { charge: 0.5, sets: 2, label: "Activation", ic: "⚡", note: "Jour de match : activation légère seulement, garde tes forces." };
+  if (avant === 1) return { charge: 0.5, sets: 2, label: "Repos", ic: "😴", note: "Match demain : idéalement repos. Si tu t'entraînes, séance très légère." };
+  if (ecarts.includes(-1)) return { charge: 0.6, setsMoins: 1, label: "Récup", ic: "🧘", note: "Lendemain de match : séance allégée pour bien récupérer." };
+  if (avant === 2 || avant === 3) return { charge: 0.7, setsMoins: 1, label: "−30 %", ic: "💪", note: `Match dans ${avant} jours : charges réduites de 30 % pour arriver frais.` };
+  if (cible?.date && !cible.open && joursAvant(cible.date) - decalage >= 0 && joursAvant(cible.date) - decalage <= 7) return { charge: 0.8, setsMoins: 1, label: "Affûtage", ic: "💪", note: "Dernière ligne droite : volume réduit pour arriver frais." };
+  return null;
+}
 
-  return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", top: -140, left: -100, width: 360, height: 360, borderRadius: "50%", background: `radial-gradient(circle, ${theme.accent}22, transparent 70%)`, pointerEvents: "none" }} />
+function adapterSeance(seance, adaptation) {
+  if (!adaptation || !seance) return seance;
+  return {
+    ...seance,
+    adaptation: adaptation.note,
+    exercices: (seance.exercices || []).map(ex => ({
+      ...ex,
+      chargeKg: ex.chargeKg > 0 ? ex.chargeKg * adaptation.charge : ex.chargeKg,
+      sets: adaptation.sets ? Math.min(adaptation.sets, ex.sets || 3) : Math.max(1, (ex.sets || 3) - (adaptation.setsMoins || 0)),
+    })),
+  };
+}
 
-      <div className="v-stagger" style={{ padding: "56px 24px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: accentTexte, marginBottom: 10 }}>TON PREMIER CYCLE · 4 SEMAINES</p>
-        <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 38, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 28 }}>
-          Voici ton<br /><span style={{ color: accentTexte }}>premier cycle</span>
-        </h1>
+const Bloom = ({ echelle = 1 }) => <div className="v-bloom" style={{ transform: `scale(${echelle})` }} />;
 
-        {stats.map((st, i) => (
-          <div key={i} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 22, padding: "18px 20px", display: "flex", alignItems: "center", gap: 16, marginBottom: 12, boxShadow: DS.shadow.card }}>
-            <div style={{ width: 52, height: 52, borderRadius: 16, background: `${theme.accent}1F`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>{st.icon}</div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 32, letterSpacing: "-0.02em", color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 4, fontVariantNumeric: "tabular-nums" }}><CountUp value={st.val} delay={250 + i * 150} /></p>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary }}>{st.label}</p>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>{st.sub}</p>
+// ── Les 4 temps : objectif, date, construction, plan ──
+function ObjectifScreen({ initial, onboardingData, edition, onDone, onBack }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const [etape, setEtape] = useState(0);
+  const [type, setType] = useState(initial?.type || "match");
+  const [jours, setJours] = useState(() => { const j = initial?.date && joursAvant(initial.date); return j >= 7 && j <= 300 ? j : 84; });
+  const [ouvert, setOuvert] = useState(false);
+  const semaines = Math.max(1, Math.round(jours / 7));
+  const phases = phasesObjectif(semaines);
+  const date = isoDans(jours);
+  const c = CIBLES[type];
+  const freq = onboardingData?.frequence || 3;
+  const titre = { fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, lineHeight: 1.02, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, margin: "8px 0" };
+  const sur = { fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: ac };
+
+  useEffect(() => {
+    if (etape !== 2) return;
+    const t = setTimeout(() => setEtape(3), 3000);
+    return () => clearTimeout(t);
+  }, [etape]);
+
+  const cadre = { minHeight: "100dvh", maxWidth: 430, margin: "0 auto", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: `48px 22px calc(24px + env(safe-area-inset-bottom, 0px))`, fontFamily: "'Inter',sans-serif", color: DS.colors.textPrimary };
+
+  if (etape === 0) return (
+    <div key="objectif" style={cadre}>
+      <Bloom echelle={0.9} />
+      {edition && <button onClick={onBack} style={{ alignSelf: "flex-start", background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0 }}>← Retour</button>}
+      <p className="v-in" style={sur}>Ton objectif</p>
+      <h1 className="v-in" style={{ ...titre, "--i": 1 }}>Qu'est-ce que<br />tu <span style={{ color: ac }}>prépares ?</span></h1>
+      <p className="v-in" style={{ "--i": 2, color: DS.colors.textSec, fontSize: 15, lineHeight: 1.45 }}>Tout ton plan sera construit pour ce moment-là.</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
+        {Object.entries(CIBLES).map(([k, g], i) => {
+          const on = type === k;
+          return (
+            <button key={k} className={`v-in v-cible ${on ? "on" : ""}`} onClick={() => setType(k)} style={{ "--i": i + 3, background: DS.colors.surface, border: `2px solid ${on ? DS.colors.primary : "transparent"}`, boxShadow: DS.shadow.card, color: DS.colors.textPrimary }}>
+              <span className="v-cible-ic" style={{ background: on ? DS.colors.primary : DS.colors.surfaceHigh }}>{g.ic}</span>
+              <span style={{ position: "relative", textAlign: "left" }}>
+                <b style={{ display: "block", fontSize: 16, fontWeight: 800 }}>{g.t}</b>
+                <span style={{ fontSize: 13, color: DS.colors.textSec }}>{g.s}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ flex: 1, minHeight: 18 }} />
+      <PrimaryButton onClick={() => setEtape(1)} style={{ height: 58 }}>Continuer →</PrimaryButton>
+    </div>
+  );
+
+  if (etape === 1) {
+    const pct = ((jours - 7) / 293) * 100;
+    return (
+      <div key="date" style={cadre}>
+        <Bloom />
+        <button onClick={() => setEtape(0)} style={{ alignSelf: "flex-start", background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0 }}>← Retour</button>
+        <p className="v-in" style={sur}>{c.ic} {c.t}</p>
+        <h1 className="v-in" style={{ ...titre, "--i": 1 }}>C'est pour <span style={{ color: ac }}>quand ?</span></h1>
+        <div className="v-in" style={{ "--i": 2, textAlign: "center", marginTop: 18 }}>
+          <div style={{ fontSize: 104, fontWeight: 900, letterSpacing: "-0.05em", lineHeight: 0.95, fontVariantNumeric: "tabular-nums" }}>
+            <span style={{ fontSize: 44, color: ac, marginRight: 2, letterSpacing: "-0.03em" }}>J-</span>{jours}
+          </div>
+          <p className="v-premiere" style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{dateLocale(date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</p>
+          <p style={{ fontSize: 14, color: DS.colors.textSec, marginTop: 2 }}>{semaines} semaine{semaines > 1 ? "s" : ""} pour te préparer</p>
+        </div>
+        <input className="v-range v-in" type="range" min="7" max="300" step="1" value={jours} aria-label="Date de ton objectif"
+          onChange={e => setJours(+e.target.value)}
+          style={{ "--i": 3, "--p": `${pct}%`, "--fond": DS.colors.surfaceHigh, "--bord": DS.colors.surface }} />
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: DS.colors.textDim, fontWeight: 600, marginTop: -4 }}><span>1 sem.</span><span>10 mois</span></div>
+        <div className="v-in" style={{ "--i": 4, display: "flex", gap: 4, marginTop: 22, height: 54 }}>
+          {phases.map(p => (
+            <div key={p.n} style={{ flex: `${p.w} 1 0`, background: p.c, borderRadius: 12, padding: "7px 8px", minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", color: "#0B0B0C", fontSize: 11, fontWeight: 800, transition: "flex-grow 260ms var(--ease-out)" }}>
+              {p.w >= 2 && p.n}
+              {p.w >= 2 && <span style={{ display: "block", fontWeight: 600, opacity: 0.65, marginTop: 2, fontSize: 10 }}>{p.w} sem.</span>}
             </div>
+          ))}
+        </div>
+        <button onClick={() => { setJours(84); setOuvert(true); setEtape(2); }} style={{ marginTop: 12, padding: 10, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Je n'ai pas encore de date</button>
+        <div style={{ flex: 1, minHeight: 18 }} />
+        <PrimaryButton onClick={() => { setOuvert(false); setEtape(2); }} style={{ height: 58 }}>Construire mon plan →</PrimaryButton>
+      </div>
+    );
+  }
+
+  if (etape === 2) {
+    const lignes = [`${semaines} semaines avant ${c.fin}`, `${phases.length} phases réparties à partir de la date`, "Dernière semaine allégée pour arriver frais", `${freq} séances par semaine, adaptées à ton sport`];
+    return (
+      <div key="construction" onClick={() => setEtape(3)} style={{ ...cadre, justifyContent: "center", cursor: "pointer" }}>
+        <p className="v-in" style={{ ...sur, textAlign: "center" }}>On construit ton plan</p>
+        <svg viewBox="0 0 320 140" width="100%" style={{ margin: "6px 0 22px" }}>
+          <path d="M12 124 C 70 124, 80 72, 140 80 S 220 96, 250 46 S 290 22, 300 22" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="7" strokeLinecap="round" />
+          <path className="v-route" pathLength="1" d="M12 124 C 70 124, 80 72, 140 80 S 220 96, 250 46 S 290 22, 300 22" fill="none" stroke="#9BE84F" strokeWidth="7" strokeLinecap="round" />
+          <circle cx="12" cy="124" r="7" fill="#9BE84F" />
+          <text className="v-drapeau" x="288" y="20" fontSize="26">🏁</text>
+        </svg>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {lignes.map((l, i) => (
+            <div key={l} className="v-in" style={{ "--i": 0, animationDelay: `${300 + i * 480}ms`, display: "flex", gap: 10, alignItems: "center", fontSize: 14, fontWeight: 600 }}>
+              <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", background: DS.colors.primary, color: "#0B0B0C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>✓</span>{l}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  let debut = 1;
+  return (
+    <div key="plan" style={cadre}>
+      <Bloom echelle={1.1} />
+      <p className="v-in" style={sur}>Ton plan est prêt</p>
+      <h1 className="v-in" style={{ ...titre, "--i": 1 }}>{ouvert ? "Prêt dans" : "Prêt pour le"}<br /><span style={{ color: ac }}>{ouvert ? "12 semaines" : dateLongue(date)}</span></h1>
+      <p className="v-in" style={{ "--i": 2, color: DS.colors.textSec, fontSize: 15, lineHeight: 1.45 }}>{ouvert ? "Tu pourras ajouter ta date à tout moment : le plan se recalcule." : `Chaque semaine d'ici ${c.fin} a un rôle précis.`}</p>
+      <div className="v-in" style={{ "--i": 3, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 16 }}>
+        {[[semaines, "semaines"], [semaines * freq, "séances"], [phases.length, "phases"]].map(([v, l]) => (
+          <div key={l} style={{ background: DS.colors.surface, borderRadius: 18, padding: "12px 6px", textAlign: "center", boxShadow: DS.shadow.card }}>
+            <b style={{ display: "block", fontSize: 24, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{v}</b>
+            <span style={{ fontSize: 11, color: DS.colors.textSec }}>{l}</span>
           </div>
         ))}
-
-        {/* Continuité après le premier cycle */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: 18, padding: "14px 16px", margin: "4px 0 12px" }}>
-          <span style={{ fontSize: 22 }}>♾️</span>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, lineHeight: 1.5 }}>
-            Et ce n'est que le <strong style={{ color: DS.colors.textPrimary }}>premier cycle</strong>. Ton programme évolue ensuite automatiquement : <strong style={{ color: DS.colors.textPrimary }}>progression continue toute l'année</strong>.
-          </p>
-        </div>
-
       </div>
+      <div className="v-timeline" style={{ "--fond": DS.colors.surfaceHigh, marginTop: 20 }}>
+        {phases.map((p, i) => {
+          const a = debut, b = debut + p.w - 1; debut = b + 1;
+          return (
+            <div key={p.n} className={`v-phase v-in ${i === 0 ? "now" : ""}`} style={{ "--i": i + 5, "--point": DS.colors.surface, "--bord": DS.colors.textDim, "--halo": DS.colors.primarySoft }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: ac, letterSpacing: "0.03em" }}>SEMAINE{p.w > 1 ? "S" : ""} {a === b ? a : `${a} À ${b}`}</span>
+              <h3 style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.01em" }}>{p.n}</h3>
+              <p style={{ fontSize: 13, color: DS.colors.textSec, marginTop: 2 }}>{p.d}</p>
+            </div>
+          );
+        })}
+        <div className="v-phase fin v-in" style={{ "--i": phases.length + 5 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, paddingLeft: 2 }}>{ouvert ? "Cap atteint" : dateLongue(date)}</h3>
+          <p style={{ fontSize: 13, color: DS.colors.textSec, marginTop: 2, paddingLeft: 2 }}>{ouvert ? "Nouveau test et nouveau plan" : "Jour J : tu arrives prêt"}</p>
+        </div>
+      </div>
+      <p style={{ fontSize: 12, color: DS.colors.textSec, marginBottom: 14, lineHeight: 1.45 }}>Tes premières séances se créent juste après. Les suivantes se génèrent au fur et à mesure, selon tes résultats.</p>
+      <PrimaryButton onClick={() => onDone({ type, date, open: ouvert, debut: new Date().toISOString() })} style={{ height: 58 }}>{edition ? "Enregistrer mon plan" : "Commencer mes 7 jours gratuits →"}</PrimaryButton>
+    </div>
+  );
+}
 
-      <div style={{ position: "sticky", bottom: 0, padding: "20px 24px calc(24px + env(safe-area-inset-bottom, 0px))", maxWidth: 430, margin: "0 auto", background: fonduBas(), zIndex: 2 }}>
-        <PrimaryButton onClick={onContinue} style={{ height: 58 }}>
-          Voir mon programme complet
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </PrimaryButton>
+// ── Carte du tableau de bord ──
+function MissionCard({ cible, onEdit }) {
+  if (!cible?.date) return (
+    <button onClick={onEdit} className="v-mission" style={{ width: "100%", textAlign: "left", border: "none", cursor: "pointer" }}>
+      <span className="v-mission-lab">🎯 TON OBJECTIF</span>
+      <span style={{ display: "block", fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", marginTop: 8, color: "#fff" }}>Fixe ta date</span>
+      <span style={{ display: "block", fontSize: 14, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>Ton plan se construit à partir de ton prochain match ou objectif →</span>
+    </button>
+  );
+  const j = joursAvant(cible.date);
+  const c = CIBLES[cible.type] || CIBLES.perso;
+  if (j < 0) return (
+    <button onClick={onEdit} className="v-mission" style={{ width: "100%", textAlign: "left", border: "none", cursor: "pointer" }}>
+      <span className="v-mission-lab">{c.ic} JOUR J PASSÉ</span>
+      <span style={{ display: "block", fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", marginTop: 8, color: "#fff" }}>Quel est ton prochain objectif ?</span>
+      <span style={{ display: "block", fontSize: 14, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>Choisis une nouvelle date pour relancer ton plan →</span>
+    </button>
+  );
+  const etat = etatPlan(cible);
+  const suivante = etat.phases[etat.index + 1];
+  return (
+    <div className="v-mission" onClick={onEdit} style={{ cursor: "pointer" }}>
+      <div className="v-mission-lab">{c.ic} {cible.open ? "TON CAP" : "TON OBJECTIF"}</div>
+      <div style={{ fontSize: 66, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1, marginTop: 8, fontVariantNumeric: "tabular-nums", color: "#fff" }}>
+        <span style={{ fontSize: 28, color: "#9BE84F", marginRight: 2 }}>J-</span>{j}
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4, color: "#fff" }}>{cible.open ? `${etat.total} semaines de préparation` : `${c.t} · ${dateLongue(cible.date)}`}</div>
+      <div style={{ display: "flex", gap: 4, marginTop: 18 }}>
+        {etat.phases.map((p, i) => (
+          <div key={p.n} style={{ flex: `${p.w} 1 0`, height: 8, borderRadius: 99, background: "rgba(255,255,255,0.14)", overflow: "hidden" }}>
+            <div className="v-barre" style={{ height: "100%", width: "100%", background: "#9BE84F", borderRadius: 99, transform: `translateX(${i < etat.index ? 0 : i === etat.index ? (etat.dansPhase * 100 - 100) : -100}%)` }} />
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 8, color: "rgba(255,255,255,0.65)" }}>
+        <span><b style={{ color: "#fff" }}>{etat.phases[etat.index].n}</b> · semaine {etat.semaine} sur {etat.total}</span>
+        {suivante && <span>{suivante.n} →</span>}
       </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────
-// PROGRAMME PREVIEW
-// ─────────────────────────────────────────────
-function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
-  const theme = getSportTheme(sport);
-  const progData = programme?.data_json;
-  const seance = progData?.semaines?.[0]?.seances?.[0];
-  const exercices = seance?.exercices || [];
-  const frequence = onboardingData?.frequence || 3;
+// ── Semaine réelle, réorganisée autour des matchs ──
+function SemaineCard({ jours, matchs, cible, onAjouterMatch }) {
+  const lundi = new Date(); lundi.setHours(12, 0, 0, 0); lundi.setDate(lundi.getDate() - ((lundi.getDay() + 6) % 7));
+  const matchsDates = datesDeMatch(matchs, cible);
+  const auj = (new Date().getDay() + 6) % 7;
+  const cases = ["L", "M", "M", "J", "V", "S", "D"].map((l, i) => {
+    const d = new Date(lundi.getTime() + i * JOUR_MS);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (matchsDates.includes(iso)) return { l, ic: "🏆", t: "MATCH", match: true };
+    const prevu = (jours || []).includes(d.getDay());
+    const ad = adaptationDuJour(matchs, cible, i - auj);
+    if (ad?.label === "Récup") return { l, ic: ad.ic, t: ad.label };
+    if (ad?.label === "Repos") return { l, ic: ad.ic, t: ad.label };
+    if (prevu) return { l, ic: ad?.ic || "💪", t: ad?.label || "Séance" };
+    return { l, ic: "·", t: "" };
+  });
+  const note = adaptationDuJour(matchs, cible, 0)?.note;
+  return (
+    <div style={{ marginBottom: 16, fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <p style={{ fontSize: 15, fontWeight: 800, color: DS.colors.textPrimary }}>Ta semaine</p>
+        <button onClick={onAjouterMatch} style={{ background: "none", border: "none", color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>+ Ajouter un match</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 5 }}>
+        {cases.map((c, i) => (
+          <div key={i} style={{ borderRadius: 14, padding: "8px 2px", minHeight: 74, textAlign: "center", background: c.match ? "#FF8C00" : DS.colors.surface, boxShadow: DS.shadow.card, outline: i === auj ? `2px solid ${DS.colors.primary}` : "none" }}>
+            <b style={{ display: "block", fontSize: 11, fontWeight: 700, color: c.match ? "#1A0E00" : DS.colors.textSec }}>{c.l}</b>
+            <span style={{ display: "block", fontSize: 18, margin: "4px 0 2px", color: DS.colors.textDim }}>{c.ic}</span>
+            <span style={{ display: "block", fontSize: 9.5, fontWeight: 700, lineHeight: 1.15, color: c.match ? "#1A0E00" : DS.colors.textSec }}>{c.t}</span>
+          </div>
+        ))}
+      </div>
+      <p style={{ fontSize: 13, color: DS.colors.textSec, marginTop: 10, lineHeight: 1.45 }}>{note || "Ajoute un match : tes séances s'adaptent toutes seules autour de la date."}</p>
+    </div>
+  );
+}
 
-  const pad = n => String(n).padStart(2, "0");
+// ─────────────────────────────────────────────
+// TEST DU MOIS
+// ─────────────────────────────────────────────
+const TESTS_PERF = [
+  { k: "detente_cm", t: "Détente verticale", d: "Touche le mur au plus haut, 3 essais", u: "cm", pas: 1, depart: 40, mieux: 1, dec: 0 },
+  { k: "sprint_20m", t: "Sprint 20 m", d: "Départ arrêté, meilleur temps", u: "s", pas: 0.01, depart: 3.5, mieux: -1, dec: 2 },
+  { k: "pompes", t: "Pompes en 1 minute", d: "Corps gainé, poitrine près du sol", u: "", pas: 1, depart: 20, mieux: 1, dec: 0 },
+];
+const virgule = (n, dec = 0) => Number(n).toFixed(dec).replace(".", ",");
+const INTERVALLE_TEST = 28;
 
-  const nomsProgramme = {
-    basketball: { explosivite: "Protocole Meneur Elite", detente: "Jump Performance", force: "Power Basketball", endurance: "Cardio Court" },
-    football: { explosivite: "Sprint & Power", endurance: "Endurance Football", force: "Physical Domination" },
-    tennis: { explosivite: "Reactive Tennis", force: "Power Serve", endurance: "Court Endurance" },
-    rugby: { force: "Force Brute", masse: "Mass & Power", explosivite: "Impact Rugby", endurance: "Iron Endurance" },
-    natation: { endurance: "Aqua Endurance Elite", force: "Power Swimmer", masse: "Swimmer Physique" },
-    sprint: { explosivite: "Speed Demon", force: "Power Sprint", detente: "Explosive Athlete" },
-    combat: { explosivite: "Combat Power", endurance: "Fight Conditioning", force: "Warrior Strength", masse: "Combat Mass" },
+function useTests(user) {
+  const [tests, setTests] = useState(null);
+  const charger = async () => {
+    if (!user?.id) return setTests([]);
+    const { data } = await supabase.from("tests_performance").select("*").eq("user_id", user.id).order("date_test", { ascending: true });
+    setTests(data || []);
   };
-  const nomProg = nomsProgramme[sport]?.[onboardingData?.objectif] || programme?.titre || "Performance Elite";
-  const accentTexte = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  useEffect(() => { charger(); }, [user?.id]);
+  return { tests, charger };
+}
+
+function TestCard({ tests, onOpen }) {
+  const dernier = tests?.[tests.length - 1];
+  const prochain = dernier ? new Date(new Date(`${dernier.date_test}T12:00:00`).getTime() + INTERVALLE_TEST * JOUR_MS) : null;
+  const pret = !dernier || prochain <= new Date();
+  return (
+    <button onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", marginBottom: 16, padding: 14, borderRadius: 20, background: DS.colors.surface, boxShadow: DS.shadow.card, border: pret ? `2px solid ${DS.colors.primary}` : "2px solid transparent", textAlign: "left", cursor: "pointer", color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif" }}>
+      <span style={{ fontSize: 22 }}>📊</span>
+      <span style={{ flex: 1 }}>
+        <b style={{ display: "block", fontSize: 14 }}>{!dernier ? "Fais ton test de départ" : pret ? "C'est l'heure de ton test du mois" : "Tes tests de performance"}</b>
+        <span style={{ fontSize: 12, color: DS.colors.textSec }}>{!dernier ? "Pour mesurer tes progrès dès le début" : pret ? "Regarde combien tu as progressé" : `Prochain test le ${prochain.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`}</span>
+      </span>
+      <span style={{ color: DS.colors.textSec }}>›</span>
+    </button>
+  );
+}
+
+function TestScreen({ user, tests, onSaved, onBack, onCarrousel }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const dernier = tests?.[tests.length - 1];
+  const prochain = dernier ? new Date(new Date(`${dernier.date_test}T12:00:00`).getTime() + INTERVALLE_TEST * JOUR_MS) : null;
+  const trop_tot = prochain && prochain > new Date();
+  const [valeurs, setValeurs] = useState(() => Object.fromEntries(TESTS_PERF.map(t => [t.k, dernier?.[t.k] != null ? Number(dernier[t.k]) : t.depart])));
+  const [saving, setSaving] = useState(false);
+  const [erreur, setErreur] = useState("");
+
+  const enregistrer = async () => {
+    setSaving(true); setErreur("");
+    const { error } = await supabase.from("tests_performance").insert({ user_id: user.id, date_test: isoDans(0), ...valeurs });
+    setSaving(false);
+    if (error) { setErreur("Enregistrement impossible. Réessaie."); return; }
+    onSaved();
+  };
+
+  const serie = (tests || []).map(t => Number(t.detente_cm)).filter(v => !Number.isNaN(v));
+  const min = Math.min(...serie), max = Math.max(...serie);
+  const points = serie.map((v, i) => `${serie.length === 1 ? 160 : 6 + i * (308 / (serie.length - 1))} ${max === min ? 35 : 62 - ((v - min) / (max - min)) * 54}`);
 
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative" }}>
-      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none", opacity: 0.4 }} />
+    <div className="v-plein" style={{ background: DS.colors.bg, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", position: "relative", isolation: "isolate", overflowX: "clip", padding: "48px 22px calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+        <Bloom echelle={0.8} />
+        <button onClick={onBack} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0 }}>← Retour</button>
+        <p className="v-in" style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: ac }}>{dernier ? "TEST DU MOIS" : "TEST DE DÉPART"}</p>
+        <h1 className="v-in" style={{ "--i": 1, fontWeight: 900, fontSize: 32, lineHeight: 1.02, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "8px 0 4px" }}>
+          {trop_tot ? <>Tes <span style={{ color: ac }}>progrès</span></> : dernier ? <>Combien tu as<br /><span style={{ color: ac }}>progressé ?</span></> : <>Ton point<br /><span style={{ color: ac }}>de départ</span></>}
+        </h1>
+        {trop_tot && <p style={{ fontSize: 14, color: DS.colors.textSec, marginBottom: 4 }}>Prochain test le {prochain.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}.</p>}
 
-      <div className="v-stagger" style={{ padding: "48px 22px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
-
-        {/* En-tête façon « sport énergique » */}
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 34, lineHeight: 1.02, letterSpacing: "-0.02em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 12 }}>
-            Ton programme<br /><span style={{ color: accentTexte }}>est prêt</span>
-          </h1>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, padding: "6px 14px", boxShadow: DS.shadow.card }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: theme.accent, animation: "pulse 1.5s infinite" }} />
-            <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12, color: DS.colors.textPrimary }}>{nomProg}</span>
-            <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>· {frequence}x / semaine</span>
-          </div>
-        </div>
-
-        {/* Ticket offre de bienvenue */}
-        <div className="v-shine" style={{ background: DS.colors.primary, color: "#0B0B0C", borderRadius: 22, padding: "20px 22px", transform: "rotate(-1.5deg)", boxShadow: DS.shadow.primary, margin: "8px 4px 18px", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", right: -18, top: -18, width: 90, height: 90, borderRadius: "50%", background: "rgba(0,0,0,0.06)" }} />
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em" }}>OFFRE DE BIENVENUE</p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 64, lineHeight: 1, letterSpacing: "-0.03em", margin: "4px 0 6px" }}>-25%</p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 14 }}>Ta 1ère année à 56,24 € <span style={{ textDecoration: "line-through", opacity: 0.55, fontWeight: 600 }}>74,99 €</span></p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 500, fontSize: 12, opacity: 0.7, marginTop: 2 }}>Puis 74,99 €/an · ou -30 % le 1er mois en mensuel (10,49 €, puis 14,99 €/mois)</p>
-        </div>
-
-        {/* Garanties */}
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 22 }}>
-          {["Sans engagement", "Résiliable à tout moment", "Paiement sécurisé Stripe"].map(t => (
-            <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 12, color: DS.colors.textPrimary, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, padding: "6px 12px", boxShadow: DS.shadow.card }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={accentTexte} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>{t}
-            </span>
-          ))}
-        </div>
-
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-          {[
-            { val: exercices.length || "5+", label: "Exos / séance", color: accentLisible(theme.accent) },
-            { val: frequence * 4, label: "Séances / cycle", color: "#00FF87" },
-            { val: "∞", label: "Progression", color: "#FF8C00" },
-          ].map((stat, i) => (
-            <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 28, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 5 }}>{stat.val}</p>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, fontWeight: 500 }}>{stat.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Aperçu séance */}
-        <div style={{ background: DS.colors.surface, border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.xl, overflow: "hidden", marginBottom: 16, position: "relative" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
-          <div style={{ padding: "14px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${DS.colors.border}` }}>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 13, color: DS.colors.textPrimary }}>Aperçu — Séance 1</p>
-            <div style={{ background: "rgba(255,45,85,0.15)", border: "1px solid rgba(255,45,85,0.3)", borderRadius: DS.radius.full, padding: "3px 10px" }}>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 600, color: "#FF2D55" }}>🔒 Accès restreint</p>
-            </div>
-          </div>
-          <div style={{ padding: "8px 16px 14px" }}>
-            {/* 2 exercices visibles */}
-            {(exercices.length > 0 ? exercices.slice(0, 2) : [{nom: "Squat Barre", muscles: "Quadriceps", sets: 4, reps: "8"}, {nom: "Deadlift Roumain", muscles: "Ischios", sets: 3, reps: "10"}]).map((ex, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: `1px solid ${DS.colors.border}` }}>
-                <div style={{ width: 30, height: 30, borderRadius: 9, background: theme.accent + "20", border: `1px solid ${theme.accent}30`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: accentLisible(theme.accent), fontWeight: 700 }}>{i + 1}</p>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: DS.colors.textPrimary, marginBottom: 2 }}>{ex.nom}</p>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec }}>{(ex.muscles || "").split(" ")[0]}</p>
-                </div>
-                <p style={{ fontFamily: "'Inter',sans-serif", color: accentLisible(theme.accent), fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}</p>
+        {!trop_tot && TESTS_PERF.map((t, i) => {
+          const avant = dernier?.[t.k] != null ? Number(dernier[t.k]) : null;
+          const ecart = avant == null ? 0 : +(valeurs[t.k] - avant).toFixed(t.dec);
+          const bien = ecart * t.mieux > 0;
+          return (
+            <div key={t.k} className="v-in" style={{ "--i": i + 2, background: DS.colors.surface, borderRadius: 22, padding: "15px 16px", marginTop: 12, boxShadow: DS.shadow.card }}>
+              <h3 style={{ fontSize: 15, fontWeight: 800 }}>{t.t}</h3>
+              <p style={{ fontSize: 12, color: DS.colors.textSec, marginTop: 1 }}>{t.d}{avant != null ? ` · le mois dernier : ${virgule(avant, t.dec)} ${t.u}` : ""}</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
+                <button aria-label="Moins" onClick={() => setValeurs(v => ({ ...v, [t.k]: Math.max(0, +(v[t.k] - t.pas).toFixed(t.dec)) }))} style={{ width: 44, height: 44, borderRadius: "50%", background: DS.colors.surfaceHigh, border: "none", color: DS.colors.textPrimary, fontSize: 22, fontWeight: 700, cursor: "pointer" }}>−</button>
+                <b style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>{virgule(valeurs[t.k], t.dec)}<small style={{ fontSize: 15, color: DS.colors.textSec, fontWeight: 600, marginLeft: 3 }}>{t.u}</small></b>
+                <button aria-label="Plus" onClick={() => setValeurs(v => ({ ...v, [t.k]: +(v[t.k] + t.pas).toFixed(t.dec) }))} style={{ width: 44, height: 44, borderRadius: "50%", background: DS.colors.surfaceHigh, border: "none", color: DS.colors.textPrimary, fontSize: 22, fontWeight: 700, cursor: "pointer" }}>+</button>
               </div>
-            ))}
-
-            {/* Exercices floutés avec vrai contenu */}
-            <div style={{ position: "relative", marginTop: 4 }}>
-              {[
-                {nom: exercices[2]?.nom || "Box Jump Explosif", muscles: exercices[2]?.muscles || "Mollets", sets: exercices[2]?.sets || 4, reps: exercices[2]?.reps || "6"},
-                {nom: exercices[3]?.nom || "Hip Thrust Barre", muscles: exercices[3]?.muscles || "Fessiers", sets: exercices[3]?.sets || 3, reps: exercices[3]?.reps || "12"},
-                {nom: exercices[4]?.nom || "Fentes Bulgares", muscles: exercices[4]?.muscles || "Quadriceps", sets: exercices[4]?.sets || 3, reps: exercices[4]?.reps || "10"},
-              ].map((ex, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < 2 ? `1px solid ${DS.colors.border}` : "none", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 9, background: DS.colors.surface, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, fontWeight: 700 }}>{i + 3}</p>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: DS.colors.textPrimary, marginBottom: 2 }}>{ex.nom}</p>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec }}>{ex.muscles}</p>
-                  </div>
-                  <p style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textSec, fontSize: 12 }}>{ex.sets}×{ex.reps}</p>
-                </div>
-              ))}
-              {/* Overlay cadenas */}
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: DS.colors.isDark ? "rgba(6,6,14,0.6)" : "rgba(255,255,255,0.65)", backdropFilter: "blur(3px)", borderRadius: DS.radius.md }}>
-                <span style={{ fontSize: 28, marginBottom: 8 }}>🔒</span>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 13, color: DS.colors.textPrimary, marginBottom: 4 }}>
-                  {Math.max(exercices.length > 2 ? exercices.length - 2 : 3, 3)} exercices bloqués
-                </p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec }}>Inscris-toi pour tout débloquer</p>
-              </div>
+              <p style={{ fontSize: 13, fontWeight: 800, textAlign: "center", marginTop: 4, minHeight: 18, color: bien ? ac : DS.colors.textSec }}>{ecart ? `${ecart > 0 ? "+" : ""}${virgule(ecart, t.dec)} ${t.u} depuis le mois dernier` : ""}</p>
             </div>
-          </div>
-        </div>
+          );
+        })}
 
-        {/* Social proof */}
-        {/* CTA, toujours visible en bas */}
-        <div style={{ position: "sticky", bottom: 0, paddingTop: 20, paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))", background: fonduBas() }}>
-        <button onClick={onContinue} style={{ width: "100%", height: 58, background: DS.colors.textPrimary, color: DS.colors.bg, border: "none", borderRadius: DS.radius.full, fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-          Je profite de l'offre
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </button>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, textAlign: "center" }}>
-          Inscription gratuite · 30 secondes · Sans carte bancaire
-        </p>
+        {serie.length >= 2 && (
+          <div className="v-in" style={{ "--i": 5, background: DS.colors.surface, borderRadius: 22, padding: "15px 16px", marginTop: 12, boxShadow: DS.shadow.card }}>
+            <h3 style={{ fontSize: 15, fontWeight: 800 }}>Ta détente depuis le début</h3>
+            <svg viewBox="0 0 320 70" width="100%" style={{ display: "block", marginTop: 8 }}>
+              <path className="v-route" pathLength="1" d={`M ${points.join(" L ")}`} fill="none" stroke="#9BE84F" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: DS.colors.textSec, marginTop: 4 }}><span>{virgule(serie[0])} cm</span><span>{virgule(serie[serie.length - 1])} cm</span></div>
+          </div>
+        )}
+
+        {erreur && <p style={{ color: "#FF2D55", fontSize: 13, textAlign: "center", marginTop: 12 }}>{erreur}</p>}
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          {!trop_tot && <PrimaryButton onClick={enregistrer} disabled={saving} style={{ height: 58 }}>{saving ? "Enregistrement..." : "Enregistrer mes résultats"}</PrimaryButton>}
+          {tests?.length >= 2 && <PrimaryButton onClick={onCarrousel} style={{ height: 58 }}>Créer mon carrousel avant / après →</PrimaryButton>}
+          {tests?.length === 1 && trop_tot && <p style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center" }}>Ton carrousel avant / après sera prêt après ton prochain test.</p>}
         </div>
       </div>
     </div>
@@ -4566,159 +4710,108 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
 }
 
 // ─────────────────────────────────────────────
-// POST SESSION UPSELL
+// CARROUSEL AVANT / APRÈS (images 1080 × 1920)
 // ─────────────────────────────────────────────
-function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
-  const [selected, setSelected] = useState("annual");
-  const [loading, setLoading] = useState(false);
-  const [stripeError, setStripeError] = useState("");
-  const [consentAchat, setConsentAchat] = useState(false);
-  const theme = getSportTheme(sportActif);
+async function dessinerSlide({ surTitre, valeur, ligne, photo, fond, resultat, lignes }) {
+  const c = document.createElement("canvas");
+  c.width = 1080; c.height = 1920;
+  const x = c.getContext("2d");
+  x.fillStyle = fond; x.fillRect(0, 0, 1080, 1920);
+  if (photo) {
+    const img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = photo; });
+    const r = Math.max(1080 / img.width, 1920 / img.height);
+    x.drawImage(img, (1080 - img.width * r) / 2, (1920 - img.height * r) / 2, img.width * r, img.height * r);
+  }
+  if (!resultat) {
+    const g = x.createLinearGradient(0, 860, 0, 1920);
+    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.88)");
+    x.fillStyle = g; x.fillRect(0, 860, 1080, 1060);
+  }
+  x.fillStyle = "#fff"; x.textAlign = "right"; x.font = "900 40px Inter, sans-serif"; x.fillText("VOLTRA", 1020, 96);
+  x.textAlign = resultat ? "center" : "left";
+  const px = resultat ? 540 : 60;
+  if (resultat) {
+    x.fillStyle = "#9BE84F"; x.font = "800 44px Inter, sans-serif"; x.fillText(surTitre, px, 700);
+    x.font = "900 210px Inter, sans-serif"; x.fillText(valeur, px, 910);
+    x.fillStyle = "#fff"; x.font = "600 50px Inter, sans-serif";
+    lignes.forEach((l, i) => x.fillText(l, px, 1030 + i * 70));
+    x.font = "800 50px Inter, sans-serif"; x.fillText("Ma prépa physique : Voltra", px, 1350); x.fillText("voltra-app.fr", px, 1420);
+  } else {
+    x.fillStyle = "#9BE84F"; x.font = "800 44px Inter, sans-serif"; x.fillText(surTitre, px, 1560);
+    x.fillStyle = "#fff"; x.font = "900 150px Inter, sans-serif"; x.fillText(valeur, px, 1710);
+    x.font = "600 50px Inter, sans-serif"; x.fillText(ligne, px, 1790);
+  }
+  return new Promise(ok => c.toBlob(ok, "image/png"));
+}
 
-  // Paiement : même parcours Stripe que la page des offres (le passage en Pro se fait par le webhook Stripe)
-  const handleCheckout = async () => {
-    setLoading(true);
-    setStripeError("");
+function CarrouselScreen({ tests, onBack }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const [photos, setPhotos] = useState([null, null]);
+  const [message, setMessage] = useState("");
+  const a = tests[0], b = tests[tests.length - 1];
+  const sem = Math.max(1, Math.round((new Date(b.date_test) - new Date(a.date_test)) / (7 * JOUR_MS)));
+  const gain = Math.round(Number(b.detente_cm) - Number(a.detente_cm));
+  const gainTxt = `${gain >= 0 ? "+" : ""}${gain} cm`;
+  const lignes = [`Sprint 20 m : ${virgule(b.sprint_20m, 2)} s`, `Pompes : ${b.pompes}`];
+  const slides = [
+    { surTitre: "AVANT", valeur: `${virgule(a.detente_cm)} cm`, ligne: "Ma détente au départ", photo: photos[0], fond: "#262A30" },
+    { surTitre: `${sem} SEMAINE${sem > 1 ? "S" : ""} APRÈS`, valeur: `${virgule(b.detente_cm)} cm`, ligne: `${gainTxt} de détente, mesurés`, photo: photos[1], fond: "#27351B" },
+    { surTitre: "MA PROGRESSION", valeur: gainTxt, resultat: true, lignes, fond: "#0E1209" },
+  ];
+  const choisir = (i, e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    setPhotos(p => p.map((x, k) => k === i ? URL.createObjectURL(f) : x));
+  };
+  const enregistrer = async () => {
+    setMessage("Préparation des images...");
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({ plan: selected, user_id: session?.user?.id, email: session?.user?.email, success_url: window.location.origin + window.location.pathname, cancel_url: window.location.origin + window.location.pathname }),
-      });
-      const data = await res.json();
-      if (data.url) { window.location.href = data.url; return; }
-      setStripeError("Erreur lors de la redirection. Réessaie.");
-    } catch (err) {
-      setStripeError("Erreur de connexion. Réessaie.");
+      await document.fonts?.ready;
+      const fichiers = await Promise.all(slides.map(async (s, i) => new File([await dessinerSlide(s)], `voltra-${i + 1}.png`, { type: "image/png" })));
+      if (navigator.canShare?.({ files: fichiers })) {
+        await navigator.share({ files: fichiers });
+      } else {
+        fichiers.forEach(f => { const l = document.createElement("a"); l.href = URL.createObjectURL(f); l.download = f.name; l.click(); });
+      }
+      setMessage("Tes 3 images sont prêtes.");
+    } catch (e) {
+      setMessage(e?.name === "AbortError" ? "" : "Impossible de créer les images. Réessaie.");
     }
-    setLoading(false);
   };
-  const currentPlan = PLANS.find(p => p.id === selected);
-  const totalSemaines = programme?.total_semaines || 8;
-  const semaineCourante = programme?.semaine_courante || 1;
-
-  const feedbackMsg = stats?.feedback === "easy" ? "Tu as géré facilement —" :
-    stats?.feedback === "good" ? "Séance parfaite —" : "Tu t'es vraiment donné —";
-
   return (
-    <div style={{ minHeight: "100dvh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40, position: "relative" }}>
-      <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
-        {SPORT_EMOJIS[sportActif] || "⚡"}
-      </div>
-
-      <div style={{ padding: "60px 20px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
-
-        {/* Header celebratoire */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 80, height: 80, borderRadius: 22, background: theme.accent + "20", border: `2px solid ${theme.accent}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 20px", boxShadow: `0 0 60px ${theme.accent}30`, animation: "celebrate 0.6s var(--ease-spring)" }}>
-            🏆
-          </div>
-          <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent), letterSpacing: "0.06em", marginBottom: 10 }}>SEANCE TERMINEE</div>
-          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 32, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 8, letterSpacing: "0.02em" }}>
-            {feedbackMsg}<br />tu progresses !
-          </h1>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{stats?.titre?.toUpperCase()}</p>
-        </div>
-
-        {/* Stats personnalisées de la séance */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-          {[
-            { val: stats?.exercices || 0, label: "EXERCICES", color: accentLisible(theme.accent) },
-            { val: `${stats?.duree || 0}min`, label: "DUREE", color: accentLisible("#9BE84F") },
-            stats?.totalKg > 0
-              ? { val: `${stats.totalKg}kg`, label: "SOULEVE", color: "#FF8C00" }
-              : { val: `${stats?.totalReps || 0}`, label: "REPETITIONS", color: "#FF8C00" },
-          ].map((stat, i) => (
-            <div key={i} style={{ flex: 1, background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "16px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
-              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 20, color: stat.color, fontWeight: 700, lineHeight: 1, marginBottom: 4 }}>{stat.val}</div>
-              <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{stat.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Message accrocheur */}
-        <div style={{ background: `linear-gradient(135deg, ${theme.accent}12, ${theme.accent}04)`, border: `1px solid ${theme.accent}25`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 24, position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: theme.accent }} />
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 18, color: DS.colors.textPrimary, marginBottom: 6 }}>
-            Ta progression vient de commencer.
-          </p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, lineHeight: 1.8, letterSpacing: "0.08em" }}>
-            {stats?.totalKg > 0 ? `Tu viens de soulever ${stats.totalKg}kg. ` : stats?.totalReps > 0 ? `Tu viens de faire ${stats.totalReps} répétitions. ` : ""}La vraie transformation commence maintenant — continue avec Pro pour débloquer toutes tes séances.
-          </p>
-        </div>
-
-        {/* Ce qu'il rate */}
-        <div style={{ marginBottom: 24 }}>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>CE QUE TU DEBLOQUES</p>
-          {[
-            { emoji: "📈", title: "Progression automatique", desc: "Tes charges augmentent intelligemment chaque semaine" },
-            { emoji: "🤖", title: "Coach IA illimité", desc: "Adaptation en temps réel pendant chaque séance" },
-            { emoji: "🏆", title: "Suivi des records", desc: "Visualise tes progrès et bats tes records" },
-            { emoji: "⚡", title: "Progression sans fin", desc: "Nouveau programme généré automatiquement à chaque cycle" },
-          ].map((f, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < 3 ? `1px solid ${DS.colors.border}` : "none" }}>
-              <div style={{ width: 36, height: 36, background: theme.accent + "12", border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{f.emoji}</div>
-              <div>
-                <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading, marginBottom: 2 }}>{f.title}</p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Plans */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-          {PLANS.map(plan => (
-            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: selected === plan.id ? plan.colorSoft : DS.colors.surface, border: `1.5px solid ${selected === plan.id ? plan.colorBorder : DS.colors.border}`, borderRadius: DS.radius.xl, padding: "16px 20px", cursor: "pointer", transition: "var(--t-choix)" }}>
-              {selected === plan.id && <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 2, background: plan.color, borderRadius: DS.radius.full }} />}
-              {plan.badge && <div style={{ display: "inline-flex", padding: "2px 8px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: accentLisible(plan.color), fontSize: 10, ...s.heading, marginBottom: 8 }}>{plan.badge}</div>}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-                <div>
-                  <p style={{ color: DS.colors.textSec, fontSize: 12, marginBottom: 4 }}>{plan.label}</p>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: selected === plan.id ? accentLisible(plan.color) : DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
-                    <span style={{ color: DS.colors.textSec, fontSize: 13 }}>{plan.unit}</span>
-                  </div>
-                  {plan.priceDetail && <p style={{ color: DS.colors.textSec, fontSize: 12, marginTop: 4 }}>{plan.priceDetail}</p>}
-                  {plan.bienvenue && <p style={{ color: accentLisible(plan.color), fontSize: 12, fontWeight: 700, marginTop: 2 }}>{plan.bienvenue}</p>}
-                </div>
-                <div style={{ width: 22, height: 22, borderRadius: DS.radius.full, border: `2px solid ${selected === plan.id ? plan.color : DS.colors.textDim}`, background: selected === plan.id ? plan.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "var(--t-choix)" }}>
-                  {selected === plan.id && <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: "white" }} />}
-                </div>
-              </div>
-              {plan.savings && (
-                <div style={{ marginTop: 6 }}>
-                  <span style={{ padding: "2px 8px", background: plan.colorSoft, borderRadius: DS.radius.full, color: accentLisible(plan.color), fontSize: 10, ...s.heading }}>{plan.savings}</span>
-                </div>
+    <div className="v-plein" style={{ background: DS.colors.bg, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", overflowX: "clip", padding: "48px 22px calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0 }}>← Retour</button>
+        <p className="v-in" style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: ac }}>PARTAGE TA PROGRESSION</p>
+        <h1 className="v-in" style={{ "--i": 1, fontWeight: 900, fontSize: 30, lineHeight: 1.02, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "8px 0" }}>Ton carrousel<br /><span style={{ color: ac }}>TikTok</span></h1>
+        <p className="v-in" style={{ "--i": 2, color: DS.colors.textSec, fontSize: 15, lineHeight: 1.45 }}>Ajoute tes photos, les chiffres sont ceux de tes tests. Glisse pour voir les 3 images.</p>
+        <div className="v-slides">
+          {slides.map((s, i) => (
+            <div key={i} className="v-slide" style={{ background: s.fond, justifyContent: s.resultat ? "center" : "flex-end", textAlign: s.resultat ? "center" : "left" }}>
+              {!s.resultat && (
+                <label className="v-slide-photo" style={{ backgroundImage: photos[i] ? `url(${photos[i]})` : "none" }}>
+                  {!photos[i] && "Touche pour ajouter ta photo"}
+                  <input type="file" accept="image/*" onChange={e => choisir(i, e)} style={{ display: "none" }} />
+                </label>
               )}
+              {!s.resultat && <span className="v-slide-degrade" />}
+              <span style={{ position: "absolute", top: 16, right: 16, fontSize: 12, fontWeight: 900, letterSpacing: "0.04em", color: "#fff" }}>VOLTRA</span>
+              <div style={{ position: "relative", pointerEvents: "none" }}>
+                <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.1em", color: "#9BE84F" }}>{s.surTitre}</div>
+                <div style={{ fontSize: s.resultat ? 66 : 50, fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.02, marginTop: 2, color: s.resultat ? "#9BE84F" : "#fff" }}>{s.valeur}</div>
+                {s.ligne && <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4, color: "#fff" }}>{s.ligne}</div>}
+                {s.lignes?.map(l => <div key={l} style={{ fontSize: 14, fontWeight: 600, marginTop: 4, color: "#fff" }}>{l}</div>)}
+                {s.resultat && <div style={{ fontSize: 14, fontWeight: 800, marginTop: 20, color: "#fff" }}>Ma prépa physique : Voltra<br />voltra-app.fr</div>}
+              </div>
             </div>
           ))}
         </div>
-
-        <ConsentementAchat coche={consentAchat} onChange={setConsentAchat} />
-        <button onClick={handleCheckout} disabled={loading || !consentAchat} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: "0.06em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}40` }}>
-          {loading ? "Redirection..." : "CONTINUER MA PROGRESSION →"}
-        </button>
-        {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>{stripeError}</p>}
-        <p style={{ color: DS.colors.textDim, fontSize: 11, textAlign: "center", marginBottom: 16, fontFamily: "'Inter',sans-serif", letterSpacing: "0.06em" }}>🔒 Paiement sécurisé Stripe · Annulation en 1 clic</p>
-        <button onClick={() => onSelectPlan("free")} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textDim, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", marginTop: 4 }}>
-          Non merci, je reste sur le plan gratuit
-        </button>
-        {/* Bouton plus tard visible */}
-        <button onClick={() => onSelectPlan("free")} style={{ position: "fixed", top: 52, left: 16, zIndex: 200, display: "flex", alignItems: "center", gap: 6, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, padding: "8px 14px", color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-          ✕ <span>Plus tard</span>
-        </button>
+        <PrimaryButton onClick={enregistrer} style={{ height: 58 }}>Enregistrer les 3 images</PrimaryButton>
+        {message && <p style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center", marginTop: 10 }}>{message}</p>}
       </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────
-// BOTTOM NAV
-// ─────────────────────────────────────────────
 function BottomNav({ activeTab, setTab }) {
   const tabs = [
     { id: "dashboard", label: "Aujourd'hui", icon: Icons.home },
@@ -4756,6 +4849,8 @@ export default function VoltraApp() {
   const sessionCheckedRef = useRef(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [user, setUser] = useState(null);
+  const [cibleEtat, setCibleEtat] = useState(null);
+  const [pricingRetour, setPricingRetour] = useState(false);
   const [seanceActive, setSeanceActive] = useState(null);
   const [resumeState, setResumeState] = useState(null);
   const [programmeActif, setProgrammeActif] = useState(null);
@@ -4770,7 +4865,11 @@ export default function VoltraApp() {
   const [authConfirmation, setAuthConfirmation] = useState(null);
   const [profilPhysique, setProfilPhysique] = useState(null);
 
-  const launchSeance = (rawSeance) => {
+  // Objectif de l'athlète : gardé avec son compte, retrouvé sur tous ses appareils
+  const cible = cibleEtat || user?.user_metadata?.cible || user?.user_metadata?.onboarding?.cible || onboardingData?.cible || null;
+
+  const launchSeance = (seanceBrute) => {
+    const rawSeance = adapterSeance(seanceBrute, adaptationDuJour(matchs, cible));
     const dj = programmeActif?.data_json || {};
     const profilCharges = {
       poids: profilPhysique?.poids ?? onboardingData?.poids ?? null,
@@ -4815,7 +4914,6 @@ export default function VoltraApp() {
     return genPromiseRef.current;
   };
   const [paidPlan, setPaidPlan] = useState(null);
-  const [lastSessionStats, setLastSessionStats] = useState(null);
   const [cycleComplete, setCycleComplete] = useState(false);
 
   useEffect(() => {
@@ -4852,6 +4950,41 @@ export default function VoltraApp() {
       button, a, [style*="cursor: pointer"] { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
       :focus-visible { outline: 2px solid #9BE84F; outline-offset: 2px; }
       @media (pointer: coarse) { input, textarea, select { font-size: 16px !important; } }
+      /* Ambiance commune : lueur, apparitions, tracé */
+      .v-bloom { position: absolute; z-index: -1; width: 520px; height: 520px; border-radius: 50%; left: 50%; top: -220px; margin-left: -260px; background: radial-gradient(circle, rgba(155,232,79,0.3), transparent 65%); pointer-events: none; transition: transform 700ms var(--ease-out); }
+      .v-in { animation: vFadeUp 420ms var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 55ms); }
+      .v-premiere::first-letter { text-transform: uppercase; }
+      .v-cible { display: flex; align-items: center; gap: 14px; padding: 15px 16px; border-radius: 22px; position: relative; overflow: hidden; cursor: pointer; font-family: 'Inter', sans-serif; width: 100%; }
+      .v-cible::after { content: ""; position: absolute; inset: 0; background: #9BE84F; opacity: 0.16; transform: scaleX(0); transform-origin: left; transition: transform 380ms var(--ease-out); pointer-events: none; }
+      .v-cible.on::after { transform: scaleX(1); }
+      .v-cible-ic { width: 50px; height: 50px; flex-shrink: 0; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 25px; transition: transform 300ms var(--ease-spring), background-color 200ms ease; position: relative; }
+      .v-cible.on .v-cible-ic { transform: scale(1.1) rotate(-6deg); }
+      .v-range { width: 100%; margin-top: 26px; height: 44px; appearance: none; -webkit-appearance: none; background: transparent; touch-action: pan-y; cursor: grab; }
+      .v-range::-webkit-slider-runnable-track { height: 8px; border-radius: 99px; background: linear-gradient(90deg, #9BE84F var(--p), var(--fond) var(--p)); }
+      .v-range::-moz-range-track { height: 8px; border-radius: 99px; background: linear-gradient(90deg, #9BE84F var(--p), var(--fond) var(--p)); }
+      .v-range::-webkit-slider-thumb { -webkit-appearance: none; width: 34px; height: 34px; margin-top: -13px; border-radius: 50%; background: #9BE84F; border: 4px solid var(--bord); box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+      .v-range::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #9BE84F; border: 4px solid var(--bord); }
+      .v-route { stroke-dasharray: 1; stroke-dashoffset: 1; animation: vTrace 2100ms var(--ease-out) 150ms forwards; }
+      @keyframes vTrace { to { stroke-dashoffset: 0; } }
+      .v-drapeau { transform-box: fill-box; transform-origin: bottom left; animation: vScaleIn 400ms var(--ease-spring) 2000ms backwards; }
+      .v-timeline { position: relative; padding-left: 26px; }
+      .v-timeline::before { content: ""; position: absolute; left: 8px; top: 8px; bottom: 28px; width: 3px; border-radius: 3px; background: var(--fond); }
+      .v-timeline::after { content: ""; position: absolute; left: 8px; top: 8px; height: 60px; width: 3px; border-radius: 3px; background: #9BE84F; transform-origin: top; animation: vGrow 700ms var(--ease-out) 300ms backwards; }
+      @keyframes vGrow { from { transform: scaleY(0); } }
+      .v-phase { position: relative; padding-bottom: 16px; }
+      .v-phase::before { content: ""; position: absolute; left: -24px; top: 4px; width: 15px; height: 15px; border-radius: 50%; background: var(--point); border: 3px solid var(--bord); z-index: 1; }
+      .v-phase.now::before { background: #9BE84F; border-color: #9BE84F; box-shadow: 0 0 0 5px var(--halo); }
+      .v-phase.fin::before { content: "🏁"; border: 0; background: none; font-size: 17px; left: -27px; top: 0; }
+      .v-mission { position: relative; overflow: hidden; display: block; border-radius: 28px; padding: 20px; margin-bottom: 16px; background: #0E1209; box-shadow: 0 16px 40px rgba(60,100,20,0.28); font-family: 'Inter', sans-serif; }
+      .v-mission::before { content: ""; position: absolute; width: 300px; height: 300px; right: -110px; top: -130px; border-radius: 50%; background: radial-gradient(circle, rgba(155,232,79,0.5), transparent 65%); pointer-events: none; }
+      .v-mission > * { position: relative; }
+      .v-mission-lab { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; color: #9BE84F; }
+      .v-barre { transition: transform 900ms var(--ease-out); }
+      .v-plein { position: fixed; inset: 0; z-index: 300; overflow-y: auto; overscroll-behavior: contain; }
+      .v-slides { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 16px -22px; padding: 4px 22px 12px; scrollbar-width: none; }
+      .v-slide { position: relative; flex: 0 0 76%; aspect-ratio: 9 / 16; border-radius: 22px; overflow: hidden; scroll-snap-align: center; display: flex; flex-direction: column; padding: 18px; }
+      .v-slide-photo { position: absolute; inset: 0; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-size: 13px; color: rgba(255,255,255,0.6); cursor: pointer; text-align: center; padding: 20px; }
+      .v-slide-degrade { position: absolute; inset: 45% 0 0; background: linear-gradient(transparent, rgba(0,0,0,0.85)); pointer-events: none; }
       ::-webkit-scrollbar { display: none; }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -4995,6 +5128,8 @@ export default function VoltraApp() {
     setOnboardingData(null);
     setIsPro(false);
     setUser(null);
+    setCibleEtat(null);
+    setPricingRetour(false);
     setScreen("onboarding");
   };
 
@@ -5082,17 +5217,6 @@ export default function VoltraApp() {
     cycleLoading={cycleComplete}
     onContinue={() => setScreen("app")}
   />;
-  if (screen === "projection") return <ProjectionScreen
-    sport={sportActif}
-    onboardingData={onboardingData}
-    onContinue={() => setScreen("preview")}
-  />;
-  if (screen === "preview") return <ProgrammePreview
-    programme={programmeActif}
-    sport={sportActif}
-    onboardingData={onboardingData}
-    onContinue={() => setScreen("auth")}
-  />;
   if (screen === "auth") return <AuthScreen confirmation={authConfirmation} onboardingData={onboardingData} onAuth={async (u) => {
     setUser(u);
     userRef.current = u;
@@ -5110,8 +5234,13 @@ export default function VoltraApp() {
     if (ob?.sport) {
       await supabase.from("profiles").upsert({ id: u.id, sport: ob.sport, poids: ob.poids || null, age: ob.age || null, taille: ob.taille || null }, { onConflict: "id" });
     }
+    if (ob?.cible) {
+      setCibleEtat(ob.cible);
+      supabase.auth.updateUser({ data: { cible: ob.cible } });
+    }
     if (ob) {
       // Toujours regenerer apres auth — maintenant on a une session valide
+      setPricingRetour(false);
       setScreen("pricing");
       startGeneration(ob);
     } else {
@@ -5122,33 +5251,26 @@ export default function VoltraApp() {
     if (programme) setProgrammeActif(programme);
     setSportActif(data.sport);
     setOnboardingData(data);
+    setScreen("objectif");
+  }} />;
+  if (screen === "objectif") return <ObjectifScreen key={appTheme} initial={cible} onboardingData={onboardingData} onDone={(nouvelle) => {
+    setOnboardingData(d => ({ ...d, cible: nouvelle }));
+    setCibleEtat(nouvelle);
     if (user) {
-      startGeneration(data);
+      supabase.auth.updateUser({ data: { cible: nouvelle } });
+      startGeneration(onboardingData);
+      setPricingRetour(false);
       setScreen("pricing");
     } else {
-      setScreen("projection");
+      setScreen("auth");
     }
   }} />;
-  if (screen === "post-session-upsell") return <PostSessionUpsell
-    stats={lastSessionStats}
-    programme={programmeActif}
-    sportActif={sportActif}
-    onSelectPlan={() => setScreen("app")}
-  />;
-if (screen === "pricing") return <PricingScreen programme={programmeActif} frequence={onboardingData?.frequence} user={user} onSelectPlan={async (plan) => {
-    if (plan === "free") {
-      // Plan gratuit → écran de génération si programme pas encore prêt
-      if (!programmeActif && onboardingData) {
-        setScreen("programme-generating");
-        startGeneration(onboardingData);
-      } else {
-        setScreen("app");
-      }
-    } else {
-      // Les offres payantes passent par Stripe (le Pro est activé par le webhook)
-      setScreen("app");
-    }
+  if (screen === "objectif-edit") return <ObjectifScreen key={appTheme} edition initial={cible} onboardingData={{ frequence: programmeActif?.frequence }} onBack={() => setScreen("app")} onDone={(nouvelle) => {
+    setCibleEtat(nouvelle);
+    supabase.auth.updateUser({ data: { cible: nouvelle } });
+    setScreen("app");
   }} />;
+if (screen === "pricing") return <PricingScreen key={appTheme} programme={programmeActif} user={user} cible={cible} onLogout={user ? handleLogout : null} onBack={pricingRetour ? () => setScreen("app") : null} />;
 
   return (
     <div key={`${appTheme}-${screen}`} style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100dvh" }}>
@@ -5210,7 +5332,9 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                   objectif: prog.objectif || prog.data_json?.objectif,
                   niveau: prog.niveau || prog.data_json?.niveau || reponses.niveau || "intermediaire",
                   frequence: prog.frequence || prog.data_json?.frequence || 3,
-                  cycle: (prog.data_json?.cycle || 1) + 1,
+                  cycle: cible?.date && joursAvant(cible.date) >= 0
+                    ? Math.max(prog.data_json?.startCycle || 1, Math.min(etatPlan(cible).index + 1, 3))
+                    : (prog.data_json?.cycle || 1) + 1,
                   jours: prog.data_json?.jours,
                   equipement: prog.data_json?.equipement || reponses.equipement,
                   douleurs: prog.data_json?.douleurs || reponses.douleurs,
@@ -5238,25 +5362,6 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                 return;
               }
 
-              // Si gratuit → paywall après la 1ère séance avec vraies stats
-              if (!isPro) {
-                const exos = seanceActive?.exercices || [];
-                const totalKg = exos.reduce((acc, ex) => {
-                  if (!(ex.chargeKg > 0)) return acc;
-                  return acc + ex.chargeKg * (ex.sets || 3) * (parseInt(ex.reps) || 8);
-                }, 0);
-                const totalReps = exos.reduce((acc, ex) => acc + (ex.sets || 3) * (parseInt(ex.reps) || 8), 0);
-                setLastSessionStats({
-                  titre: seanceActive?.titre || "Seance",
-                  exercices: exos.length || 0,
-                  duree: durationMin,
-                  totalKg: Math.round(totalKg),
-                  totalReps,
-                  feedback,
-                });
-                ecranSuivant = "post-session-upsell";
-                return;
-              }
             } catch (err) {
               console.error("onFinish error:", err);
             } finally {
@@ -5278,6 +5383,8 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
               derniereSeance={derniereSeance}
               sport={sportActif}
               onOpenMatchs={() => setShowMatchs(true)}
+              cible={cible}
+              onEditCible={() => setScreen("objectif-edit")}
               onResumeSession={(paused) => {
                 setResumeState({ exIdx: paused.exIdx, setIdx: paused.setIdx, completedSets: paused.completedSets, elapsed: paused.elapsed });
                 localStorage.removeItem("voltra_paused_session");
@@ -5292,21 +5399,19 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
                   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-                  // Offre gratuite : 1 seule séance au total. Pro : on prévient seulement en cas de 2e séance du jour.
-                  let requete = supabase
+                  // Sans abonnement ni essai en cours : direction le paywall
+                  if (!isPro) {
+                    setPricingRetour(true);
+                    setScreen("pricing");
+                    return;
+                  }
+                  const { count: doneToday } = await supabase
                     .from("seances")
                     .select("id", { count: "exact", head: true })
                     .eq("user_id", session.user.id)
-                    .eq("statut", "faite");
-                  if (isPro) requete = requete.gte("date_realisee", todayStart.toISOString());
-                  const { count: doneToday } = await requete;
-
-                  if (!isPro && (doneToday || 0) >= 1) {
-                    setLastSessionStats({ titre: rawSeance.titre || "Seance", exercices: 0, duree: 0, totalKg: 0, totalReps: 0, feedback: null });
-                    setScreen("post-session-upsell");
-                    return;
-                  }
-                  if (isPro && (doneToday || 0) >= 1) {
+                    .eq("statut", "faite")
+                    .gte("date_realisee", todayStart.toISOString());
+                  if ((doneToday || 0) >= 1) {
                     setPendingSeance(rawSeance);
                     setShowDoubleSessionWarning(true);
                     return;
