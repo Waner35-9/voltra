@@ -336,6 +336,16 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Non autorisé" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Chaque génération coûte un appel IA : 5 programmes maximum par compte sur 24 h
+    const { count: generesRecemment } = await supabase
+      .from("programmes")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString());
+    if ((generesRecemment || 0) >= 5) {
+      return new Response(JSON.stringify({ error: "Limite atteinte : réessaie demain." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const body = await req.json();
     const { sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille } = body;
 
@@ -402,7 +412,7 @@ serve(async (req: Request) => {
         total_semaines: 4,
         semaine_courante: 1,
         statut: "actif",
-        data_json: { ...programme, cycle: startCycle, startCycle, niveau, frequence, objectif, equipement }
+        data_json: { ...programme, cycle: startCycle, startCycle, niveau, frequence, objectif, equipement, douleurs, poste }
       })
       .select().single();
 

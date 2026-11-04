@@ -281,6 +281,7 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
     const { data: deload } = await supabase.rpc("check_deload_needed", { p_user_id: userId });
     if (deload) await supabase.rpc("appliquer_deload", { p_user_id: userId, p_raison: deload });
 
+    let cycleTermine = false;
     // Faire progresser reellement la semaine du programme selon les JOURS DISTINCTS entraines
     // (et non le nombre brut de seances - evite qu'une double seance le meme jour ne fasse
     // avancer artificiellement la structure du programme sans le temps de recuperation reel)
@@ -295,12 +296,14 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
       const freq = progData.frequence || 3;
       const totalSem = progData.total_semaines || 4;
       const nouvelleSemaine = Math.min(Math.floor((joursDistincts || 1) / freq) + 1, totalSem);
+      // Le cycle se termine quand toutes les séances prévues sont faites, pas au début de la dernière semaine
+      cycleTermine = joursDistincts >= freq * totalSem;
       if (nouvelleSemaine !== progData.semaine_courante) {
         await supabase.from("programmes").update({ semaine_courante: nouvelleSemaine }).eq("id", programmeId);
       }
     }
 
-    return { success: true, deload };
+    return { success: true, deload, cycleTermine };
   } catch (err) {
     console.error("saveCompleteSession:", err);
     return null;
@@ -423,6 +426,18 @@ function useStaggerUneFois(cle) {
   const [premiere] = useState(() => !ongletsVus.has(cle));
   useEffect(() => { ongletsVus.add(cle); }, [cle]);
   return premiere ? "v-stagger" : undefined;
+}
+
+// Case obligatoire avant paiement : accès immédiat et renonciation au droit de rétractation (contenu numérique)
+function ConsentementAchat({ coche, onChange }) {
+  return (
+    <div onClick={() => onChange(!coche)} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, cursor: "pointer", textAlign: "left" }}>
+      <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1, background: coche ? DS.colors.primary : "transparent", border: `2px solid ${coche ? DS.colors.primary : DS.colors.textDim}`, display: "flex", alignItems: "center", justifyContent: "center", color: "#0B0B0C", fontSize: 13, fontWeight: 800, transition: "var(--t-choix)" }}>{coche ? "✓" : ""}</div>
+      <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, lineHeight: 1.45, color: DS.colors.textSec, margin: 0 }}>
+        Je demande l'accès immédiat à Voltra Pro et je renonce à mon droit de rétractation de 14 jours dès le début de cet accès.
+      </p>
+    </div>
+  );
 }
 
 function PrimaryButton({ children, onClick, disabled, style = {} }) {
@@ -597,16 +612,9 @@ const OBJECTIFS_PAR_SPORT = {
 };
 const OBJECTIFS = [];
 const NIVEAUX = ["Debutant", "Intermediaire", "Avance"];
-const STRIPE_PLANS = {
-  monthly: { priceId: "price_1Tkhvu8P7FaKivct2II0H82c", mode: "subscription" },
-  annual:  { priceId: "price_1Tki3X8P7FaKivctbeVPHjpj", mode: "subscription" },
-  lifetime:{ priceId: "price_1TkiCx8P7FaKivctSOaKjLWO", mode: "payment" },
-};
-
 const PLANS = [
-  { id: "annual", label: "Annuel", price: 119.99, displayPrice: "9,99€", unit: "/ mois", priceDetail: "Facturé 119,99€ par an", savings: "2 mois offerts", color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: "LE PLUS POPULAIRE", highlight: true },
-  { id: "monthly", label: "Mensuel", price: 14.99, displayPrice: "14,99€", unit: "/ mois", priceDetail: "-30% le 1er mois : 10,49€", savings: null, color: DS.colors.success, colorSoft: DS.colors.successSoft, colorBorder: "rgba(0,229,160,0.35)", badge: null, highlight: false },
-  { id: "lifetime", label: "À vie", price: 249, displayPrice: "249€", unit: "une fois", priceDetail: "Paiement unique · Accès à vie", savings: null, color: DS.colors.gold, colorSoft: DS.colors.goldSoft, colorBorder: "rgba(255,209,102,0.35)", badge: null, highlight: false },
+  { id: "annual", label: "Annuel", price: 74.99, displayPrice: "6,25 €", unit: "/ mois", priceDetail: "Facturé 74,99 € par an", bienvenue: "-25 % la 1ère année : 56,24 €, puis 74,99 €/an", savings: "−58 %", color: DS.colors.primary, colorSoft: DS.colors.primarySoft, colorBorder: DS.colors.borderAccent, badge: "LE PLUS POPULAIRE", highlight: true },
+  { id: "monthly", label: "Mensuel", price: 14.99, displayPrice: "14,99 €", unit: "/ mois", priceDetail: "Facturé chaque mois", bienvenue: "-30 % le 1er mois : 10,49 €, puis 14,99 €/mois", savings: null, color: DS.colors.success, colorSoft: DS.colors.successSoft, colorBorder: "rgba(0,229,160,0.35)", badge: null, highlight: false },
 ];
 
 // ─────────────────────────────────────────────
@@ -1445,8 +1453,8 @@ function PaymentSuccessScreen({ plan, onContinue }) {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  const planLabel = plan === "monthly" ? "Mensuel" : plan === "annual" ? "Annuel" : "Lifetime";
-  const planEmoji = plan === "lifetime" ? "💎" : plan === "annual" ? "⚡" : "🚀";
+  const planLabel = plan === "annual" ? "Annuel" : "Mensuel";
+  const planEmoji = plan === "annual" ? "⚡" : "🚀";
 
   return (
     <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
@@ -1516,17 +1524,16 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
   ];
 
   // Checklist personnalisée construite avec les vraies données de l'utilisateur
-  const nbExos = Math.floor(Math.random() * 6) + 18; // 18-23
   const equipLabels = { salle_complete: "salle complète", salle_basique: "salle basique", maison: "entraînement maison", terrain: "extérieur" };
   const niveauLabels = { debutant: "débutant", intermediaire: "intermédiaire", avance: "avancé" };
   const checklist = [
-    `${nbExos} exercices sélectionnés pour ton poste`,
+    `Exercices sélectionnés pour ton poste`,
     `Charges calibrées sur ton niveau ${niveauLabels[onboardingData?.niveau] || ""}`,
     `Programme adapté pour "${equipLabels[onboardingData?.equipement] || "ton équipement"}"`,
     ...(onboardingData?.douleurs?.length > 0 && !onboardingData.douleurs.includes("aucune")
       ? [`Exercices remplacés pour protéger ${onboardingData.douleurs.length > 1 ? "tes zones sensibles" : "ta zone sensible"}`]
       : ["Aucune contrainte détectée — intensité maximale"]),
-    `Progression sur 8 semaines programmée`,
+    `Progression sur 4 semaines programmée`,
     `Fréquence ${onboardingData?.frequence || 3}x/semaine intégrée`,
   ];
 
@@ -1960,7 +1967,11 @@ function SplashScreen({ onDone }) {
 // DOCUMENTS LEGAUX
 // ─────────────────────────────────────────────
 const LEGAL_EMAIL = "contact.voltra1@gmail.com";
-const LEGAL_DATE = "1er novembre 2026";
+const LEGAL_DATE = "4 novembre 2026";
+// À compléter par Erwan : affichés automatiquement dès qu'ils sont renseignés
+const LEGAL_SIRET = "";
+const LEGAL_STATUT = "";
+const LEGAL_MEDIATEUR = "";
 const LEGAL_DOCS = {
   cgu: {
     label: "CGU",
@@ -1969,15 +1980,15 @@ const LEGAL_DOCS = {
       ["1. Objet", "Voltra est une application web de préparation physique qui génère des programmes d'entraînement personnalisés grâce à l'intelligence artificielle, et propose un coach virtuel (Ace). Les présentes conditions encadrent l'utilisation de l'application et la vente des abonnements. En créant un compte, tu les acceptes."],
       ["2. Éditeur", `Voltra, édité par Erwan Mantouba, Rennes (35000), France. Contact : ${LEGAL_EMAIL}.`],
       ["3. Compte", "Tu dois avoir au moins 12 ans pour créer un compte. Les moins de 15 ans doivent avoir l'accord de leur représentant légal pour l'utilisation de leurs données personnelles, et les mineurs doivent avoir l'accord de leur représentant légal pour tout achat. Tu es responsable de la confidentialité de tes identifiants et des informations que tu fournis, qui doivent être exactes."],
-      ["4. Offres et prix", "Voltra propose une offre gratuite (accès limité) et des offres payantes (abonnement mensuel, abonnement annuel, accès à vie). Les tarifs en vigueur sont affichés dans l'application, toutes taxes comprises, avant le paiement. Les paiements sont traités de façon sécurisée par Stripe ; Voltra n'a jamais accès à tes données bancaires."],
-      ["5. Abonnements et résiliation", `Les abonnements se renouvellent automatiquement à chaque échéance (mensuelle ou annuelle) jusqu'à résiliation. Tu peux résilier à tout moment, en quelques clics, depuis ton profil (« Gérer mon abonnement »), ou en écrivant à ${LEGAL_EMAIL} ; la résiliation prend effet à la prochaine échéance et l'accès Pro reste actif jusqu'à la fin de la période déjà payée. L'accès à vie est un paiement unique, valable tant que le service Voltra est exploité. Une réduction de bienvenue (code promotionnel) peut s'appliquer au premier mois uniquement, dans les conditions affichées lors de l'offre.`],
+      ["4. Offres et prix", "Voltra propose une offre gratuite (accès limité) et des offres payantes (abonnement mensuel, abonnement annuel). Les tarifs en vigueur sont affichés dans l'application, toutes taxes comprises, avant le paiement. Les paiements sont traités de façon sécurisée par Stripe ; Voltra n'a jamais accès à tes données bancaires."],
+      ["5. Abonnements et résiliation", `Les abonnements se renouvellent automatiquement à chaque échéance (mensuelle ou annuelle) jusqu'à résiliation. Tu peux résilier à tout moment, en quelques clics, depuis ton profil (« Gérer mon abonnement »), ou en écrivant à ${LEGAL_EMAIL} ; la résiliation prend effet à la prochaine échéance et l'accès Pro reste actif jusqu'à la fin de la période déjà payée. Une réduction de bienvenue peut s'appliquer au premier mois de l'abonnement mensuel ou à la première année de l'abonnement annuel uniquement, dans les conditions affichées lors de l'offre.`],
       ["6. Droit de rétractation", `Conformément au Code de la consommation, tu disposes de 14 jours à compter de ta souscription pour te rétracter, sans avoir à te justifier, en écrivant à ${LEGAL_EMAIL}. Le contenu numérique (programme généré, accès Pro) étant fourni immédiatement, en validant ton achat tu demandes l'exécution immédiate du service et reconnais perdre ton droit de rétractation une fois le service pleinement exécuté ; en cas de rétractation dans le délai, tu ne paies que la part de service déjà utilisée.`],
       ["7. Santé et sécurité — important", "Voltra fournit des conseils sportifs généraux et ne remplace en aucun cas un avis médical. Avant de commencer un programme, consulte un médecin, surtout en cas de blessure, de douleur, de pathologie, de grossesse ou de reprise après une longue pause. Les programmes et les réponses du coach IA sont générés automatiquement : ils peuvent comporter des erreurs et doivent être adaptés à ta condition. Tu t'entraînes sous ta seule responsabilité et tu arrêtes immédiatement en cas de douleur ou de malaise. Dans la mesure permise par la loi, Voltra ne peut être tenu responsable des blessures liées à une mauvaise utilisation du service."],
       ["8. Utilisation acceptable", "Tu t'engages à ne pas détourner l'application (piratage, extraction automatisée, partage de ton compte, contournement des limites de l'offre gratuite) ni à demander au coach IA des contenus illicites ou dangereux. Voltra peut suspendre un compte en cas d'abus."],
       ["9. Propriété intellectuelle", "L'application, son design, sa marque et ses contenus sont protégés. Tu bénéficies d'un droit d'usage personnel, non exclusif et non transférable. Les programmes générés pour toi sont à ton usage personnel."],
       ["10. Disponibilité", "Voltra met tout en œuvre pour assurer un service continu mais ne garantit pas une disponibilité permanente (maintenance, incident, dépendance à des services tiers). Les fonctionnalités peuvent évoluer."],
       ["11. Suppression du compte", `Tu peux demander la suppression de ton compte et de tes données à tout moment à ${LEGAL_EMAIL}. Elle est effectuée dans un délai maximum de 30 jours.`],
-      ["12. Droit applicable et litiges", `Les présentes conditions sont soumises au droit français. En cas de litige, contacte-nous d'abord à ${LEGAL_EMAIL} pour trouver une solution amiable. Tu peux aussi recourir gratuitement à un médiateur de la consommation ou à la plateforme européenne de règlement en ligne des litiges, et tu conserves la faculté de saisir les tribunaux compétents.`],
+      ["12. Droit applicable et litiges", `Les présentes conditions sont soumises au droit français. En cas de litige, contacte-nous d'abord à ${LEGAL_EMAIL} pour trouver une solution amiable. Tu peux aussi recourir gratuitement à un médiateur de la consommation${LEGAL_MEDIATEUR ? ` (${LEGAL_MEDIATEUR})` : ""} ou à la plateforme européenne de règlement en ligne des litiges, et tu conserves la faculté de saisir les tribunaux compétents.`],
       ["Dernière mise à jour", LEGAL_DATE],
     ],
   },
@@ -1989,7 +2000,7 @@ const LEGAL_DOCS = {
       ["Données que nous collectons", "• Compte : prénom, adresse e-mail, mot de passe (stocké chiffré, jamais lisible).\n• Profil sportif : sport, objectif, poste ou discipline, niveau, fréquence et jours d'entraînement, équipement.\n• Données de santé : zones de douleur ou de blessure, poids, âge, taille. Ces informations sont facultatives et servent uniquement à adapter tes programmes.\n• Activité : séances réalisées, charges, répétitions, historique, records.\n• Photo de profil (facultative).\n• Échanges avec le coach IA.\n• Paiement : géré par Stripe ; nous recevons seulement l'état de ton abonnement, jamais ton numéro de carte."],
       ["Pourquoi (finalités et bases légales)", "• Créer ton compte et fournir le service, générer tes programmes et le coach IA : exécution du contrat.\n• Traiter tes données de santé (blessures, poids, âge) pour personnaliser l'entraînement : ton consentement explicite, que tu donnes en les renseignant et que tu peux retirer à tout moment.\n• Gérer les paiements et obligations comptables : exécution du contrat et obligation légale.\n• Sécuriser le service et prévenir les abus : intérêt légitime."],
       ["Intelligence artificielle", "Pour générer ton programme et répondre au coach, les informations utiles de ton profil (sport, objectif, niveau, blessures, poids, âge, séance en cours) et tes messages sont transmis à notre prestataire d'IA (Anthropic). Ton adresse e-mail et ton identité ne sont pas nécessaires à cette génération. Les décisions prises par l'IA (programme, conseils) ne produisent pas d'effet juridique sur toi."],
-      ["Prestataires et transferts hors UE", "Nous faisons appel à : Supabase (base de données, authentification, stockage), Vercel (hébergement de l'application), Stripe (paiement), Anthropic (intelligence artificielle), ainsi qu'à des services d'illustrations d'exercices (ExerciseDB, Pexels). Certains sont situés aux États-Unis ou ailleurs hors Union européenne ; les transferts sont encadrés par des garanties appropriées (clauses contractuelles types de la Commission européenne ou équivalent). Nous ne vendons jamais tes données."],
+      ["Prestataires et transferts hors UE", "Nous faisons appel à : Supabase (base de données, authentification, stockage), Vercel (hébergement de l'application), Stripe (paiement), Anthropic (intelligence artificielle). Certains sont situés aux États-Unis ou ailleurs hors Union européenne ; les transferts sont encadrés par des garanties appropriées (clauses contractuelles types de la Commission européenne ou équivalent). Nous ne vendons jamais tes données."],
       ["Durée de conservation", "Tes données sont conservées tant que ton compte est actif, puis supprimées dans un délai de 30 jours après la suppression du compte. Les données de facturation sont conservées 10 ans (obligation légale comptable) par notre prestataire de paiement."],
       ["Tes droits", `Tu disposes des droits d'accès, de rectification, d'effacement, de limitation, d'opposition, de portabilité et du droit de retirer ton consentement à tout moment. Pour les exercer : ${LEGAL_EMAIL} (réponse sous 1 mois). Tu peux aussi modifier tes informations directement dans ton profil. En cas de désaccord, tu peux saisir la CNIL (www.cnil.fr).`],
       ["Cookies et stockage local", "Voltra utilise uniquement le stockage de ton navigateur pour le fonctionnement de l'application (session de connexion, thème clair/sombre, séance en pause). Nous n'utilisons pas de cookies publicitaires."],
@@ -2002,8 +2013,8 @@ const LEGAL_DOCS = {
     label: "Mentions légales",
     title: "Mentions légales",
     sections: [
-      ["Éditeur du site", `Voltra — édité par Erwan Mantouba.\nAdresse : Rennes (35000), France.\nEmail : ${LEGAL_EMAIL}\nDirecteur de la publication : Erwan Mantouba.`],
-      ["Hébergement", "Application hébergée par Vercel Inc. (États-Unis). Base de données et authentification : Supabase."],
+      ["Éditeur du site", `Voltra — édité par Erwan Mantouba.\nAdresse : Rennes (35000), France.\nEmail : ${LEGAL_EMAIL}\nDirecteur de la publication : Erwan Mantouba.${LEGAL_STATUT ? `\nStatut : ${LEGAL_STATUT}` : ""}${LEGAL_SIRET ? `\nSIRET : ${LEGAL_SIRET}` : ""}`],
+      ["Hébergement", "Application hébergée par Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis (+1 415 398 5463). Base de données et authentification : Supabase Pte. Ltd., Singapour (supabase.com)."],
       ["Propriété intellectuelle", "L'ensemble des éléments de l'application (marque Voltra, logo, textes, design, programmes) est protégé par le droit de la propriété intellectuelle. Toute reproduction sans autorisation est interdite."],
       ["Contact", `Pour toute question ou réclamation : ${LEGAL_EMAIL}.`],
     ],
@@ -2296,7 +2307,6 @@ function OnboardingScreen({ onComplete }) {
   const [animIn, setAnimIn] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
   const [reaction, setReaction] = useState(null);
-  const [showSocialProof, setShowSocialProof] = useState(false);
   const [showCoachDemo, setShowCoachDemo] = useState(false);
 
   const hasPoste = data.sport && data.sport !== "natation";
@@ -2324,24 +2334,13 @@ function OnboardingScreen({ onComplete }) {
       setAnimIn(false);
       setTimeout(() => {
         setReaction(null);
-        // Preuve sociale après l'étape Objectif (une seule fois)
-        if (contentStep === 1) {
-          setShowSocialProof(true);
-        } else {
-          setStep(s => s + 1);
-          setAnimIn(true);
-        }
+        setStep(s => s + 1);
+        setAnimIn(true);
       }, 1100);
     } else {
       setAnimIn(false);
       setTimeout(() => { setStep(s => s + 1); setAnimIn(true); }, 200);
     }
-  };
-
-  const dismissSocialProof = () => {
-    setShowSocialProof(false);
-    setStep(s => s + 1);
-    setAnimIn(true);
   };
 
   const getReactionMessage = () => {
@@ -2490,38 +2489,6 @@ function OnboardingScreen({ onComplete }) {
         );
       })()}
 
-
-      {showSocialProof && (() => {
-        const sportLabel = (SPORTS.find(s => s.id === data.sport)?.label || data.sport || "").toLowerCase();
-        const objLabels = { explosivite: "l'explosivité", force: "la force", endurance: "l'endurance", masse: "la prise de masse", detente: "la détente" };
-        const objLabel = objLabels[data.objectif] || "leur objectif";
-        const pct = 78 + Math.floor(Math.random() * 15); // 78-92%
-        return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", animation: "fadeIn 240ms var(--ease-out)" }}>
-            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 30%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
-
-            <div style={{ position: "relative", zIndex: 1, textAlign: "center", maxWidth: 340 }}>
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-                {["🏀","🥊","🏃","⚽"].map((e, i) => (
-                  <div key={i} style={{ width: 46, height: 46, borderRadius: "50%", background: DS.colors.surface, border: `2px solid ${DS.colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, marginLeft: i > 0 ? -12 : 0 }}>{e}</div>
-                ))}
-              </div>
-
-              <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 56, color: DS.colors.isDark ? "#9BE84F" : DS.colors.primaryDark, lineHeight: 1, letterSpacing: "-0.02em", marginBottom: 12 }}>{pct}%</p>
-              <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 19, color: DS.colors.textPrimary, lineHeight: 1.4, marginBottom: 8 }}>
-                des athlètes en {sportLabel} progressent en {objLabel} dès les 6 premières semaines
-              </h2>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, marginBottom: 32 }}>
-                avec un protocole IA personnalisé comme le tien
-              </p>
-
-              <button onClick={dismissSocialProof} style={{ width: "100%", height: 56, background: "#9BE84F", border: "none", borderRadius: 9999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 32px rgba(155,232,79,0.4)" }}>
-                Continuer →
-              </button>
-            </div>
-          </div>
-        );
-      })()}
 
       {reaction && (
         <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", animation: "fadeIn 240ms var(--ease-out)" }}>
@@ -2879,6 +2846,12 @@ function OnboardingScreen({ onComplete }) {
         )}
       </div>
 
+      {[3, 6, 7, 8].includes(contentStep) && (
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, lineHeight: 1.45, color: DS.colors.textSec, marginTop: 14 }}>
+          🔒 Donnée de santé facultative. En la renseignant, tu acceptes qu'elle serve uniquement à adapter ton programme. Tu peux retirer ton accord à tout moment.
+        </p>
+      )}
+
       {/* Bouton principal, toujours visible en bas */}
       <div style={{ position: "sticky", bottom: 0, paddingTop: 20, paddingBottom: "calc(32px + env(safe-area-inset-bottom, 0px))", background: fonduBas() }}>
         <PrimaryButton disabled={!canNext} onClick={() => {
@@ -2906,6 +2879,7 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
   const [showFeatures, setShowFeatures] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stripeError, setStripeError] = useState("");
+  const [consentAchat, setConsentAchat] = useState(false);
 
   // Bouton "Plus tard" visible en haut à gauche
   const SkipButton = () => (
@@ -3013,6 +2987,7 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
                       <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>{plan.priceDetail}</span>
                       {plan.savings && <span style={{ padding: "2px 8px", background: DS.colors.primarySoft, borderRadius: DS.radius.full, color: accentTexte, fontFamily: "'Inter',sans-serif", fontSize: 11, fontWeight: 700 }}>{plan.savings}</span>}
                     </div>
+                    {plan.bienvenue && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, color: accentTexte, marginTop: 4 }}>{plan.bienvenue}</p>}
                   </div>
                   <div style={{ width: 26, height: 26, flexShrink: 0, borderRadius: DS.radius.full, border: `2px solid ${on ? DS.colors.primary : DS.colors.textDim}`, background: on ? DS.colors.primary : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "var(--t-choix)" }}>
                     {on && <svg className="v-pop" width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#0B0B0C" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
@@ -3046,7 +3021,8 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
       {/* Bouton de paiement, toujours visible */}
       <div style={{ position: "sticky", bottom: 0, padding: "20px 20px calc(24px + env(safe-area-inset-bottom, 0px))", maxWidth: 430, margin: "0 auto", background: fonduBas(), zIndex: 2 }}>
         {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>⚠ {stripeError}</p>}
-        <PrimaryButton onClick={() => handleStripeCheckout(selected)} disabled={loading} style={{ height: 58 }}>
+        <ConsentementAchat coche={consentAchat} onChange={setConsentAchat} />
+        <PrimaryButton onClick={() => handleStripeCheckout(selected)} disabled={loading || !consentAchat} style={{ height: 58 }}>
           {!loading && <span className="v-shine" style={{ position: "absolute", inset: 0, borderRadius: DS.radius.full }} />}
           {loading ? "Redirection vers Stripe..." : `Continuer avec ${currentPlan.label}`}
         </PrimaryButton>
@@ -3814,7 +3790,7 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
         {loadErr === "none" && (
           <div style={card}>
             <p style={{ ...h, fontSize: 16, marginBottom: 8 }}>Aucun abonnement récurrent</p>
-            <p style={t}>Ton accès Pro n'est lié à aucun abonnement à renouveler (accès à vie, ou abonnement déjà terminé). Une question ? contact.voltra1@gmail.com</p>
+            <p style={t}>Ton accès Pro n'est lié à aucun abonnement en cours. Une question ? contact.voltra1@gmail.com</p>
           </div>
         )}
         {loadErr && loadErr !== "none" && (
@@ -3946,15 +3922,14 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const ext = file.name.split(".").pop();
+      const ext = (file.type.split("/")[1] || "jpg").replace(/[^a-z0-9]/gi, "");
       const fileName = `${session.user.id}-${Date.now()}.${ext}`;
       const { error: uploadErr } = await supabase.storage
         .from("avatars")
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, file, { upsert: true, contentType: file.type });
       if (uploadErr) throw uploadErr;
       const { data: pub } = supabase.storage.from("avatars").getPublicUrl(fileName);
       await supabase.auth.updateUser({ data: { avatar_url: pub.publicUrl } });
-      await supabase.from("profiles").upsert({ id: session.user.id, avatar_url: pub.publicUrl }, { onConflict: "id" });
       setAvatarUrl(pub.publicUrl);
     } catch (err) {
       console.error("Erreur upload avatar:", err.message);
@@ -4106,10 +4081,10 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
               <DayPicker jours={editData.jours || []} max={editData.frequence} accent={theme.accent} onChange={(j) => setEditData(d => ({ ...d, jours: j }))} />
             </div>
             <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,140,0,0.2)", borderRadius: DS.radius.md, padding: "10px 14px", marginBottom: 16 }}>
-              <p style={{ color: DS.colors.warning, fontSize: 12 }}>⚠️ Un nouveau programme IA sera genere.</p>
+              <p style={{ color: DS.colors.warning, fontSize: 12 }}>⚠️ Un nouveau programme IA sera généré.</p>
             </div>
             <button onClick={saveEdit} disabled={saving || !editData.sport || !editData.objectif || (editData.jours || []).length !== editData.frequence} style={{ width: "100%", height: 52, background: editData.sport && editData.objectif ? `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: editData.sport && editData.objectif ? "#000" : DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading, fontWeight: 700, letterSpacing: "0.05em" }}>
-              {saving ? (editData.sport !== sport || editData.objectif !== objectif ? "Generation en cours..." : "Sauvegarde...") : (editData.sport !== sport || editData.objectif !== objectif ? "Sauvegarder et regenerer ⚡" : "Sauvegarder les changements")}
+              {saving ? (editData.sport !== sport || editData.objectif !== objectif ? "Génération en cours..." : "Sauvegarde...") : (editData.sport !== sport || editData.objectif !== objectif ? "Sauvegarder et regenerer ⚡" : "Sauvegarder les changements")}
             </button>
           </div>
         </div>
@@ -4280,8 +4255,8 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 40, height: 40, background: "rgba(255,229,0,0.1)", border: "1px solid rgba(255,229,0,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔔</div>
               <div>
-                <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Rappels seance</p>
-                <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Inter',sans-serif" }}>{notifOn ? `TOUS LES JOURS A ${notifHeure}` : "DESACTIVE"}</p>
+                <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Rappels de séance</p>
+                <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Inter',sans-serif" }}>{notifOn ? `TOUS LES JOURS À ${notifHeure}` : "DÉSACTIVÉ"}</p>
               </div>
             </div>
             <div onClick={() => {
@@ -4309,7 +4284,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             <div style={{ width: 40, height: 40, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{DS.colors.isDark ? "🌙" : "☀️"}</div>
             <div>
               <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Apparence</p>
-              <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Inter',sans-serif" }}>{DS.colors.isDark ? "THEME SOMBRE" : "THEME LUMINEUX"}</p>
+              <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Inter',sans-serif" }}>{DS.colors.isDark ? "THÈME SOMBRE" : "THÈME LUMINEUX"}</p>
             </div>
           </div>
           <div onClick={() => { const next = DS.colors.isDark ? "light" : "dark"; DS.colors = THEMES[next]; DS.shadow = THEMES[next].shadow; localStorage.setItem("voltra_theme", next); onThemeChange && onThemeChange(next); }} style={{ width: 50, height: 28, background: DS.colors.isDark ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", border: `1px solid ${DS.colors.border}` }}>
@@ -4351,7 +4326,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
         {/* Deconnexion */}
         <div onClick={onLogout} style={{ background: "rgba(255,45,85,0.06)", border: "1px solid rgba(255,45,85,0.15)", borderRadius: DS.radius.xl, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
           <div style={{ width: 40, height: 40, background: "rgba(255,45,85,0.1)", border: "1px solid rgba(255,45,85,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚪</div>
-          <p style={{ color: "#FF2D55", fontSize: 15, ...s.heading }}>Se deconnecter</p>
+          <p style={{ color: "#FF2D55", fontSize: 15, ...s.heading }}>Se déconnecter</p>
         </div>
 
       </div>
@@ -4396,27 +4371,12 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
   const accentTexte = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
 
   const frequence = onboardingData?.frequence || 3;
-  const totalSeances = frequence * 8; // 8 semaines
-  const isBodyweight = onboardingData?.equipement === "maison" || onboardingData?.equipement === "terrain";
-  const [kgTotal] = useState(() => Math.round(totalSeances * (18 + Math.random() * 6))); // estimation tonnage (materiel avec charges)
-  const [totalReps] = useState(() => Math.round(totalSeances * (85 + Math.random() * 25))); // estimation repetitions (poids du corps)
-
-  // Projection spécifique par objectif
-  const projections = {
-    explosivite: { metric: "+18%", label: "de détente verticale estimée", icon: "🚀" },
-    force: { metric: "+22%", label: "de force maximale estimée", icon: "🏋️" },
-    endurance: { metric: "+30%", label: "d'endurance cardio estimée", icon: "🔥" },
-    masse: { metric: "+2,5kg", label: "de masse musculaire estimée", icon: "📈" },
-    detente: { metric: "+15%", label: "de détente verticale estimée", icon: "🚀" },
-  };
-  const proj = projections[onboardingData?.objectif] || { metric: "+20%", label: "de performance estimée", icon: "⚡" };
+  const totalSeances = frequence * 4; // 1 cycle = 4 semaines
 
   const stats = [
     { val: String(totalSeances), label: "Séances sur le cycle 1", sub: "puis ça continue", icon: "📅" },
-    isBodyweight
-      ? { val: `${totalReps}`, label: "Répétitions", sub: "sur ce premier cycle", icon: "💪" }
-      : { val: `${(kgTotal / 1000).toFixed(1)}T`, label: "Soulevées", sub: "sur ce premier cycle", icon: "💪" },
-    { val: proj.metric, label: proj.label.charAt(0).toUpperCase() + proj.label.slice(1), sub: "à ce rythme", icon: proj.icon },
+    { val: "4", label: "Semaines de progression", sub: "charges ajustées au fil des séances", icon: "📈" },
+    { val: "100%", label: "Adapté à ton profil", sub: "sport, niveau et matériel", icon: "🎯" },
   ];
 
   return (
@@ -4424,9 +4384,9 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
       <div style={{ position: "absolute", top: -140, left: -100, width: 360, height: 360, borderRadius: "50%", background: `radial-gradient(circle, ${theme.accent}22, transparent 70%)`, pointerEvents: "none" }} />
 
       <div className="v-stagger" style={{ padding: "56px 24px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: accentTexte, marginBottom: 10 }}>DÈS TON PREMIER CYCLE · 8 SEMAINES</p>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: accentTexte, marginBottom: 10 }}>TON PREMIER CYCLE · 4 SEMAINES</p>
         <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 38, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 28 }}>
-          Voici ta<br /><span style={{ color: accentTexte }}>transformation</span>
+          Voici ton<br /><span style={{ color: accentTexte }}>premier cycle</span>
         </h1>
 
         {stats.map((st, i) => (
@@ -4440,7 +4400,7 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
           </div>
         ))}
 
-        {/* Continuité — pas juste 8 semaines */}
+        {/* Continuité après le premier cycle */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: 18, padding: "14px 16px", margin: "4px 0 12px" }}>
           <span style={{ fontSize: 22 }}>♾️</span>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, lineHeight: 1.5 }}>
@@ -4448,9 +4408,6 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
           </p>
         </div>
 
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, lineHeight: 1.6, textAlign: "center", marginBottom: 8 }}>
-          <strong style={{ color: DS.colors.textPrimary }}>87% des athlètes</strong> avec un profil similaire progressent visiblement en 6 semaines
-        </p>
       </div>
 
       <div style={{ position: "sticky", bottom: 0, padding: "20px 24px calc(24px + env(safe-area-inset-bottom, 0px))", maxWidth: 430, margin: "0 auto", background: fonduBas(), zIndex: 2 }}>
@@ -4458,9 +4415,6 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
           Voir mon programme complet
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </PrimaryButton>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, textAlign: "center", marginTop: 10 }}>
-          Estimations basées sur des profils similaires
-        </p>
       </div>
     </div>
   );
@@ -4489,7 +4443,6 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
   };
   const nomProg = nomsProgramme[sport]?.[onboardingData?.objectif] || programme?.titre || "Performance Elite";
   const accentTexte = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
-  const [inscrits] = useState(() => Math.floor(Math.random() * 80 + 250));
 
   return (
     <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative" }}>
@@ -4513,9 +4466,9 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         <div className="v-shine" style={{ background: DS.colors.primary, color: "#0B0B0C", borderRadius: 22, padding: "20px 22px", transform: "rotate(-1.5deg)", boxShadow: DS.shadow.primary, margin: "8px 4px 18px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", right: -18, top: -18, width: 90, height: 90, borderRadius: "50%", background: "rgba(0,0,0,0.06)" }} />
           <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 12, letterSpacing: "0.08em" }}>OFFRE DE BIENVENUE</p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 64, lineHeight: 1, letterSpacing: "-0.03em", margin: "4px 0 6px" }}>-30%</p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 14 }}>Ton 1er mois à 10,49€ <span style={{ textDecoration: "line-through", opacity: 0.55, fontWeight: 600 }}>14,99€</span></p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 500, fontSize: 12, opacity: 0.7, marginTop: 2 }}>Puis 14,99€/mois · résiliable à tout moment</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 64, lineHeight: 1, letterSpacing: "-0.03em", margin: "4px 0 6px" }}>-25%</p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 14 }}>Ta 1ère année à 56,24 € <span style={{ textDecoration: "line-through", opacity: 0.55, fontWeight: 600 }}>74,99 €</span></p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 500, fontSize: 12, opacity: 0.7, marginTop: 2 }}>Puis 74,99 €/an · ou -30 % le 1er mois en mensuel (10,49 €, puis 14,99 €/mois)</p>
         </div>
 
         {/* Garanties */}
@@ -4531,7 +4484,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
           {[
             { val: exercices.length || "5+", label: "Exos / séance", color: accentLisible(theme.accent) },
-            { val: frequence * 8, label: "Séances / cycle", color: "#00FF87" },
+            { val: frequence * 4, label: "Séances / cycle", color: "#00FF87" },
             { val: "∞", label: "Progression", color: "#FF8C00" },
           ].map((stat, i) => (
             <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 8px", textAlign: "center", position: "relative", overflow: "hidden" }}>
@@ -4597,17 +4550,6 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         </div>
 
         {/* Social proof */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, padding: "11px 14px", marginBottom: 16 }}>
-          <div style={{ display: "flex" }}>
-            {["🏀","⚽","🥊","🏊"].map((e, i) => (
-              <div key={i} style={{ width: 26, height: 26, borderRadius: "50%", background: DS.colors.surfaceHigh, border: "1.5px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, marginLeft: i > 0 ? -7 : 0 }}>{e}</div>
-            ))}
-          </div>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, flex: 1 }}>
-            <span style={{ color: DS.colors.textPrimary, fontWeight: 700 }}>{inscrits} athlètes</span> ont rejoint Voltra cette semaine
-          </p>
-        </div>
-
         {/* CTA, toujours visible en bas */}
         <div style={{ position: "sticky", bottom: 0, paddingTop: 20, paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))", background: fonduBas() }}>
         <button onClick={onContinue} style={{ width: "100%", height: 58, background: DS.colors.textPrimary, color: DS.colors.bg, border: "none", borderRadius: DS.radius.full, fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
@@ -4630,6 +4572,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
   const [selected, setSelected] = useState("annual");
   const [loading, setLoading] = useState(false);
   const [stripeError, setStripeError] = useState("");
+  const [consentAchat, setConsentAchat] = useState(false);
   const theme = getSportTheme(sportActif);
 
   // Paiement : même parcours Stripe que la page des offres (le passage en Pro se fait par le webhook Stripe)
@@ -4655,8 +4598,8 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
   const totalSemaines = programme?.total_semaines || 8;
   const semaineCourante = programme?.semaine_courante || 1;
 
-  const feedbackMsg = stats?.feedback === "easy" ? "Tu as gere facilement —" :
-    stats?.feedback === "good" ? "Seance parfaite —" : "Tu t'es vraiment donne —";
+  const feedbackMsg = stats?.feedback === "easy" ? "Tu as géré facilement —" :
+    stats?.feedback === "good" ? "Séance parfaite —" : "Tu t'es vraiment donné —";
 
   return (
     <div style={{ minHeight: "100dvh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40, position: "relative" }}>
@@ -4712,9 +4655,9 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>CE QUE TU DEBLOQUES</p>
           {[
             { emoji: "📈", title: "Progression automatique", desc: "Tes charges augmentent intelligemment chaque semaine" },
-            { emoji: "🤖", title: "Coach IA illimite", desc: "Adaptation en temps reel pendant chaque seance" },
-            { emoji: "🏆", title: "Suivi des records", desc: "Visualise tes progres et bats tes records" },
-            { emoji: "⚡", title: "Progression sans fin", desc: "Nouveau programme genere automatiquement a chaque cycle" },
+            { emoji: "🤖", title: "Coach IA illimité", desc: "Adaptation en temps réel pendant chaque séance" },
+            { emoji: "🏆", title: "Suivi des records", desc: "Visualise tes progrès et bats tes records" },
+            { emoji: "⚡", title: "Progression sans fin", desc: "Nouveau programme généré automatiquement à chaque cycle" },
           ].map((f, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < 3 ? `1px solid ${DS.colors.border}` : "none" }}>
               <div style={{ width: 36, height: 36, background: theme.accent + "12", border: `1px solid ${theme.accent}20`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{f.emoji}</div>
@@ -4731,14 +4674,16 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
           {PLANS.map(plan => (
             <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: selected === plan.id ? plan.colorSoft : DS.colors.surface, border: `1.5px solid ${selected === plan.id ? plan.colorBorder : DS.colors.border}`, borderRadius: DS.radius.xl, padding: "16px 20px", cursor: "pointer", transition: "var(--t-choix)" }}>
               {selected === plan.id && <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 2, background: plan.color, borderRadius: DS.radius.full }} />}
-              {plan.badge && <div style={{ display: "inline-flex", padding: "2px 8px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: plan.color, fontSize: 10, ...s.heading, marginBottom: 8 }}>{plan.badge}</div>}
+              {plan.badge && <div style={{ display: "inline-flex", padding: "2px 8px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: accentLisible(plan.color), fontSize: 10, ...s.heading, marginBottom: 8 }}>{plan.badge}</div>}
               <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
                 <div>
                   <p style={{ color: DS.colors.textSec, fontSize: 12, marginBottom: 4 }}>{plan.label}</p>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: selected === plan.id ? plan.color : DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
+                    <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: selected === plan.id ? accentLisible(plan.color) : DS.colors.textPrimary }}>{plan.displayPrice || `${plan.price}€`}</span>
                     <span style={{ color: DS.colors.textSec, fontSize: 13 }}>{plan.unit}</span>
                   </div>
+                  {plan.priceDetail && <p style={{ color: DS.colors.textSec, fontSize: 12, marginTop: 4 }}>{plan.priceDetail}</p>}
+                  {plan.bienvenue && <p style={{ color: accentLisible(plan.color), fontSize: 12, fontWeight: 700, marginTop: 2 }}>{plan.bienvenue}</p>}
                 </div>
                 <div style={{ width: 22, height: 22, borderRadius: DS.radius.full, border: `2px solid ${selected === plan.id ? plan.color : DS.colors.textDim}`, background: selected === plan.id ? plan.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "var(--t-choix)" }}>
                   {selected === plan.id && <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: "white" }} />}
@@ -4746,14 +4691,15 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
               </div>
               {plan.savings && (
                 <div style={{ marginTop: 6 }}>
-                  <span style={{ padding: "2px 8px", background: plan.colorSoft, borderRadius: DS.radius.full, color: plan.color, fontSize: 10, ...s.heading }}>{plan.savings}</span>
+                  <span style={{ padding: "2px 8px", background: plan.colorSoft, borderRadius: DS.radius.full, color: accentLisible(plan.color), fontSize: 10, ...s.heading }}>{plan.savings}</span>
                 </div>
               )}
             </div>
           ))}
         </div>
 
-        <button onClick={handleCheckout} disabled={loading} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: "0.06em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}40` }}>
+        <ConsentementAchat coche={consentAchat} onChange={setConsentAchat} />
+        <button onClick={handleCheckout} disabled={loading || !consentAchat} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: "0.06em", cursor: "pointer", marginBottom: 12, boxShadow: `0 8px 32px ${theme.accent}40` }}>
           {loading ? "Redirection..." : "CONTINUER MA PROGRESSION →"}
         </button>
         {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>{stripeError}</p>}
@@ -4932,6 +4878,7 @@ export default function VoltraApp() {
       .v-shine { position: relative; overflow: hidden; }
       .v-shine::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: vShine 7s var(--ease-out) 1.5s infinite; pointer-events: none; }
       button { transition: var(--t-choix); }
+      button:disabled { opacity: 0.55; }
       button:not(:disabled):active { scale: 0.97; }
       [style*="cursor: pointer"]:not(button) { transition: var(--t-choix); }
       [style*="cursor: pointer"]:not(button):active { scale: 0.98; }
@@ -5241,26 +5188,36 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
           sport={sportActif}
           onBack={() => setSeanceActive(null)}
           onFinish={async (feedback, completedSetsData, exercices, durationMin) => {
+            let ecranSuivant = "app";
             try {
+              let resultat = null;
               if (programmeActif?.id && feedback) {
-                await saveCompleteSession(programmeActif.id, seanceActive, completedSetsData, feedback, durationMin);
+                resultat = await saveCompleteSession(programmeActif.id, seanceActive, completedSetsData, feedback, durationMin);
                 const { data } = await supabase.from("programmes").select("*").eq("id", programmeActif.id).single();
                 if (data) setProgrammeActif(data);
               }
               // Verifier si le cycle est termine
               const updatedProg = await supabase.from("programmes").select("*").eq("id", programmeActif?.id).single();
               const prog = updatedProg.data;
-              if (prog && prog.semaine_courante >= prog.total_semaines) {
+              if (prog && resultat?.cycleTermine) {
                 // Cycle termine → generer nouveau programme plus intense
                 setCycleComplete(true);
-                setScreen("cycle-complete");
+                ecranSuivant = "cycle-complete";
+                // Le cycle suivant garde le profil de l'athlète : niveau, matériel, blessures, poids, âge, taille
+                const reponses = onboardingData || user?.user_metadata?.onboarding || {};
                 const newData = {
                   sport: sportActif,
-                  objectif: prog.data_json?.objectif,
-                  niveau: "avance",
-                  frequence: prog.data_json?.frequence || 3,
+                  objectif: prog.objectif || prog.data_json?.objectif,
+                  niveau: prog.niveau || prog.data_json?.niveau || reponses.niveau || "intermediaire",
+                  frequence: prog.frequence || prog.data_json?.frequence || 3,
                   cycle: (prog.data_json?.cycle || 1) + 1,
                   jours: prog.data_json?.jours,
+                  equipement: prog.data_json?.equipement || reponses.equipement,
+                  douleurs: prog.data_json?.douleurs || reponses.douleurs,
+                  poste: prog.data_json?.poste || reponses.poste,
+                  poids: profilPhysique?.poids ?? reponses.poids,
+                  age: profilPhysique?.age ?? reponses.age,
+                  taille: profilPhysique?.taille ?? reponses.taille,
                 };
                 generateProgramIA(newData).then(async newProg0 => {
                   const newProg = await attachJours(newProg0, newData.jours);
@@ -5297,7 +5254,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                   totalReps,
                   feedback,
                 });
-                setScreen("post-session-upsell");
+                ecranSuivant = "post-session-upsell";
                 return;
               }
             } catch (err) {
@@ -5306,7 +5263,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
               setSeancesCount(prev => prev + 1);
               setSeanceActive(null);
               setActiveTab("dashboard");
-              setScreen("app");
+              setScreen(ecranSuivant);
             }
           }}
         />
@@ -5335,15 +5292,16 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
                   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-                  const { count: doneToday } = await supabase
+                  // Offre gratuite : 1 seule séance au total. Pro : on prévient seulement en cas de 2e séance du jour.
+                  let requete = supabase
                     .from("seances")
                     .select("id", { count: "exact", head: true })
                     .eq("user_id", session.user.id)
-                    .eq("statut", "faite")
-                    .gte("date_realisee", todayStart.toISOString());
+                    .eq("statut", "faite");
+                  if (isPro) requete = requete.gte("date_realisee", todayStart.toISOString());
+                  const { count: doneToday } = await requete;
 
                   if (!isPro && (doneToday || 0) >= 1) {
-                    // Plan gratuit strict : 1 seule seance, point final
                     setLastSessionStats({ titre: rawSeance.titre || "Seance", exercices: 0, duree: 0, totalKg: 0, totalReps: 0, feedback: null });
                     setScreen("post-session-upsell");
                     return;
