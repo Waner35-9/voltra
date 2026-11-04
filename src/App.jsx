@@ -150,7 +150,7 @@ function DayPicker({ jours, max, onChange, accent }) {
         {DAY_OPTIONS.map(d => {
           const on = jours.includes(d.i);
           return (
-            <div key={d.i} onClick={() => toggle(d.i)} style={{ flex: 1, padding: "12px 0", textAlign: "center", borderRadius: 12, cursor: "pointer", background: on ? accent : DS.colors.surfaceHigh, color: on ? "#000" : DS.colors.textSec, border: `1px solid ${on ? accent : DS.colors.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, transition: "all 0.15s ease" }}>{d.l}</div>
+            <div key={d.i} onClick={() => toggle(d.i)} style={{ flex: 1, padding: "12px 0", textAlign: "center", borderRadius: 12, cursor: "pointer", background: on ? accent : DS.colors.surfaceHigh, color: on ? "#000" : DS.colors.textSec, border: `1px solid ${on ? accent : DS.colors.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, transition: "var(--t-choix)" }}>{d.l}</div>
           );
         })}
       </div>
@@ -411,18 +411,29 @@ function applyTheme(theme) {
   DS = { colors: THEMES[theme], radius: { sm: 10, md: 14, lg: 20, xl: 24, full: 9999 }, shadow: THEMES[theme].shadow };
 }
 
+// Dégradé avec une courbe douce : pas de ligne visible derrière les boutons fixés en bas
+const fonduBas = () => {
+  const c = DS.colors.bg;
+  return `linear-gradient(${c}00, ${c}1A 6%, ${c}59 13%, ${c}A6 20%, ${c}E6 27%, ${c} 34%)`;
+};
+
+// Apparition en cascade seulement à la première visite d'un onglet : on y revient trop souvent pour la rejouer
+const ongletsVus = new Set();
+function useStaggerUneFois(cle) {
+  const [premiere] = useState(() => !ongletsVus.has(cle));
+  useEffect(() => { ongletsVus.add(cle); }, [cle]);
+  return premiere ? "v-stagger" : undefined;
+}
+
 function PrimaryButton({ children, onClick, disabled, style = {} }) {
-  const [p, setP] = useState(false);
   return (
     <button onClick={onClick} disabled={disabled}
-      onMouseDown={() => setP(true)} onMouseUp={() => setP(false)} onMouseLeave={() => setP(false)}
       style={{
         width: "100%", height: 56,
         background: disabled ? DS.colors.surfaceHigh : `linear-gradient(135deg, ${DS.colors.primary}, #7ED63A)`,
         border: "none", borderRadius: DS.radius.full,
         color: disabled ? DS.colors.textDim : "#0B0B0C", fontSize: 16,
         cursor: disabled ? "not-allowed" : "pointer",
-        transform: p ? "scale(0.96)" : "scale(1)", transition: "all 0.15s ease",
         boxShadow: disabled ? "none" : DS.shadow.primary,
         display: "flex", alignItems: "center", justifyContent: "center", gap: 10, position: "relative", overflow: "hidden",
         fontFamily: "'Inter',sans-serif", fontWeight: 700, ...style,
@@ -441,13 +452,17 @@ function Input({ label, type = "text", value, onChange, placeholder }) {
       </label>
       <input
         type={type} value={value} onChange={e => onChange(e.target.value)}
+        inputMode={type === "email" ? "email" : undefined}
+        autoCapitalize={type === "text" ? undefined : "none"}
+        autoCorrect={type === "text" ? undefined : "off"}
+        autoComplete={type === "email" ? "email" : type === "password" ? "current-password" : undefined}
         placeholder={placeholder} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         style={{
           width: "100%", height: 52, padding: "0 16px",
           background: DS.colors.surface,
           border: `1.5px solid ${focused ? DS.colors.primary : DS.colors.border}`,
           borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 16,
-          outline: "none", transition: "border 0.2s ease",
+          outline: "none", transition: "border-color 160ms ease, box-shadow 160ms ease",
           boxShadow: focused ? `0 0 0 3px ${DS.colors.primarySoft}` : DS.shadow.card,
           fontFamily: "'Inter',sans-serif",
         }}
@@ -494,9 +509,9 @@ function ProgressBar({ value }) {
   return (
     <div style={{ height: 6, background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, overflow: "hidden" }}>
       <div style={{
-        height: "100%", width: `${width}%`,
+        height: "100%", width: "100%", transform: `translateX(${width - 100}%)`,
         background: DS.colors.primary,
-        borderRadius: DS.radius.full, transition: "width 0.8s cubic-bezier(0.34,1.56,0.64,1)",
+        borderRadius: DS.radius.full, transition: "transform 500ms var(--ease-out)",
         boxShadow: `0 0 8px ${DS.colors.primaryGlow}`,
       }} />
     </div>
@@ -1005,7 +1020,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
   if (exercices.length === 0 && !showSummary) {
     return (
-      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", textAlign: "center" }}>
+      <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", textAlign: "center" }}>
         <p style={{ fontSize: 48, marginBottom: 16 }}>⚠️</p>
         <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 24, color: DS.colors.textPrimary, marginBottom: 8 }}>Séance introuvable</h2>
         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, marginBottom: 24 }}>Le programme n'a pas encore d'exercices. Attends que la génération soit terminée.</p>
@@ -1114,12 +1129,12 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
     const totalSetsCount = exercices.reduce((acc, ex) => acc + (ex.sets || 3), 0);
     const durationMin = Math.max(1, Math.round((Date.now() - startTime) / 60000));
     return (
-      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", maxWidth: 430, margin: "0 auto", position: "relative", overflow: "hidden" }}>
+      <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", maxWidth: 430, margin: "0 auto", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 300px 300px at 50% 30%, ${accentColor}08, transparent)`, pointerEvents: "none" }} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 40, position: "relative" }}>
 
           {/* Trophee */}
-          <div style={{ width: 100, height: 100, borderRadius: 26, background: `${accentColor}15`, border: `2px solid ${accentColor}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46, marginBottom: 24, boxShadow: `0 0 60px ${accentColor}30`, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
+          <div style={{ width: 100, height: 100, borderRadius: 26, background: `${accentColor}15`, border: `2px solid ${accentColor}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46, marginBottom: 24, boxShadow: `0 0 60px ${accentColor}30`, animation: "celebrate 0.6s var(--ease-spring)" }}>
             🏆
           </div>
 
@@ -1150,14 +1165,14 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
               { id: "good", emoji: "💪", label: "PARFAIT", color: DS.colors.success },
               { id: "hard", emoji: "🔥", label: "DUR", color: "#FF4500" },
             ].map(fb => (
-              <button key={fb.id} onClick={() => setFeedback(fb.id)} style={{ flex: 1, padding: "16px 8px", background: feedback === fb.id ? fb.color + "20" : DS.colors.surface, border: `2px solid ${feedback === fb.id ? fb.color : DS.colors.border}`, borderRadius: DS.radius.lg, cursor: "pointer", transition: "all 0.2s", transform: feedback === fb.id ? "scale(1.05)" : "scale(1)" }}>
+              <button key={fb.id} onClick={() => setFeedback(fb.id)} style={{ flex: 1, padding: "16px 8px", background: feedback === fb.id ? fb.color + "20" : DS.colors.surface, border: `2px solid ${feedback === fb.id ? fb.color : DS.colors.border}`, borderRadius: DS.radius.lg, cursor: "pointer", transition: "var(--t-choix), transform 160ms var(--ease-out)", transform: feedback === fb.id ? "scale(1.05)" : "scale(1)" }}>
                 <div style={{ fontSize: 26, marginBottom: 6 }}>{fb.emoji}</div>
                 <div style={{ fontFamily: "'Inter',sans-serif", color: feedback === fb.id ? fb.color : DS.colors.textSec, fontSize: 10, letterSpacing: "0.06em" }}>{fb.label}</div>
               </button>
             ))}
           </div>
 
-          <button onClick={() => onFinish(feedback, completedSets, exercices, durationMin)} disabled={!feedback} style={{ width: "100%", height: 56, background: feedback ? `linear-gradient(135deg, ${accentColor}, ${accentColor}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? "#000" : DS.colors.textSec, fontSize: 15, cursor: feedback ? "pointer" : "not-allowed", fontFamily: "'Inter',sans-serif", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", boxShadow: feedback ? `0 8px 32px ${accentColor}40` : "none", transition: "all 0.3s" }}>
+          <button onClick={() => onFinish(feedback, completedSets, exercices, durationMin)} disabled={!feedback} style={{ width: "100%", height: 56, background: feedback ? `linear-gradient(135deg, ${accentColor}, ${accentColor}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: feedback ? "#000" : DS.colors.textSec, fontSize: 15, cursor: feedback ? "pointer" : "not-allowed", fontFamily: "'Inter',sans-serif", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", boxShadow: feedback ? `0 8px 32px ${accentColor}40` : "none", transition: "var(--t-choix)" }}>
             {feedback ? "ENREGISTRER ET CONTINUER" : "SELECTIONNE TON RESSENTI"}
           </button>
         </div>
@@ -1171,7 +1186,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
     const restPct = (restLeft / restTotal) * 100;
     const nextSetNum = setIdx + 2; // série suivante (1-indexed)
     return (
-      <div style={{ fontFamily: "'Inter',sans-serif", background: "linear-gradient(180deg, #0A2540 0%, #051426 100%)", minHeight: "100vh", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", color: "white", position: "relative", overflow: "hidden" }}>
+      <div style={{ fontFamily: "'Inter',sans-serif", background: "linear-gradient(180deg, #0A2540 0%, #051426 100%)", minHeight: "100dvh", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", color: "white", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: "25%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(10,132,255,0.25), transparent 70%)", pointerEvents: "none" }} />
 
         <div style={{ padding: "52px 24px 0", display: "flex", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
@@ -1183,7 +1198,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
           <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.35em", color: "#5AC8FA", marginBottom: 12 }}>💨 RÉCUPÉRATION</p>
           <p style={{ fontSize: 140, fontWeight: 800, lineHeight: 0.9, letterSpacing: "-0.05em", fontVariantNumeric: "tabular-nums", textShadow: "0 0 60px rgba(90,200,250,0.4)" }}>{restLeft}</p>
           <div style={{ width: 200, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 4, marginTop: 24, overflow: "hidden" }}>
-            <div style={{ width: `${restPct}%`, height: "100%", background: "#5AC8FA", borderRadius: 4, transition: "width 1s linear" }} />
+            <div style={{ width: "100%", transform: `translateX(${restPct - 100}%)`, height: "100%", background: "#5AC8FA", borderRadius: 4, transition: "transform 1s linear" }} />
           </div>
         </div>
 
@@ -1209,12 +1224,12 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
   // ── ÉCRAN EFFORT — photo + zone focus ──
   return (
-    <div style={{ fontFamily: "'Inter',sans-serif", minHeight: "100vh", background: "#000", maxWidth: 430, margin: "0 auto", position: "relative", display: "flex", flexDirection: "column", color: "white" }}>
+    <div style={{ fontFamily: "'Inter',sans-serif", minHeight: "100dvh", background: "#000", maxWidth: 430, margin: "0 auto", position: "relative", display: "flex", flexDirection: "column", color: "white" }}>
 
       {/* Celebration */}
       {celebrate && (
         <div style={{ position: "fixed", inset: 0, zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-          <div style={{ fontSize: 80, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards" }}>💥</div>
+          <div style={{ fontSize: 80, animation: "celebrate 0.6s var(--ease-spring) forwards" }}>💥</div>
           <div style={{ position: "absolute", fontSize: 40, top: "35%", left: "20%", animation: "floatUp 1s ease forwards", opacity: 0 }}>⚡</div>
           <div style={{ position: "absolute", fontSize: 30, top: "30%", right: "20%", animation: "floatUp 1s ease forwards", animationDelay: "0.15s", opacity: 0 }}>✨</div>
         </div>
@@ -1285,7 +1300,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
             const fill = i < exIdx ? 1 : i === exIdx ? setIdx / totalSets : 0;
             return (
               <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", overflow: "hidden" }}>
-                <div style={{ width: `${fill * 100}%`, height: "100%", background: accentColor, borderRadius: 2, transition: "width 0.4s ease" }} />
+                <div style={{ width: "100%", transform: `translateX(${fill * 100 - 100}%)`, height: "100%", background: accentColor, borderRadius: 2, transition: "transform 240ms var(--ease-out)" }} />
               </div>
             );
           })}
@@ -1297,7 +1312,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
         {/* Nom */}
         <div style={{ textAlign: "center", marginBottom: 14 }}>
-          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", color: accentColor, marginBottom: 6 }}>EXERCICE {exIdx + 1}/{exercices.length}{currentEx.muscles ? ` · ${(currentEx.muscles || "").split(" ")[0].toUpperCase()}` : ""}</p>
+          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", color: accentColor, marginBottom: 6 }}>EXERCICE {exIdx + 1}/{exercices.length}{currentEx.muscles ? ` · ${(currentEx.muscles || "").split(/[\s,]+/)[0].toUpperCase()}` : ""}</p>
           <h1 style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, letterSpacing: "-0.02em", textTransform: "uppercase", color: "white" }}>{currentEx.nom}</h1>
           {currentEx.conseil && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8, fontStyle: "italic" }}>💡 {currentEx.conseil}</p>}
         </div>
@@ -1316,7 +1331,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
               const done = !!completedSets[`${exIdx}-${i}`];
               const current = i === setIdx && !done;
               return (
-                <div key={i} style={{ width: 38, height: 38, borderRadius: 19, background: done ? accentColor : current ? `${accentColor}20` : "rgba(255,255,255,0.06)", border: `2px solid ${done || current ? accentColor : "rgba(255,255,255,0.15)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: done ? "#000" : current ? accentColor : "rgba(255,255,255,0.3)", boxShadow: current ? `0 0 16px ${accentColor}50` : "none", transition: "all 0.3s" }}>
+                <div key={i} style={{ width: 38, height: 38, borderRadius: 19, background: done ? accentColor : current ? `${accentColor}20` : "rgba(255,255,255,0.06)", border: `2px solid ${done || current ? accentColor : "rgba(255,255,255,0.15)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: done ? "#000" : current ? accentColor : "rgba(255,255,255,0.3)", boxShadow: current ? `0 0 16px ${accentColor}50` : "none", transition: "var(--t-choix)" }}>
                   {done ? "✓" : i + 1}
                 </div>
               );
@@ -1332,7 +1347,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
 
       {/* Bouton Coach IA flottant */}
-      <button onClick={() => setShowCoach(true)} style={{ position: "fixed", bottom: 32, right: 20, width: 54, height: 54, borderRadius: DS.radius.full, background: accentColor, border: "none", color: "#000", fontSize: 22, cursor: "pointer", boxShadow: `0 0 24px ${accentColor}60`, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150 }}>
+      <button onClick={() => setShowCoach(true)} style={{ position: "fixed", bottom: "calc(112px + env(safe-area-inset-bottom, 0px))", right: 20, width: 54, height: 54, borderRadius: DS.radius.full, background: accentColor, border: "none", color: "#000", fontSize: 22, cursor: "pointer", boxShadow: `0 0 24px ${accentColor}60`, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150 }}>
         <AceAvatar size={22} />
       </button>
 
@@ -1408,7 +1423,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
             </div>
             {/* Input */}
             <div style={{ padding: "8px 16px 4px", display: "flex", gap: 8 }}>
-              <input value={coachInput} onChange={e => !coachBlocked && setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder={coachBlocked ? "Limite atteinte — Passe en Pro" : "Parle à Ace..."} style={{ flex: 1, height: 44, padding: "0 16px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 14, outline: "none", fontFamily: "'Inter',sans-serif" }} />
+              <input enterKeyHint="send" value={coachInput} onChange={e => !coachBlocked && setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder={coachBlocked ? "Limite atteinte — Passe en Pro" : "Parle à Ace..."} style={{ flex: 1, height: 44, padding: "0 16px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 14, outline: "none", fontFamily: "'Inter',sans-serif" }} />
               <button onClick={sendCoachMessage} disabled={!coachInput.trim() || coachLoading} style={{ width: 44, height: 44, borderRadius: DS.radius.full, background: coachInput.trim() ? accentColor : "rgba(255,255,255,0.08)", border: "none", color: coachInput.trim() ? "#000" : "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 18, flexShrink: 0, fontWeight: 700 }}>→</button>
             </div>
           </div>
@@ -1434,19 +1449,19 @@ function PaymentSuccessScreen({ plan, onContinue }) {
   const planEmoji = plan === "lifetime" ? "💎" : plan === "annual" ? "⚡" : "🚀";
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.1), transparent)", pointerEvents: "none" }} />
 
       <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
         {/* Icône animée */}
-        <div style={{ opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.3)", transition: "all 0.6s cubic-bezier(0.34,1.56,0.64,1)", marginBottom: 32 }}>
+        <div style={{ opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.9)", transition: "opacity 360ms var(--ease-out), transform 360ms var(--ease-spring)", marginBottom: 32 }}>
           <div style={{ width: 100, height: 100, borderRadius: 28, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, margin: "0 auto", boxShadow: "0 0 60px rgba(155,232,79,0.5)" }}>
             {planEmoji}
           </div>
         </div>
 
         {/* Texte */}
-        <div style={{ opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "translateY(0)" : "translateY(20px)", transition: "all 0.5s ease" }}>
+        <div style={{ opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "translateY(0)" : "translateY(12px)", transition: "opacity 300ms var(--ease-out), transform 300ms var(--ease-out)" }}>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible("#9BE84F"), fontWeight: 800, letterSpacing: "0.06em", marginBottom: 14 }}>PAIEMENT CONFIRMÉ</p>
           <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 12, letterSpacing: "-0.03em" }}>
             BIENVENUE DANS<br />L'ÉQUIPE PRO ⚡
@@ -1547,7 +1562,7 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
   const progress = Math.round((step / (steps.length - 1)) * 100);
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sport] || "⚡"}
@@ -1571,21 +1586,21 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent) }}>{progress}%</p>
           </div>
           <div style={{ background: DS.colors.surface, borderRadius: 9999, height: 6, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${progress}%`, background: theme.accent, borderRadius: 9999, transition: "width 0.8s ease", boxShadow: `0 0 12px ${theme.accent}80` }} />
+            <div style={{ height: "100%", width: "100%", transform: `translateX(${progress - 100}%)`, background: theme.accent, borderRadius: 9999, transition: "transform 500ms var(--ease-out)", boxShadow: `0 0 12px ${theme.accent}80` }} />
           </div>
         </div>
 
         {/* Étapes */}
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
           {steps.map((s, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: i < step ? theme.accent + "08" : i === step ? theme.accent + "15" : "rgba(255,255,255,0.02)", border: `1px solid ${i <= step ? theme.accent + "25" : "rgba(255,255,255,0.04)"}`, borderRadius: 14, transition: "all 0.4s ease", opacity: i > step ? 0.35 : 1 }}>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: i < step ? theme.accent + "08" : i === step ? theme.accent + "15" : "rgba(255,255,255,0.02)", border: `1px solid ${i <= step ? theme.accent + "25" : "rgba(255,255,255,0.04)"}`, borderRadius: 14, transition: "var(--t-choix)", opacity: i > step ? 0.35 : 1 }}>
               <span style={{ fontSize: 16, filter: i > step ? "grayscale(1)" : "none", transition: "filter 0.3s" }}>{s.emoji}</span>
               <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: i <= step ? DS.colors.textPrimary : DS.colors.textSec, fontWeight: i === step ? 600 : 400, flex: 1 }}>{s.text}</p>
               {i < step && (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round"/></svg>
               )}
               {i === step && (
-                <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${theme.accent}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
+                <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${theme.accent}`, borderTopColor: "transparent", animation: "spin 0.6s linear infinite", flexShrink: 0 }} />
               )}
             </div>
           ))}
@@ -1596,9 +1611,9 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
           <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 10, color: accentLisible(theme.accent), letterSpacing: "0.06em", marginBottom: 12 }}>CONSTRUIT SPÉCIALEMENT POUR TOI</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {checklist.map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, opacity: i < checkIdx ? 1 : 0.25, transition: "opacity 0.4s ease" }}>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, opacity: i < checkIdx ? 1 : 0.25, transition: "opacity 240ms ease" }}>
                 {i < checkIdx ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, animation: i === checkIdx - 1 ? "pop 0.4s cubic-bezier(0.34,1.56,0.64,1)" : "none" }}><circle cx="12" cy="12" r="11" fill={theme.accent} /><path d="M7 12.5L10.5 16L17 8" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, animation: i === checkIdx - 1 ? "pop 0.4s var(--ease-spring)" : "none" }}><circle cx="12" cy="12" r="11" fill={theme.accent} /><path d="M7 12.5L10.5 16L17 8" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 ) : (
                   <div style={{ width: 15, height: 15, borderRadius: "50%", border: `1px solid ${DS.colors.border}`, flexShrink: 0 }} />
                 )}
@@ -1634,7 +1649,7 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
   const msg = getCycleMsg(cycle);
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 400px 400px at 50% 40%, ${theme.accent}08, transparent)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sport] || "⚡"}
@@ -1643,7 +1658,7 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
       <div style={{ position: "relative", zIndex: 1, textAlign: "center", width: "100%" }}>
 
         {/* Trophée animé */}
-        <div style={{ fontSize: 80, marginBottom: 24, animation: "celebrate 0.8s cubic-bezier(0.34,1.56,0.64,1)" }}>
+        <div style={{ fontSize: 80, marginBottom: 24, animation: "celebrate 0.8s var(--ease-spring)" }}>
           {msg.emoji}
         </div>
 
@@ -1692,7 +1707,7 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
 
         {/* CTA */}
         {showContinue && (
-          <button onClick={onContinue} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.06em", cursor: "pointer", boxShadow: `0 8px 32px ${theme.accent}40`, animation: "slideUp 0.5s ease" }}>
+          <button onClick={onContinue} style={{ width: "100%", height: 56, background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)`, border: "none", borderRadius: DS.radius.md, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.06em", cursor: "pointer", boxShadow: `0 8px 32px ${theme.accent}40`, animation: "slideUp 280ms var(--ease-out)" }}>
             ATTAQUER LE CYCLE {cycle + 1} →
           </button>
         )}
@@ -1746,12 +1761,12 @@ function ThemeChoiceScreen({ onChoose }) {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
 
       {/* Background glow */}
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.06), transparent)", pointerEvents: "none" }} />
 
-      <div style={{ width: "100%", maxWidth: 390, position: "relative", zIndex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(30px)", transition: "all 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
+      <div style={{ width: "100%", maxWidth: 390, position: "relative", zIndex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(16px)", transition: "opacity 400ms var(--ease-out), transform 400ms var(--ease-out)" }}>
 
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
@@ -1763,7 +1778,7 @@ function ThemeChoiceScreen({ onChoose }) {
         {/* Theme cards */}
         <div style={{ display: "flex", gap: 14, marginBottom: 32 }}>
           {themes.map(theme => (
-            <div key={theme.id} onClick={() => setSelected(theme.id)} style={{ flex: 1, borderRadius: 24, overflow: "hidden", border: `2px solid ${selected === theme.id ? "#9BE84F" : "rgba(255,255,255,0.1)"}`, cursor: "pointer", transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)", transform: selected === theme.id ? "scale(1.02)" : "scale(1)", boxShadow: selected === theme.id ? "0 0 30px rgba(155,232,79,0.3)" : "none" }}>
+            <div key={theme.id} onClick={() => setSelected(theme.id)} style={{ flex: 1, borderRadius: 24, overflow: "hidden", border: `2px solid ${selected === theme.id ? "#9BE84F" : "rgba(255,255,255,0.1)"}`, cursor: "pointer", transition: "var(--t-choix), transform 160ms var(--ease-out)", transform: selected === theme.id ? "scale(1.02)" : "scale(1)", boxShadow: selected === theme.id ? "0 0 30px rgba(155,232,79,0.3)" : "none" }}>
 
               {/* Preview mini app */}
               <div style={{ background: theme.bg, padding: "16px 12px", height: 200 }}>
@@ -1809,7 +1824,7 @@ function ThemeChoiceScreen({ onChoose }) {
         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.5)", textAlign: "center", letterSpacing: "0.06em", marginBottom: 24 }}>TU POURRAS CHANGER CA DANS TON PROFIL</p>
 
         {/* CTA */}
-        <button onClick={() => selected && onChoose(selected)} disabled={!selected} style={{ width: "100%", height: 56, background: selected ? "#9BE84F" : "rgba(255,255,255,0.1)", border: "none", borderRadius: 9999, color: selected ? "#16181A" : "rgba(255,255,255,0.3)", fontFamily: "'Inter',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.06em", cursor: selected ? "pointer" : "not-allowed", transition: "all 0.3s", boxShadow: selected ? "0 8px 32px rgba(155,232,79,0.4)" : "none" }}>
+        <button onClick={() => selected && onChoose(selected)} disabled={!selected} style={{ width: "100%", height: 56, background: selected ? "#9BE84F" : "rgba(255,255,255,0.1)", border: "none", borderRadius: 9999, color: selected ? "#16181A" : "rgba(255,255,255,0.3)", fontFamily: "'Inter',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.06em", cursor: selected ? "pointer" : "not-allowed", transition: "var(--t-choix)", boxShadow: selected ? "0 8px 32px rgba(155,232,79,0.4)" : "none" }}>
           {selected ? `CONTINUER EN MODE ${themes.find(t => t.id === selected)?.name} →` : "SÉLECTIONNE UN THÈME"}
         </button>
       </div>
@@ -1841,7 +1856,7 @@ function WelcomeScreen({ onStart }) {
   const f = features[featureIdx];
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: -160, right: -120, width: 380, height: 380, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, pointerEvents: "none" }} />
 
       <div className="v-stagger" style={{ flex: 1, padding: "56px 24px 0", position: "relative", zIndex: 1 }}>
@@ -1916,8 +1931,8 @@ function SplashScreen({ onDone }) {
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", width: 420, height: 420, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.6)", transition: "all 1.2s ease", pointerEvents: "none" }} />
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", width: 420, height: 420, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.8)", transition: "opacity 800ms var(--ease-out), transform 800ms var(--ease-out)", pointerEvents: "none" }} />
 
       {phase >= 1 && (
         <div className="v-pop v-glow" style={{ width: 92, height: 92, borderRadius: 28, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, position: "relative", zIndex: 1, marginBottom: 26 }}>
@@ -1928,7 +1943,7 @@ function SplashScreen({ onDone }) {
 
       <div style={{ display: "flex", position: "relative", zIndex: 1 }}>
         {"VOLTRA".split("").map((l, i) => (
-          <span key={i} style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 44, letterSpacing: "0.04em", color: DS.colors.textPrimary, opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "none" : "translateY(14px)", transition: `all 0.5s cubic-bezier(0.2,0.8,0.2,1) ${i * 0.06}s` }}>{l}</span>
+          <span key={i} style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 44, letterSpacing: "0.04em", color: DS.colors.textPrimary, opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "none" : "translateY(14px)", transition: `opacity 400ms var(--ease-out) ${i * 0.04}s, transform 400ms var(--ease-out) ${i * 0.04}s` }}>{l}</span>
         ))}
       </div>
       <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 12, letterSpacing: "0.12em", color: DS.colors.textSec, marginTop: 10, opacity: phase >= 2 ? 1 : 0, transition: "opacity 0.6s ease 0.5s", position: "relative", zIndex: 1 }}>
@@ -2094,7 +2109,7 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
   // Ecran reset password (vient du lien email)
   if (isPasswordRecovery) {
     return (
-      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+      <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
         <div style={{ paddingTop: 80, paddingBottom: 40, textAlign: "center" }}>
           <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>🔑</div>
           <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Nouveau mot de passe</h1>
@@ -2121,7 +2136,7 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
   // Mode mot de passe oublié
   if (mode === "forgot") {
     return (
-      <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+      <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
         <div style={{ paddingTop: 80, paddingBottom: 40, textAlign: "center" }}>
           <div style={{ width: 64, height: 64, borderRadius: DS.radius.xl, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 20px", boxShadow: DS.shadow.primary }}>📧</div>
           <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 28, color: DS.colors.textPrimary, marginBottom: 8 }}>Mot de passe oublié ?</h1>
@@ -2156,9 +2171,9 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 24px" }}>
       <div className="v-stagger" style={{ paddingTop: 64, paddingBottom: 32 }}>
-        <div className="v-glow" style={{ width: 52, height: 52, borderRadius: 16, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 24 }}>⚡</div>
+        <div style={{ width: 52, height: 52, borderRadius: 16, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 24 }}>⚡</div>
         <h1 key={mode} className="v-up" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 10 }}>
           {mode === "login" ? <>Content de<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>te revoir</span></> : <>Crée ton<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>compte</span></>}
         </h1>
@@ -2166,7 +2181,7 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
       </div>
       <div className="v-up" style={{ flex: 1, animationDelay: "0.15s" }}>
         <div style={{ position: "relative", display: "flex", background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, padding: 4, marginBottom: 28 }}>
-          <div style={{ position: "absolute", top: 4, bottom: 4, left: 4, width: "calc(50% - 4px)", borderRadius: DS.radius.full, background: DS.colors.primary, boxShadow: DS.shadow.primary, transform: mode === "signup" ? "translateX(100%)" : "none", transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)" }} />
+          <div style={{ position: "absolute", top: 4, bottom: 4, left: 4, width: "calc(50% - 4px)", borderRadius: DS.radius.full, background: DS.colors.primary, boxShadow: DS.shadow.primary, transform: mode === "signup" ? "translateX(100%)" : "none", transition: "transform 220ms var(--ease-out)" }} />
           {["login", "signup"].map(m => (
             <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{ position: "relative", zIndex: 1, flex: 1, height: 42, borderRadius: DS.radius.full, background: "transparent", border: "none", color: mode === m ? "#0B0B0C" : DS.colors.textSec, fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "color 0.25s", fontFamily: "'Inter',sans-serif" }}>
               {m === "login" ? "Connexion" : "Inscription"}
@@ -2420,7 +2435,7 @@ function OnboardingScreen({ onComplete }) {
   const isLastStep = step === totalSteps - 1;
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
 
       {/* Écran demo coach IA — avant génération */}
       {showCoachDemo && (() => {
@@ -2436,12 +2451,12 @@ function OnboardingScreen({ onComplete }) {
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28, minHeight: 180 }}>
                 {msgVisible >= 1 && (
-                  <div style={{ alignSelf: "flex-end", maxWidth: "78%", background: "#9BE84F", color: "#000", padding: "10px 14px", borderRadius: "18px 18px 4px 18px", fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, animation: "fadeIn 0.3s ease" }}>
+                  <div style={{ alignSelf: "flex-end", maxWidth: "78%", background: "#9BE84F", color: "#000", padding: "10px 14px", borderRadius: "18px 18px 4px 18px", fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, animation: "fadeIn 240ms var(--ease-out)" }}>
                     Je suis épuisé, j'y arrive plus 😮‍💨
                   </div>
                 )}
                 {msgVisible >= 2 && (
-                  <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "flex-end", gap: 8, animation: "fadeIn 0.3s ease" }}>
+                  <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "flex-end", gap: 8, animation: "fadeIn 240ms var(--ease-out)" }}>
                     <div style={{ width: 26, height: 26, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><AceAvatar size={26} /></div>
                     <div style={{ maxWidth: "78%", background: DS.colors.surface, color: DS.colors.textPrimary, padding: "10px 14px", borderRadius: "18px 18px 18px 4px", fontFamily: "'Inter',sans-serif", fontSize: 13 }}>
                       Pas de souci, on baisse la charge de <strong>15%</strong> pour cette série. On garde le volume, on protège ta forme 💪
@@ -2449,7 +2464,7 @@ function OnboardingScreen({ onComplete }) {
                   </div>
                 )}
                 {msgVisible >= 3 && (
-                  <div style={{ alignSelf: "center", background: "rgba(155,232,79,0.12)", border: "1px solid rgba(155,232,79,0.3)", borderRadius: 12, padding: "6px 14px", marginTop: 4, animation: "fadeIn 0.3s ease" }}>
+                  <div style={{ alignSelf: "center", background: "rgba(155,232,79,0.12)", border: "1px solid rgba(155,232,79,0.3)", borderRadius: 12, padding: "6px 14px", marginTop: 4, animation: "fadeIn 240ms var(--ease-out)" }}>
                     <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.isDark ? "#9BE84F" : DS.colors.primaryDark, fontWeight: 600 }}>✓ Série adaptée en temps réel</p>
                   </div>
                 )}
@@ -2461,7 +2476,7 @@ function OnboardingScreen({ onComplete }) {
           );
         };
         return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", animation: "fadeIn 0.4s ease" }}>
+          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", animation: "fadeIn 240ms var(--ease-out)" }}>
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 20%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
             <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 360 }}>
               <div style={{ textAlign: "center", marginBottom: 28 }}>
@@ -2482,7 +2497,7 @@ function OnboardingScreen({ onComplete }) {
         const objLabel = objLabels[data.objectif] || "leur objectif";
         const pct = 78 + Math.floor(Math.random() * 15); // 78-92%
         return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", animation: "fadeIn 0.4s ease" }}>
+          <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", animation: "fadeIn 240ms var(--ease-out)" }}>
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 30%, rgba(155,232,79,0.08), transparent)", pointerEvents: "none" }} />
 
             <div style={{ position: "relative", zIndex: 1, textAlign: "center", maxWidth: 340 }}>
@@ -2509,8 +2524,8 @@ function OnboardingScreen({ onComplete }) {
       })()}
 
       {reaction && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", animation: "fadeIn 0.3s ease" }}>
-          <div style={{ width: 64, height: 64, borderRadius: 20, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 20, boxShadow: DS.shadow.primary, animation: "pop 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: DS.colors.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", animation: "fadeIn 240ms var(--ease-out)" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 20, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, marginBottom: 20, boxShadow: DS.shadow.primary, animation: "pop 0.4s var(--ease-spring)" }}>
             ✓
           </div>
           <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 19, color: DS.colors.textPrimary, textAlign: "center", lineHeight: 1.4 }}>
@@ -2625,7 +2640,7 @@ function OnboardingScreen({ onComplete }) {
             {/* Dots navigation */}
             <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingTop: 52, marginBottom: 32, position: "relative", zIndex: 2 }}>
               {slides.map((_, i) => (
-                <div key={i} style={{ width: i === slideIndex ? 20 : 6, height: 6, borderRadius: 3, background: i === slideIndex ? sportTheme.accent : DS.colors.surfaceHigh, transition: "all 0.3s ease", boxShadow: i === slideIndex ? `0 0 8px ${sportTheme.accent}` : "none" }} />
+                <div key={i} style={{ width: i === slideIndex ? 20 : 6, height: 6, borderRadius: 3, background: i === slideIndex ? sportTheme.accent : DS.colors.surfaceHigh, transition: "width 240ms var(--ease-out), background 240ms ease", boxShadow: i === slideIndex ? `0 0 8px ${sportTheme.accent}` : "none" }} />
               ))}
             </div>
 
@@ -2682,11 +2697,11 @@ function OnboardingScreen({ onComplete }) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5L8 12L15 19" stroke={DS.colors.textPrimary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
         <div style={{ flex: 1, height: 6, borderRadius: DS.radius.full, background: DS.colors.surfaceHigh, overflow: "hidden" }}>
-          <div style={{ width: `${((step + 1) / totalSteps) * 100}%`, height: "100%", borderRadius: DS.radius.full, background: DS.colors.primary, boxShadow: `0 0 10px ${DS.colors.primaryGlow}`, transition: "width 0.4s ease" }} />
+          <div style={{ width: "100%", transform: `translateX(${((step + 1) / totalSteps) * 100 - 100}%)`, height: "100%", borderRadius: DS.radius.full, background: DS.colors.primary, boxShadow: `0 0 10px ${DS.colors.primaryGlow}`, transition: "transform 260ms var(--ease-out)" }} />
         </div>
       </div>
 
-      <div style={{ flex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(12px)", transition: "all 0.25s ease", overflowY: "auto" }}>
+      <div style={{ flex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(12px)", transition: "opacity 220ms var(--ease-out), transform 220ms var(--ease-out)", overflowY: "auto" }}>
 
         {/* ETAPE 1 - Sport */}
         {contentStep === 0 && (
@@ -2694,7 +2709,7 @@ function OnboardingScreen({ onComplete }) {
             <StepTitle title={data.sport === "combat" ? "Choisis ta discipline" : "Quel est ton sport ?"} sub="Ton programme sera entièrement adapté." />
             <div className="v-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {SPORTS.map(sport => (
-                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primary : DS.colors.surface, borderRadius: DS.radius.full, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "all 0.2s ease", transform: data.sport === sport.id ? "scale(1.05)" : "scale(1)", boxShadow: data.sport === sport.id ? DS.shadow.primary : DS.colors.isDark ? "0 2px 12px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)" }}>
+                <div key={sport.id} onClick={() => setData(d => ({ ...d, sport: sport.id, poste: null }))} style={{ background: data.sport === sport.id ? DS.colors.primary : DS.colors.surface, borderRadius: DS.radius.full, padding: "16px 8px", textAlign: "center", cursor: "pointer", transition: "var(--t-choix), transform 160ms var(--ease-out)", transform: data.sport === sport.id ? "scale(1.05)" : "scale(1)", boxShadow: data.sport === sport.id ? DS.shadow.primary : DS.colors.isDark ? "0 2px 12px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)" }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{sport.emoji}</div>
                   <div style={{ color: data.sport === sport.id ? "#16181A" : DS.colors.textPrimary, fontSize: 12, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>{sport.label}</div>
                 </div>
@@ -2709,7 +2724,7 @@ function OnboardingScreen({ onComplete }) {
             <StepTitle title={data.sport === "combat" ? "Ton objectif de combat ?" : "Quel est ton objectif ?"} sub="Les exercices et les charges s'adapteront." />
             <div className="v-stagger" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(OBJECTIFS_PAR_SPORT[data.sport] || []).map(obj => (
-                <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
+                <div key={obj.id} onClick={() => setData(d => ({ ...d, objectif: obj.id }))} style={{ background: data.objectif === obj.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.objectif === obj.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "var(--t-choix), transform 160ms var(--ease-out)", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
                   <span style={{ fontSize: 26 }}>{obj.emoji}</span>
                   <div>
                     <div style={{ color: data.objectif === obj.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{obj.label}</div>
@@ -2728,7 +2743,7 @@ function OnboardingScreen({ onComplete }) {
             <StepTitle title={data.sport === "combat" ? "Ta discipline ?" : "Ton poste ?"} sub={data.sport === "combat" ? "Le programme est adapté à ta discipline de combat." : "Le programme cible les qualités de ton poste."} />
             <div className="v-stagger" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(POSTES_PAR_SPORT[data.sport] || []).map(poste => (
-                <div key={poste.id} onClick={() => setData(d => ({ ...d, poste: poste.id }))} style={{ background: data.poste === poste.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.poste === poste.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
+                <div key={poste.id} onClick={() => setData(d => ({ ...d, poste: poste.id }))} style={{ background: data.poste === poste.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.poste === poste.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "var(--t-choix), transform 160ms var(--ease-out)", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
                   <span style={{ fontSize: 26 }}>{poste.emoji}</span>
                   <div>
                     <div style={{ color: data.poste === poste.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{poste.label}</div>
@@ -2761,13 +2776,13 @@ function OnboardingScreen({ onComplete }) {
                 };
                 return (
                   <div key={d.id}>
-                    <div onClick={() => toggleDouleur(d.id)} style={{ background: selected ? (d.id === "aucune" ? DS.colors.successSoft : DS.colors.warningSoft) : DS.colors.surface, border: `1px solid ${selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "all 0.2s ease" }}>
+                    <div onClick={() => toggleDouleur(d.id)} style={{ background: selected ? (d.id === "aucune" ? DS.colors.successSoft : DS.colors.warningSoft) : DS.colors.surface, border: `1px solid ${selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.border}`, borderRadius: DS.radius.md, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "var(--t-choix), transform 160ms var(--ease-out)" }}>
                       <span style={{ fontSize: 22 }}>{d.emoji}</span>
                       <p style={{ color: selected ? (d.id === "aucune" ? DS.colors.success : DS.colors.warning) : DS.colors.textPrimary, fontSize: 15, ...s.heading, flex: 1 }}>{d.label}</p>
                       {selected && <div style={{ width: 20, height: 20, background: d.id === "aucune" ? DS.colors.success : DS.colors.warning, borderRadius: DS.radius.full, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" /></svg></div>}
                     </div>
                     {selected && solutions[d.id] && (
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 14px 4px 18px", animation: "fadeIn 0.3s ease" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 14px 4px 18px", animation: "fadeIn 240ms var(--ease-out)" }}>
                         <span style={{ fontSize: 13, marginTop: 1 }}>🛡️</span>
                         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, lineHeight: 1.5 }}>{solutions[d.id]}</p>
                       </div>
@@ -2785,7 +2800,7 @@ function OnboardingScreen({ onComplete }) {
             <StepTitle title="Ton équipement ?" sub="Les exercices seront adaptés à ce que tu as." />
             <div className="v-stagger" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {EQUIPEMENTS.map(eq => (
-                <div key={eq.id} onClick={() => setData(d => ({ ...d, equipement: eq.id }))} style={{ background: data.equipement === eq.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.equipement === eq.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.2s ease", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
+                <div key={eq.id} onClick={() => setData(d => ({ ...d, equipement: eq.id }))} style={{ background: data.equipement === eq.id ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.equipement === eq.id ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.lg, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "var(--t-choix), transform 160ms var(--ease-out)", boxShadow: DS.colors.isDark ? "none" : DS.shadow.card }}>
                   <span style={{ fontSize: 26 }}>{eq.emoji}</span>
                   <div>
                     <div style={{ color: data.equipement === eq.id ? DS.colors.primary : DS.colors.textPrimary, fontSize: 16, ...s.heading, marginBottom: 2 }}>{eq.label}</div>
@@ -2806,7 +2821,7 @@ function OnboardingScreen({ onComplete }) {
               <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Niveau actuel</p>
               <div style={{ display: "flex", gap: 10 }}>
                 {NIVEAUX.map(n => (
-                  <div key={n} onClick={() => setData(d => ({ ...d, niveau: n.toLowerCase() }))} style={{ flex: 1, padding: "12px 0", textAlign: "center", background: data.niveau === n.toLowerCase() ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, color: data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.textSec, fontSize: 14, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>
+                  <div key={n} onClick={() => setData(d => ({ ...d, niveau: n.toLowerCase() }))} style={{ flex: 1, padding: "12px 0", textAlign: "center", background: data.niveau === n.toLowerCase() ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.border}`, borderRadius: DS.radius.md, color: data.niveau === n.toLowerCase() ? DS.colors.primary : DS.colors.textSec, fontSize: 14, cursor: "pointer", transition: "var(--t-choix), transform 160ms var(--ease-out)", ...s.heading }}>{n}</div>
                 ))}
               </div>
             </div>
@@ -2816,7 +2831,7 @@ function OnboardingScreen({ onComplete }) {
                 <div style={{ ...s.display, fontSize: 48, color: DS.colors.primary, textAlign: "center", marginBottom: 16 }}>{data.frequence}</div>
                 <div style={{ display: "flex", gap: 10 }}>
                   {[2, 3, 4, 5].map(n => (
-                    <div key={n} onClick={() => setData(d => ({ ...d, frequence: n, jours: (d.jours && d.jours.length === n) ? d.jours : DEFAULT_JOURS[n] }))} style={{ flex: 1, padding: "10px 0", textAlign: "center", background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: data.frequence === n ? "#000" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "all 0.2s ease", ...s.heading }}>{n}</div>
+                    <div key={n} onClick={() => setData(d => ({ ...d, frequence: n, jours: (d.jours && d.jours.length === n) ? d.jours : DEFAULT_JOURS[n] }))} style={{ flex: 1, padding: "10px 0", textAlign: "center", background: data.frequence === n ? DS.colors.primary : DS.colors.surfaceHigh, borderRadius: DS.radius.md, color: data.frequence === n ? "#000" : DS.colors.textSec, fontSize: 16, cursor: "pointer", transition: "var(--t-choix), transform 160ms var(--ease-out)", ...s.heading }}>{n}</div>
                   ))}
                 </div>
                 <p style={{ color: DS.colors.textSec, fontSize: 13, textAlign: "center", marginTop: 12, ...s.body }}>jours / semaine</p>
@@ -2865,7 +2880,7 @@ function OnboardingScreen({ onComplete }) {
       </div>
 
       {/* Bouton principal, toujours visible en bas */}
-      <div style={{ position: "sticky", bottom: 0, paddingTop: 20, paddingBottom: 32, background: `linear-gradient(transparent, ${DS.colors.bg} 30%)` }}>
+      <div style={{ position: "sticky", bottom: 0, paddingTop: 20, paddingBottom: "calc(32px + env(safe-area-inset-bottom, 0px))", background: fonduBas() }}>
         <PrimaryButton disabled={!canNext} onClick={() => {
           if (champProfil && data[champProfil[0]] == null) setData(d => ({ ...d, [champProfil[0]]: champProfil[1] }));
           isLastStep ? setShowCoachDemo(true) : goNext();
@@ -2960,7 +2975,7 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: -150, right: -120, width: 380, height: 380, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, pointerEvents: "none" }} />
       <div className="v-stagger" style={{ padding: "104px 20px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
         <div style={{ marginBottom: 22 }}>
@@ -2985,7 +3000,7 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
           {PLANS.map(plan => {
             const on = selected === plan.id;
             return (
-              <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: DS.colors.surface, border: `2px solid ${on ? DS.colors.primary : DS.colors.border}`, borderRadius: 22, padding: "18px 20px", cursor: "pointer", boxShadow: on ? DS.shadow.primary : DS.shadow.card, transform: on ? "scale(1.02)" : "scale(1)", transition: "all 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}>
+              <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: DS.colors.surface, border: `2px solid ${on ? DS.colors.primary : DS.colors.border}`, borderRadius: 22, padding: "18px 20px", cursor: "pointer", boxShadow: on ? DS.shadow.primary : DS.shadow.card, transform: on ? "scale(1.02)" : "scale(1)", transition: "var(--t-choix), transform 160ms var(--ease-out)" }}>
                 {plan.badge && <div style={{ position: "absolute", top: -11, left: 18, padding: "4px 10px", background: DS.colors.primary, borderRadius: DS.radius.full, color: "#0B0B0C", fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 800, letterSpacing: "0.06em" }}>{plan.badge}</div>}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                   <div>
@@ -2999,7 +3014,7 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
                       {plan.savings && <span style={{ padding: "2px 8px", background: DS.colors.primarySoft, borderRadius: DS.radius.full, color: accentTexte, fontFamily: "'Inter',sans-serif", fontSize: 11, fontWeight: 700 }}>{plan.savings}</span>}
                     </div>
                   </div>
-                  <div style={{ width: 26, height: 26, flexShrink: 0, borderRadius: DS.radius.full, border: `2px solid ${on ? DS.colors.primary : DS.colors.textDim}`, background: on ? DS.colors.primary : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.25s ease" }}>
+                  <div style={{ width: 26, height: 26, flexShrink: 0, borderRadius: DS.radius.full, border: `2px solid ${on ? DS.colors.primary : DS.colors.textDim}`, background: on ? DS.colors.primary : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "var(--t-choix)" }}>
                     {on && <svg className="v-pop" width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#0B0B0C" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                   </div>
                 </div>
@@ -3012,7 +3027,7 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
         {/* Ce qui est inclus */}
         <button onClick={() => setShowFeatures(v => !v)} style={{ width: "100%", background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 18, padding: "14px 18px", color: DS.colors.textPrimary, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "'Inter',sans-serif", marginBottom: 8 }}>
           <span>Voir ce qui est inclus</span>
-          <span style={{ transform: showFeatures ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s ease" }}>⌄</span>
+          <span style={{ transform: showFeatures ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms var(--ease-out)" }}>⌄</span>
         </button>
         {showFeatures && (
           <div className="v-stagger" style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 18, padding: "6px 16px", marginBottom: 16 }}>
@@ -3029,7 +3044,7 @@ function PricingScreen({ onSelectPlan, programme, frequence, user }) {
       </div>
 
       {/* Bouton de paiement, toujours visible */}
-      <div style={{ position: "sticky", bottom: 0, padding: "20px 20px 24px", maxWidth: 430, margin: "0 auto", background: `linear-gradient(transparent, ${DS.colors.bg} 30%)`, zIndex: 2 }}>
+      <div style={{ position: "sticky", bottom: 0, padding: "20px 20px calc(24px + env(safe-area-inset-bottom, 0px))", maxWidth: 430, margin: "0 auto", background: fonduBas(), zIndex: 2 }}>
         {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>⚠ {stripeError}</p>}
         <PrimaryButton onClick={() => handleStripeCheckout(selected)} disabled={loading} style={{ height: 58 }}>
           {!loading && <span className="v-shine" style={{ position: "absolute", inset: 0, borderRadius: DS.radius.full }} />}
@@ -3102,7 +3117,7 @@ function MatchsScreen({ user, onBack }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 100 }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, paddingBottom: 100 }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "14px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
@@ -3193,6 +3208,7 @@ function MatchsScreen({ user, onBack }) {
 // ─────────────────────────────────────────────
 // DASHBOARD
 function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs, onResumeSession }) {
+  const stagger = useStaggerUneFois("dashboard");
   // Séance en pause récupérable (< 2h)
   const [pausedSession] = useState(() => {
     try {
@@ -3237,25 +3253,25 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
 
   const userName = user?.user_metadata?.name?.split(" ")[0] || user?.email?.split("@")[0] || "Athlète";
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
+  const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après‑midi" : "Bonsoir";
   const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
   const currentCycle = programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
   const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 130 }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, paddingBottom: 130 }}>
 
       {/* Badge programme loading */}
       {programmeLoading && (
-        <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", zIndex: 200, background: DS.colors.surface, border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "10px 20px", display: "flex", alignItems: "center", gap: 10, boxShadow: DS.shadow.card, whiteSpace: "nowrap" }}>
+        <div style={{ position: "fixed", bottom: "calc(90px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 200, background: DS.colors.surface, border: `1px solid ${theme.accent}30`, borderRadius: DS.radius.full, padding: "10px 20px", display: "flex", alignItems: "center", gap: 10, boxShadow: DS.shadow.card, whiteSpace: "nowrap" }}>
           <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: theme.accent, animation: "pulse 1s infinite" }} />
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec }}>Génération du programme...</p>
         </div>
       )}
 
       {/* Header */}
-      <div className="v-up" style={{ padding: "56px 24px 4px", position: "relative", overflow: "hidden" }}>
+      <div className={stagger ? "v-up" : undefined} style={{ padding: "56px 24px 4px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -140, right: -110, width: 320, height: 320, borderRadius: "50%", background: `radial-gradient(circle, ${theme.accent}26, transparent 70%)`, pointerEvents: "none" }} />
         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, marginBottom: 6, fontWeight: 600, position: "relative" }}>
           {today.charAt(0).toUpperCase() + today.slice(1)}
@@ -3264,13 +3280,13 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 34, color: DS.colors.textPrimary, margin: 0, letterSpacing: "-0.03em", lineHeight: 1, textTransform: "uppercase" }}>
             {greeting},<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>{userName}</span>
           </h1>
-          <div className="v-float" style={{ width: 52, height: 52, borderRadius: 18, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, boxShadow: `0 8px 24px ${theme.accent}55` }}>
+          <div style={{ width: 52, height: 52, borderRadius: 18, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, boxShadow: `0 8px 24px ${theme.accent}55` }}>
             {SPORT_EMOJIS[sport] || "⚡"}
           </div>
         </div>
       </div>
 
-      <div className="v-stagger" style={{ padding: "20px 16px 0" }}>
+      <div className={stagger} style={{ padding: "20px 16px 0" }}>
 
         {/* Bannière reprise séance en pause */}
         {pausedSession && (
@@ -3317,7 +3333,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                 <div>
                   <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: accentLisible(theme.accent), fontWeight: 700, marginBottom: 6, letterSpacing: "0.04em" }}>
-                    {seance.type?.toUpperCase() || "SÉANCE DU JOUR"}
+                    {seance.type?.replace(/_/g, " ").toUpperCase() || "SÉANCE DU JOUR"}
                   </p>
                   <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 24, color: DS.colors.textPrimary, margin: 0, letterSpacing: "-0.01em" }}>
                     {seance.titre || "Séance"}
@@ -3353,7 +3369,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
 
             <div style={{ padding: "0 16px 16px" }}>
               <PrimaryButton onClick={() => onStartSession(seance)} style={{ height: 54 }}>
-                <span className="v-shine" style={{ position: "absolute", inset: 0, borderRadius: DS.radius.full }} />
+                
                 Démarrer la séance
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 4.5V19.5L19 12L7 4.5Z" fill="currentColor" /></svg>
               </PrimaryButton>
@@ -3375,7 +3391,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, color: accentLisible(theme.accent), margin: 0 }}>{prog.progression}%</p>
           </div>
           <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.full, height: 6, overflow: "hidden" }}>
-            <div style={{ width: `${prog.progression}%`, height: "100%", background: theme.accent, borderRadius: DS.radius.full, transition: "width 1s ease" }} />
+            <div style={{ width: "100%", transform: `translateX(${prog.progression - 100}%)`, height: "100%", background: theme.accent, borderRadius: DS.radius.full, transition: "transform 500ms var(--ease-out)" }} />
           </div>
         </div>
 
@@ -3437,6 +3453,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
 }
 // ─────────────────────────────────────────────
 function HistoriqueScreen() {
+  const stagger = useStaggerUneFois("historique");
   const [seancesReelles, setSeancesReelles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalSeances, setTotalSeances] = useState(0);
@@ -3522,7 +3539,7 @@ function HistoriqueScreen() {
   const accentColor = "#FF2D55";
 
   return (
-    <div className="v-stagger" style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 130 }}>
+    <div className={stagger} style={{ minHeight: "100dvh", background: DS.colors.bg, paddingBottom: 130 }}>
 
       {/* Drawer detail seance */}
       {selectedSeance && (
@@ -3899,6 +3916,7 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
 }
 
 function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appTheme, onThemeChange, onLogout, onRegenerateProgram }) {
+  const stagger = useStaggerUneFois("profil");
   const [notifOn, setNotifOn] = useState(false);
   const [notifHeure, setNotifHeure] = useState("08:00");
   const [showEditDrawer, setShowEditDrawer] = useState(false);
@@ -4034,7 +4052,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
   };
 
   return (
-    <div className="v-stagger" style={{ minHeight: "100vh", background: DS.colors.bg, paddingBottom: 130, position: "relative", overflow: "hidden" }}>
+    <div className={stagger} style={{ minHeight: "100dvh", background: DS.colors.bg, paddingBottom: 130, position: "relative", overflow: "hidden" }}>
 
       {/* Sport bg */}
       <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
@@ -4054,7 +4072,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>Sport</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 24 }}>
               {SPORTS.map(sp => (
-                <div key={sp.id} onClick={() => setEditData(d => ({ ...d, sport: sp.id, objectif: null }))} style={{ background: editData.sport === sp.id ? theme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${editData.sport === sp.id ? theme.accent : DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 6px", textAlign: "center", cursor: "pointer", transition: "all 0.2s" }}>
+                <div key={sp.id} onClick={() => setEditData(d => ({ ...d, sport: sp.id, objectif: null }))} style={{ background: editData.sport === sp.id ? theme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${editData.sport === sp.id ? theme.accent : DS.colors.border}`, borderRadius: DS.radius.md, padding: "12px 6px", textAlign: "center", cursor: "pointer", transition: "var(--t-choix)" }}>
                   <div style={{ fontSize: 24, marginBottom: 4 }}>{sp.emoji}</div>
                   <div style={{ color: editData.sport === sp.id ? theme.accent : DS.colors.textSec, fontSize: 10, ...s.heading }}>{sp.label}</div>
                 </div>
@@ -4104,7 +4122,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
           <div onClick={() => fileInputRef.current?.click()} style={{ position: "relative", width: 72, height: 72, flexShrink: 0, cursor: "pointer" }}>
             <div style={{ width: 72, height: 72, background: avatarUrl ? "transparent" : theme.accent + "20", border: `2px solid ${theme.accent}50`, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, ...s.display, color: accentLisible(theme.accent), overflow: "hidden", boxShadow: `0 0 30px ${theme.accent}20` }}>
               {uploadingAvatar ? (
-                <div style={{ width: 20, height: 20, border: `2px solid ${theme.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                <div style={{ width: 20, height: 20, border: `2px solid ${theme.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
               ) : avatarUrl ? (
                 <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
@@ -4273,7 +4291,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
                 } else { setNotifOn(true); }
               } else { setNotifOn(false); }
             }} style={{ width: 50, height: 28, background: notifOn ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", flexShrink: 0 }}>
-              <div style={{ position: "absolute", top: 3, left: notifOn ? 25 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
+              <div style={{ position: "absolute", top: 3, left: 3, transform: `translateX(${notifOn ? 22 : 0}px)`, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "transform 200ms var(--ease-out)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
             </div>
           </div>
           {notifOn && (
@@ -4295,7 +4313,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             </div>
           </div>
           <div onClick={() => { const next = DS.colors.isDark ? "light" : "dark"; DS.colors = THEMES[next]; DS.shadow = THEMES[next].shadow; localStorage.setItem("voltra_theme", next); onThemeChange && onThemeChange(next); }} style={{ width: 50, height: 28, background: DS.colors.isDark ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", border: `1px solid ${DS.colors.border}` }}>
-            <div style={{ position: "absolute", top: 3, left: DS.colors.isDark ? 25 : 3, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>
+            <div style={{ position: "absolute", top: 3, left: 3, transform: `translateX(${DS.colors.isDark ? 22 : 0}px)`, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "transform 200ms var(--ease-out)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>
               {DS.colors.isDark ? "🌙" : "☀️"}
             </div>
           </div>
@@ -4402,7 +4420,7 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: -140, left: -100, width: 360, height: 360, borderRadius: "50%", background: `radial-gradient(circle, ${theme.accent}22, transparent 70%)`, pointerEvents: "none" }} />
 
       <div className="v-stagger" style={{ padding: "56px 24px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
@@ -4435,7 +4453,7 @@ function ProjectionScreen({ sport, onboardingData, onContinue }) {
         </p>
       </div>
 
-      <div style={{ position: "sticky", bottom: 0, padding: "20px 24px 24px", maxWidth: 430, margin: "0 auto", background: `linear-gradient(transparent, ${DS.colors.bg} 30%)`, zIndex: 2 }}>
+      <div style={{ position: "sticky", bottom: 0, padding: "20px 24px calc(24px + env(safe-area-inset-bottom, 0px))", maxWidth: 430, margin: "0 auto", background: fonduBas(), zIndex: 2 }}>
         <PrimaryButton onClick={onContinue} style={{ height: 58 }}>
           Voir mon programme complet
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -4474,7 +4492,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
   const [inscrits] = useState(() => Math.floor(Math.random() * 80 + 250));
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, position: "relative" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative" }}>
       <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none", opacity: 0.4 }} />
 
       <div className="v-stagger" style={{ padding: "48px 22px 0", maxWidth: 430, margin: "0 auto", position: "relative", zIndex: 1 }}>
@@ -4591,7 +4609,7 @@ function ProgrammePreview({ programme, sport, onboardingData, onContinue }) {
         </div>
 
         {/* CTA, toujours visible en bas */}
-        <div style={{ position: "sticky", bottom: 0, paddingTop: 20, paddingBottom: 20, background: `linear-gradient(transparent, ${DS.colors.bg} 30%)` }}>
+        <div style={{ position: "sticky", bottom: 0, paddingTop: 20, paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))", background: fonduBas() }}>
         <button onClick={onContinue} style={{ width: "100%", height: 58, background: DS.colors.textPrimary, color: DS.colors.bg, border: "none", borderRadius: DS.radius.full, fontFamily: "'Inter',sans-serif", fontSize: 16, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           Je profite de l'offre
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -4641,7 +4659,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
     stats?.feedback === "good" ? "Seance parfaite —" : "Tu t'es vraiment donne —";
 
   return (
-    <div style={{ minHeight: "100vh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40, position: "relative" }}>
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, overflowY: "auto", paddingBottom: 40, position: "relative" }}>
       <div style={{ position: "absolute", inset: 0, background: theme.bg, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.04, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>
         {SPORT_EMOJIS[sportActif] || "⚡"}
@@ -4651,7 +4669,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
 
         {/* Header celebratoire */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 80, height: 80, borderRadius: 22, background: theme.accent + "20", border: `2px solid ${theme.accent}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 20px", boxShadow: `0 0 60px ${theme.accent}30`, animation: "celebrate 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
+          <div style={{ width: 80, height: 80, borderRadius: 22, background: theme.accent + "20", border: `2px solid ${theme.accent}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 20px", boxShadow: `0 0 60px ${theme.accent}30`, animation: "celebrate 0.6s var(--ease-spring)" }}>
             🏆
           </div>
           <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentLisible(theme.accent), letterSpacing: "0.06em", marginBottom: 10 }}>SEANCE TERMINEE</div>
@@ -4711,7 +4729,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
         {/* Plans */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
           {PLANS.map(plan => (
-            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: selected === plan.id ? plan.colorSoft : DS.colors.surface, border: `1.5px solid ${selected === plan.id ? plan.colorBorder : DS.colors.border}`, borderRadius: DS.radius.xl, padding: "16px 20px", cursor: "pointer", transition: "all 0.2s" }}>
+            <div key={plan.id} onClick={() => setSelected(plan.id)} style={{ position: "relative", background: selected === plan.id ? plan.colorSoft : DS.colors.surface, border: `1.5px solid ${selected === plan.id ? plan.colorBorder : DS.colors.border}`, borderRadius: DS.radius.xl, padding: "16px 20px", cursor: "pointer", transition: "var(--t-choix)" }}>
               {selected === plan.id && <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 2, background: plan.color, borderRadius: DS.radius.full }} />}
               {plan.badge && <div style={{ display: "inline-flex", padding: "2px 8px", background: plan.colorSoft, border: `1px solid ${plan.colorBorder}`, borderRadius: DS.radius.full, color: plan.color, fontSize: 10, ...s.heading, marginBottom: 8 }}>{plan.badge}</div>}
               <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
@@ -4722,7 +4740,7 @@ function PostSessionUpsell({ stats, programme, sportActif, onSelectPlan }) {
                     <span style={{ color: DS.colors.textSec, fontSize: 13 }}>{plan.unit}</span>
                   </div>
                 </div>
-                <div style={{ width: 22, height: 22, borderRadius: DS.radius.full, border: `2px solid ${selected === plan.id ? plan.color : DS.colors.textDim}`, background: selected === plan.id ? plan.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+                <div style={{ width: 22, height: 22, borderRadius: DS.radius.full, border: `2px solid ${selected === plan.id ? plan.color : DS.colors.textDim}`, background: selected === plan.id ? plan.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "var(--t-choix)" }}>
                   {selected === plan.id && <div style={{ width: 8, height: 8, borderRadius: DS.radius.full, background: "white" }} />}
                 </div>
               </div>
@@ -4764,13 +4782,13 @@ function BottomNav({ activeTab, setTab }) {
   const idx = Math.max(0, tabs.findIndex(t => t.id === activeTab));
   // Barre flottante façon « pilule », avec un repère qui glisse vers l'onglet choisi
   return (
-    <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 100, width: "calc(100% - 32px)", maxWidth: 398, background: DS.colors.navBg, backdropFilter: "blur(24px) saturate(160%)", WebkitBackdropFilter: "blur(24px) saturate(160%)", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, padding: 6, display: "flex", boxShadow: DS.colors.isDark ? "0 12px 40px rgba(0,0,0,0.6)" : "0 12px 36px rgba(0,0,0,0.12)" }}>
-      <div style={{ position: "absolute", top: 6, bottom: 6, left: 6, width: `calc((100% - 12px) / ${tabs.length})`, borderRadius: DS.radius.full, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, transform: `translateX(${idx * 100}%)`, transition: "transform 0.4s cubic-bezier(0.34,1.56,0.64,1)" }} />
+    <div style={{ position: "fixed", bottom: "calc(16px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 100, width: "calc(100% - 32px)", maxWidth: 398, background: DS.colors.navBg, backdropFilter: "blur(24px) saturate(160%)", WebkitBackdropFilter: "blur(24px) saturate(160%)", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, padding: 6, display: "flex", boxShadow: DS.colors.isDark ? "0 12px 40px rgba(0,0,0,0.6)" : "0 12px 36px rgba(0,0,0,0.12)" }}>
+      <div style={{ position: "absolute", top: 6, bottom: 6, left: 6, width: `calc((100% - 12px) / ${tabs.length})`, borderRadius: DS.radius.full, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, transform: `translateX(${idx * 100}%)`, transition: "transform 240ms var(--ease-out)" }} />
       {tabs.map(tab => {
         const isActive = activeTab === tab.id;
         return (
           <button key={tab.id} onClick={() => setTab(tab.id)} style={{ position: "relative", zIndex: 1, flex: 1, height: 52, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, cursor: "pointer" }}>
-            <span style={{ display: "flex", transform: isActive ? "translateY(-1px) scale(1.08)" : "none", transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}>{tab.icon(isActive)}</span>
+            <span style={{ display: "flex", transform: isActive ? "translateY(-1px) scale(1.08)" : "none", transition: "transform 200ms var(--ease-out)" }}>{tab.icon(isActive)}</span>
             <span style={{ color: isActive ? DS.colors.textPrimary : DS.colors.textSec, fontSize: 11, fontFamily: "'Inter',sans-serif", fontWeight: isActive ? 800 : 600, transition: "color 0.2s ease" }}>{tab.label}</span>
           </button>
         );
@@ -4858,50 +4876,66 @@ export default function VoltraApp() {
     applyTheme(appTheme);
     document.body.style.background = DS.colors.bg;
     document.body.style.color = DS.colors.textPrimary;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", DS.colors.bg);
   }, [appTheme]);
 
+  const ecranPrecedent = useRef(screen);
   // Transition douce à chaque changement d'écran ou d'onglet (opacité seulement, pour ne pas décaler les éléments fixés)
   useEffect(() => {
     const el = document.getElementById("root")?.firstElementChild;
     if (!el || !el.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: "ease-out" });
+    // Changer d'onglet arrive sans cesse : fondu très court. Changer d'écran : un peu plus présent.
+    const memeEcran = ecranPrecedent.current === screen;
+    ecranPrecedent.current = screen;
+    el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: memeEcran ? 120 : 220, easing: "ease-out" });
   }, [screen, activeTab, !!seanceActive]);
 
   useEffect(() => {
     const style = document.createElement("style");
     style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-      * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-      body { background: ${DS.colors.bg}; color: ${DS.colors.textPrimary}; font-family: 'Inter',sans-serif; }
+      :root {
+        --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+        --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+        --t-choix: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease, scale 120ms var(--ease-out);
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
+      body { background: ${DS.colors.bg}; color: ${DS.colors.textPrimary}; font-family: 'Inter',sans-serif; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
+      h1, h2 { letter-spacing: -0.02em; text-wrap: balance; }
+      p { text-wrap: pretty; }
+      button, a, [style*="cursor: pointer"] { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+      :focus-visible { outline: 2px solid #9BE84F; outline-offset: 2px; }
+      @media (pointer: coarse) { input, textarea, select { font-size: 16px !important; } }
       ::-webkit-scrollbar { display: none; }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       @keyframes fillCircle { from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      @keyframes pop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
-      @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+      @keyframes pop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      @keyframes fadeIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
       @keyframes splashPulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(0,255,135,0.5)); } 50% { transform: scale(1.08); filter: drop-shadow(0 0 40px rgba(0,255,135,0.8)); } }
-      @keyframes celebrate { 0% { transform: scale(0) rotate(-10deg); opacity: 0; } 50% { transform: scale(1.2) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+      @keyframes celebrate { from { transform: scale(0.8) rotate(-6deg); opacity: 0; } to { transform: scale(1) rotate(0deg); opacity: 1; } }
       @keyframes floatUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-60px); opacity: 0; } }
       /* Motion design : apparitions, relief au toucher, brillance */
-      @keyframes vFadeUp { from { opacity: 0; translate: 0 16px; } }
-      @keyframes vScaleIn { from { opacity: 0; scale: 0.92; } }
+      @keyframes vFadeUp { from { opacity: 0; translate: 0 10px; } }
+      @keyframes vScaleIn { from { opacity: 0; scale: 0.95; } }
       @keyframes vFloat { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
       @keyframes vGlow { 0% { box-shadow: 0 0 0 0 rgba(155,232,79,0.45); } 100% { box-shadow: 0 0 0 14px rgba(155,232,79,0); } }
       @keyframes vMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-      @keyframes vProgress { from { width: 0%; } to { width: 100%; } }
-      @keyframes vShine { from { transform: translateX(-120%) skewX(-20deg); } to { transform: translateX(260%) skewX(-20deg); } }
-      .v-stagger > * { animation: vFadeUp 0.55s cubic-bezier(0.2,0.8,0.2,1) both; }
-      ${Array.from({ length: 12 }, (_, i) => `.v-stagger > *:nth-child(${i + 1}) { animation-delay: ${(i * 0.05).toFixed(2)}s; }`).join("\n      ")}
-      .v-up { animation: vFadeUp 0.6s cubic-bezier(0.2,0.8,0.2,1) both; }
-      .v-pop { animation: vScaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+      @keyframes vProgress { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+      @keyframes vShine { 0% { transform: translateX(-120%) skewX(-20deg); } 25%, 100% { transform: translateX(260%) skewX(-20deg); } }
+      .v-stagger > * { animation: vFadeUp 300ms var(--ease-out) backwards; }
+      ${Array.from({ length: 12 }, (_, i) => `.v-stagger > *:nth-child(${i + 1}) { animation-delay: ${(i * 0.04).toFixed(2)}s; }`).join("\n      ")}
+      .v-up { animation: vFadeUp 320ms var(--ease-out) backwards; }
+      .v-pop { animation: vScaleIn 240ms var(--ease-out) backwards; }
       .v-float { animation: vFloat 3.2s ease-in-out infinite; }
-      .v-glow { animation: vGlow 2.2s ease-out infinite; }
+      .v-glow { animation: vGlow 1.6s ease-out 2; }
       .v-shine { position: relative; overflow: hidden; }
-      .v-shine::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent); animation: vShine 3.5s ease-in-out 1s infinite; pointer-events: none; }
-      button { transition: transform 0.15s ease, opacity 0.2s ease, background 0.25s ease, box-shadow 0.25s ease; }
-      button:not(:disabled):active { transform: scale(0.97); }
-      [style*="cursor: pointer"]:not(button) { transition: transform 0.15s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; }
-      [style*="cursor: pointer"]:not(button):active { transform: scale(0.98); }
+      .v-shine::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: vShine 7s var(--ease-out) 1.5s infinite; pointer-events: none; }
+      button { transition: var(--t-choix); }
+      button:not(:disabled):active { scale: 0.97; }
+      [style*="cursor: pointer"]:not(button) { transition: var(--t-choix); }
+      [style*="cursor: pointer"]:not(button):active { scale: 0.98; }
+      @media (hover: hover) and (pointer: fine) { button:not(:disabled):hover { filter: brightness(1.05); } }
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: 0.001ms !important; }
       }
@@ -5170,7 +5204,7 @@ if (screen === "pricing") return <PricingScreen programme={programmeActif} frequ
   }} />;
 
   return (
-    <div key={`${appTheme}-${screen}`} style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100vh" }}>
+    <div key={`${appTheme}-${screen}`} style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100dvh" }}>
 
       {/* Avertissement 2eme seance dans la journee (Pro uniquement) */}
       {showDoubleSessionWarning && (
