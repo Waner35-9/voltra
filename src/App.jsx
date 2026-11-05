@@ -2,6 +2,7 @@
 import { Fragment, useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ficheExercice, alternativesDisponibles, machinesParCategorie } from "./catalogueEquipements";
+import { IllustrationMachine, aUneIllustration } from "./illustrationsMachines";
 
 // Lien de confirmation d'email : on lit l'URL tout de suite, avant que Supabase ne la nettoie
 const URL_AU_CHARGEMENT = window.location.hash + window.location.search;
@@ -277,12 +278,14 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
         const setData = completedSetsData[`${exI}-${setI}`];
         repsParSet.push(setData?.reps || parseInt(ex.reps) || 8);
       }
+      const kgReels = Array.from({ length: ex.sets || 3 }, (_, setI) => completedSetsData[`${exI}-${setI}`]?.kg).filter(kg => kg > 0);
+      const chargeReelle = kgReels.length ? Math.max(...kgReels) : (ex.chargeKg || 0);
       const repsCible = parseInt(ex.reps) || 8;
       const taux = repsParSet.filter(r => r >= repsCible).length / repsParSet.length;
 
       await supabase.from("logs_performance").insert({
         exercice_id: exRecord.id, seance_id: seanceRecord.id, user_id: userId,
-        reps_par_set: repsParSet, charge_kg: ex.chargeKg || 0, feedback,
+        reps_par_set: repsParSet, charge_kg: chargeReelle, feedback,
         statut: taux === 1 ? "reussite" : taux >= 0.5 ? "partiel" : "echec",
       });
     }
@@ -966,7 +969,25 @@ function ExerciseAnimation({ exercice, accent = "#9BE84F", couleur = "#F4F4F5" }
   );
 }
 
+function ChampSerie({ label, valeur, unite, pas, onChange, accent }) {
+  const changer = (delta) => onChange(String(Math.max(0, Math.round(((Number(valeur) || 0) + delta) * 100) / 100)));
+  const bouton = { width: 40, height: 44, flexShrink: 0, borderRadius: 12, background: "rgba(255,255,255,0.1)", border: "none", color: "white", fontSize: 22, fontWeight: 700, cursor: "pointer" };
+  return (
+    <div style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, padding: "10px 8px" }}>
+      <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", color: "rgba(255,255,255,0.5)", textAlign: "center", marginBottom: 4 }}>{label}</p>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <button aria-label={`${label} moins`} onClick={() => changer(-pas)} style={bouton}>−</button>
+        <input aria-label={label} inputMode="decimal" value={valeur} onChange={e => onChange(e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""))} style={{ flex: 1, minWidth: 0, width: "100%", background: "none", border: "none", outline: "none", color: accent, fontFamily: "inherit", fontSize: 30, fontWeight: 900, textAlign: "center", padding: 0 }} />
+        <button aria-label={`${label} plus`} onClick={() => changer(pas)} style={bouton}>+</button>
+      </div>
+      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", textAlign: "center", marginTop: 4 }}>{unite}</p>
+    </div>
+  );
+}
+
 function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, absentes = [], onRemplacer }) {
+  const [saisieKg, setSaisieKg] = useState("");
+  const [saisieReps, setSaisieReps] = useState("");
   const [exercices, setExercices] = useState(seance?.exercices || []);
   const [showRemplacer, setShowRemplacer] = useState(false);
   const [retenirAbsente, setRetenirAbsente] = useState(false);
@@ -1019,6 +1040,15 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
 
   const currentEx = exercices[exIdx] || null;
   const ficheCourante = ficheExercice(currentEx);
+  const avecCharge = currentEx?.chargeKg > 0;
+  const repsChiffrees = /^\d+(\s*[-–]\s*\d+)?$/.test(String(currentEx?.reps ?? "").trim());
+  // Chaque série repart de la précédente, sinon de ce qui est prévu
+  useEffect(() => {
+    if (!currentEx) return;
+    const deja = completedSets[`${exIdx}-${setIdx}`] || completedSets[`${exIdx}-${setIdx - 1}`];
+    setSaisieKg(String(deja?.kg || currentEx.chargeKg || 0));
+    setSaisieReps(String(deja?.reps || parseInt(currentEx.reps) || 8));
+  }, [exIdx, setIdx, currentEx?.nom]);
   const alternatives = ficheCourante && ["machine", "poulie"].includes(ficheCourante.type) ? alternativesDisponibles(ficheCourante, absentes).slice(0, 4) : [];
   const remplacerCourant = (alt) => {
     const nouveau = onRemplacer(currentEx, alt, retenirAbsente && ficheCourante.id);
@@ -1116,7 +1146,10 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
 
   const handleSetComplete = () => {
     const key = `${exIdx}-${setIdx}`;
-    setCompletedSets(prev => ({ ...prev, [key]: { reps: parseInt(currentEx.reps) || 8, kg: currentEx.chargeKg || 0 } }));
+    setCompletedSets(prev => ({ ...prev, [key]: {
+      reps: repsChiffrees ? (Number(saisieReps) || parseInt(currentEx.reps) || 8) : (parseInt(currentEx.reps) || 8),
+      kg: avecCharge ? (Number(saisieKg) || currentEx.chargeKg) : 0,
+    } }));
     const msg = getRandom(MOTIVATION.complete);
     setToast(msg);
     setTimeout(() => setToast(null), 1400);
@@ -1229,7 +1262,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <p style={{ fontSize: 17, fontWeight: 800 }}>{currentEx.nom} — Série {nextSetNum}/{totalSets}</p>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{currentEx.reps} reps{currentEx.chargeKg > 0 ? ` · ${currentEx.chargeKg} kg` : ""}</p>
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{currentEx.reps} reps{avecCharge ? ` · ${saisieKg} kg` : ""}</p>
               </div>
               <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(90,200,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎯</div>
             </div>
@@ -1319,15 +1352,15 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
       )}
 
       {/* ── Photo immersive ── */}
-      <div key={animKey} style={{ position: "relative", height: "36vh", minHeight: 260, overflow: "hidden", flexShrink: 0 }}>
+      <div key={animKey} style={{ position: "relative", height: "34vh", minHeight: 200, overflow: "hidden", flexShrink: 0 }}>
         {/* Démo animée du mouvement (dessinée par l'app, instantanée) */}
         <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 70% 60% at 50% 62%, ${accentColor}26, transparent 70%), linear-gradient(180deg, #0B0D10 0%, #000 100%)` }} />
         <div key={currentEx?.nom} className="v-pop" style={{ position: "absolute", left: "10%", right: "10%", top: 78, bottom: 30 }}>
-          {ficheCourante && !ficheCourante.animation ? (
+          {aUneIllustration(ficheCourante) ? <IllustrationMachine fiche={ficheCourante} accent={accentColor} />
+          : ficheCourante && !ficheCourante.animation ? (
             <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 6 }}>
-              <span style={{ fontSize: 44 }}>{ficheCourante.type === "cross" ? "🔥" : "🏋️"}</span>
+              <span style={{ fontSize: 44 }}>💪</span>
               <p style={{ fontSize: 13, fontWeight: 800, color: accentColor }}>{ficheCourante.muscle}</p>
-              {ficheCourante.erreur && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.35 }}>À éviter : {ficheCourante.erreur}</p>}
             </div>
           ) : <ExerciseAnimation exercice={currentEx} accent={accentColor} />}
         </div>
@@ -1370,10 +1403,19 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
         {/* Chiffre géant */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", color: "rgba(255,255,255,0.4)", marginBottom: 2 }}>SÉRIE {setIdx + 1} SUR {totalSets}</p>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <span style={{ fontSize: 88, fontWeight: 900, lineHeight: 1, color: accentColor, letterSpacing: "-0.04em", textShadow: `0 0 50px ${accentColor}40` }}>{currentEx.reps}</span>
-            <span style={{ fontSize: 20, color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>{currentEx.chargeKg > 0 ? `× ${currentEx.chargeKg}kg${currentEx.chargeUnite === "par main" ? " /main" : ""}` : "reps"}</span>
-          </div>
+          {avecCharge || repsChiffrees ? (
+            <>
+              <div style={{ display: "flex", gap: 10, width: "100%", marginTop: 8 }}>
+                {avecCharge && <ChampSerie label="POIDS" valeur={saisieKg} unite={currentEx.chargeUnite === "par main" ? "kg par main" : "kg"} pas={currentEx.materiel === "halteres" || currentEx.materiel === "haltere_unique" ? 2 : 2.5} onChange={setSaisieKg} accent={accentColor} />}
+                {repsChiffrees && <ChampSerie label="RÉPÉTITIONS" valeur={saisieReps} unite="reps" pas={1} onChange={setSaisieReps} accent={accentColor} />}
+              </div>
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 8 }}>Prévu : {currentEx.reps} reps{avecCharge ? ` · ${currentEx.chargeKg} kg` : ""}</p>
+            </>
+          ) : (
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+              <span style={{ fontSize: 72, fontWeight: 900, lineHeight: 1, color: accentColor, letterSpacing: "-0.04em" }}>{currentEx.reps}</span>
+            </div>
+          )}
 
           {/* Séries cercles */}
           <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
@@ -1396,10 +1438,6 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
       </div>
 
 
-      {/* Bouton Coach IA flottant */}
-      <button onClick={() => setShowCoach(true)} style={{ position: "fixed", bottom: "calc(112px + env(safe-area-inset-bottom, 0px))", right: 20, width: 54, height: 54, borderRadius: DS.radius.full, background: accentColor, border: "none", color: "#000", fontSize: 22, cursor: "pointer", boxShadow: `0 0 24px ${accentColor}60`, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150 }}>
-        <AceAvatar size={22} />
-      </button>
 
       {/* Drawer Coach IA */}
       {showCoach && (
@@ -3460,7 +3498,7 @@ function HistoriqueScreen() {
       if (!session) { setLoading(false); return; }
       const { data } = await supabase
         .from("seances")
-        .select("*, exercices(*)")
+        .select("*, exercices(*, logs_performance(charge_kg))")
         .eq("user_id", session.user.id)
         .eq("statut", "faite")
         .order("date_realisee", { ascending: false })
@@ -3574,7 +3612,7 @@ function HistoriqueScreen() {
                     <p style={{ color: DS.colors.textPrimary, fontSize: 14, ...s.heading }}>{ex.nom}</p>
                     <p style={{ color: DS.colors.textSec, fontSize: 11 }}>{ex.muscles?.split(" ")[0]}</p>
                   </div>
-                  <p style={{ fontFamily: "'Inter',sans-serif", color: accentColor, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}{ex.charge_kg > 0 ? ` @ ${ex.charge_kg}kg` : ""}</p>
+                  <p style={{ fontFamily: "'Inter',sans-serif", color: accentColor, fontSize: 12, fontWeight: 700 }}>{ex.sets}×{ex.reps}{ex.charge_kg > 0 ? ` @ ${ex.logs_performance?.[0]?.charge_kg || ex.charge_kg}kg` : ""}</p>
                 </div>
               ))}
             </div>
@@ -4022,7 +4060,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
       // Record de kg soulevés en une seule seance + total seances toutes periodes
       const { data: allSeances, count: totalCount } = await supabase
         .from("seances")
-        .select("id, exercices(charge_kg, sets, reps)", { count: "exact" })
+        .select("id, exercices(charge_kg, sets, reps, logs_performance(charge_kg))", { count: "exact" })
         .eq("user_id", session.user.id)
         .eq("statut", "faite");
       if (allSeances) {
@@ -4031,7 +4069,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
         allSeances.forEach(sc => {
           const kgSeance = (sc.exercices || []).reduce((acc, ex) => {
             if (!(ex.charge_kg > 0)) return acc;
-            return acc + ex.charge_kg * (ex.sets || 1) * (parseInt(ex.reps) || 1);
+            return acc + (ex.logs_performance?.[0]?.charge_kg || ex.charge_kg) * (ex.sets || 1) * (parseInt(ex.reps) || 1);
           }, 0);
           if (kgSeance > maxKg) maxKg = kgSeance;
         });
@@ -4447,17 +4485,26 @@ function adaptationDuJour(matchs, cible, decalage = 0) {
   return null;
 }
 
-// Ressenti de séance : Facile +5 %, Dur -5 %, cumulés par exercice sur le programme en cours, sans dépasser ±15 %
+// Prochaine charge d'un exercice, sur le programme en cours :
+// - ecart : ce que l'utilisateur a vraiment soulevé par rapport au prévu
+// - ajust : son ressenti, Facile +5 %, Dur -5 %, sans dépasser ±15 %
 const cleExercice = (nom) => ficheExercice({ nom })?.id || String(nom || "").toLowerCase().trim();
 
 function ressentisParExercice(logs) {
   const ressentis = {};
   for (const log of logs || []) {
     const nom = log.exercices?.nom;
-    if (!nom || !["easy", "hard"].includes(log.feedback)) continue;
+    if (!nom) continue;
     const cle = cleExercice(nom);
-    const suivant = (ressentis[cle] ?? 1) * (log.feedback === "easy" ? 1.05 : 0.95);
-    ressentis[cle] = Math.min(1.15, Math.max(0.85, suivant));
+    const e = ressentis[cle] || (ressentis[cle] = { ecart: 1, ajust: 1, reel: 0 });
+    const prevu = Number(log.exercices?.charge_kg) || 0;
+    const reel = Number(log.charge_kg) || 0;
+    if (prevu > 0 && reel > 0) {
+      e.ecart *= reel / prevu;
+      e.reel = reel;
+    }
+    if (log.feedback === "easy") e.ajust = Math.min(1.15, e.ajust * 1.05);
+    if (log.feedback === "hard") e.ajust = Math.max(0.85, e.ajust * 0.95);
   }
   return ressentis;
 }
@@ -4467,16 +4514,23 @@ function poidsLePlusProche(kg, materiel) {
   const proche = (liste) => liste.reduce((a, b) => Math.abs(b - kg) < Math.abs(a - kg) ? b : a);
   if (materiel === "kettlebell") return proche(KETTLEBELLS);
   if (materiel === "medball") return proche(MEDBALLS);
-  const pas = materiel === "machine" ? 5 : materiel === "halteres" || materiel === "haltere_unique" ? 2 : 2.5;
+  const pas = materiel === "halteres" || materiel === "haltere_unique" ? 2 : 2.5;
   return Math.max(pas, Math.round(kg / pas) * pas);
 }
 
 function appliquerRessenti(ex, ressentis, profil) {
-  const m = ressentis?.[cleExercice(ex.nom)];
-  if (!m || m === 1 || !(ex.chargeKg > 0)) return ex;
-  const ajuste = securiserExercice({ ...ex, chargeKg: poidsLePlusProche(ex.chargeKg * m, ex.materiel) }, profil);
+  const e = ressentis?.[cleExercice(ex.nom)];
+  if (!e || !(ex.chargeKg > 0)) return ex;
+  const m = e.ecart * e.ajust;
+  if (Math.abs(m - 1) < 0.001) return ex;
+  const saisi = Math.abs(e.ecart - 1) >= 0.001;
+  const cible = poidsLePlusProche(ex.chargeKg * m, ex.materiel);
+  // Un poids déjà soulevé reste possible : il passe outre le plafond de sécurité
+  const securise = securiserExercice({ ...ex, chargeKg: cible }, profil);
+  const ajuste = saisi && cible <= e.reel * 1.1 ? { ...securise, chargeKg: cible } : securise;
   if (ajuste.chargeKg === ex.chargeKg) return ex;
-  return { ...ajuste, ajustement: `${ajuste.chargeKg > ex.chargeKg ? "↗" : "↘"} ${ajuste.chargeKg} kg au lieu de ${ex.chargeKg} kg : tes dernières séances étaient ${m > 1 ? "faciles" : "dures"}` };
+  const raison = saisi ? "d'après ce que tu as soulevé la dernière fois" : `tes dernières séances étaient ${m > 1 ? "faciles" : "dures"}`;
+  return { ...ajuste, ajustement: `${ajuste.chargeKg > ex.chargeKg ? "↗" : "↘"} ${ajuste.chargeKg} kg au lieu de ${ex.chargeKg} kg : ${raison}` };
 }
 
 // Prend les infos de la fiche du catalogue, en gardant séries et répétitions
@@ -5011,7 +5065,7 @@ export default function VoltraApp() {
     if (!programmeId) return setRessentis({});
     const { data } = await supabase
       .from("logs_performance")
-      .select("feedback, logged_at, exercices(nom), seances!inner(programme_id)")
+      .select("feedback, charge_kg, logged_at, exercices(nom, charge_kg), seances!inner(programme_id)")
       .eq("seances.programme_id", programmeId)
       .order("logged_at", { ascending: true })
       .limit(1000);
