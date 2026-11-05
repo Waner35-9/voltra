@@ -1835,7 +1835,7 @@ function ThemeChoiceScreen({ onChoose }) {
 // ─────────────────────────────────────────────
 // WELCOME SCREEN
 // ─────────────────────────────────────────────
-function WelcomeScreen({ onStart }) {
+function WelcomeScreen({ onStart, onLogin }) {
   const [featureIdx, setFeatureIdx] = useState(0);
   const accentTexte = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
 
@@ -1913,6 +1913,9 @@ function WelcomeScreen({ onStart }) {
         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, textAlign: "center", marginTop: 12 }}>
           2 minutes · 7 jours d'essai gratuit
         </p>
+        <button onClick={onLogin} style={{ width: "100%", height: 52, marginTop: 16, borderRadius: DS.radius.full, background: "transparent", border: `1.5px solid ${DS.colors.border}`, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+          Se connecter
+        </button>
       </div>
     </div>
   );
@@ -2045,7 +2048,7 @@ function LegalScreen({ initial = "cgu", onBack }) {
   );
 }
 
-function AuthScreen({ onAuth, confirmation, onboardingData }) {
+function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
   const [accepted, setAccepted] = useState(false);
   const [showLegal, setShowLegal] = useState(null);
   const [mode, setMode] = useState("login");
@@ -2181,6 +2184,7 @@ function AuthScreen({ onAuth, confirmation, onboardingData }) {
   return (
     <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: "0 24px" }}>
       <Bloom echelle={0.8} />
+      {onBack && <button onClick={onBack} style={{ position: "absolute", top: "calc(20px + env(safe-area-inset-top, 0px))", left: 24, zIndex: 1, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, fontFamily: "'Inter',sans-serif", cursor: "pointer", padding: 0 }}>← Retour</button>}
       <div className="v-stagger" style={{ paddingTop: 64, paddingBottom: 32 }}>
         <div style={{ width: 52, height: 52, borderRadius: 16, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 24 }}>⚡</div>
         <h1 key={mode} className="v-up" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 10 }}>
@@ -2292,7 +2296,7 @@ const EQUIPEMENTS = [
 
 const TOTAL_STEPS = 6;
 
-function OnboardingScreen({ onComplete }) {
+function OnboardingScreen({ onComplete, onLogin }) {
   const [step, setStep] = useState(0);
   const [data, setData] = useState({
     sport: null, objectif: null, poste: null,
@@ -2863,6 +2867,11 @@ function OnboardingScreen({ onComplete }) {
         {champProfil && (
           <button onClick={() => { setData(d => ({ ...d, [champProfil[0]]: null })); isLastStep ? setShowCoachDemo(true) : goNext(); }} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontWeight: 500 }}>
             Passer cette étape
+          </button>
+        )}
+        {step === 0 && onLogin && (
+          <button onClick={onLogin} style={{ width: "100%", marginTop: 12, padding: 8, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, fontFamily: "'Inter',sans-serif", cursor: "pointer" }}>
+            J'ai déjà un compte · <span style={{ color: DS.colors.textPrimary, fontWeight: 700 }}>Me connecter</span>
           </button>
         )}
       </div>
@@ -5019,7 +5028,7 @@ export default function VoltraApp() {
       if (_event === "SIGNED_OUT") {
         setUser(null);
         userRef.current = null;
-        setScreen("onboarding");
+        setScreen("welcome");
       } else if (_event === "TOKEN_REFRESHED" && session?.user) {
         setUser(session.user);
         userRef.current = session.user;
@@ -5076,7 +5085,7 @@ export default function VoltraApp() {
         // Vient de la confirmation email → aller à la connexion
         setScreen("auth");
       } else {
-        setScreen("onboarding");
+        setScreen("welcome");
       }
     };
     if (sessionCheckedRef.current) {
@@ -5102,7 +5111,7 @@ export default function VoltraApp() {
     setUser(null);
     setCibleEtat(null);
     setPricingRetour(false);
-    setScreen("onboarding");
+    setScreen("welcome");
   };
 
   useEffect(() => {
@@ -5162,7 +5171,7 @@ export default function VoltraApp() {
     localStorage.setItem("voltra_theme", theme);
     setScreen("welcome");
   }} />;
-  if (screen === "welcome") return <div key={appTheme}><WelcomeScreen onStart={() => setScreen("onboarding")} /></div>;
+  if (screen === "welcome") return <div key={appTheme}><WelcomeScreen onStart={() => setScreen("onboarding")} onLogin={() => setScreen("auth")} /></div>;
   if (screen === "splash") return <SplashScreen onDone={() => setSplashDone(true)} />;
   if (screen === "payment-success") return <PaymentSuccessScreen
     plan={paidPlan}
@@ -5189,18 +5198,21 @@ export default function VoltraApp() {
     cycleLoading={cycleComplete}
     onContinue={() => setScreen("app")}
   />;
-  if (screen === "auth") return <AuthScreen confirmation={authConfirmation} onboardingData={onboardingData} onAuth={async (u) => {
+  if (screen === "auth") return <AuthScreen confirmation={authConfirmation} onboardingData={onboardingData} onBack={onboardingData || authConfirmation ? null : () => setScreen("welcome")} onAuth={async (u) => {
     setUser(u);
     userRef.current = u;
     let ob = onboardingData;
-    // Email confirmé dans un autre onglet/appareil : on reprend les réponses gardées avec le compte, s'il n'a pas encore de programme
-    if (!ob && u.user_metadata?.onboarding) {
-      const { data: progs } = await supabase.from("programmes").select("id").eq("user_id", u.id).limit(1);
-      if (!progs?.length) {
-        ob = u.user_metadata.onboarding;
-        setOnboardingData(ob);
-        setSportActif(ob.sport);
-      }
+    const { data: progs } = await supabase.from("programmes").select("id").eq("user_id", u.id).limit(1);
+    if (progs?.length) {
+      // Compte existant : il retrouve son programme, même s'il a refait le questionnaire avant de se connecter
+      ob = null;
+      setOnboardingData(null);
+      setCibleEtat(null);
+    } else if (!ob && u.user_metadata?.onboarding) {
+      // Email confirmé dans un autre onglet/appareil : on reprend les réponses gardées avec le compte
+      ob = u.user_metadata.onboarding;
+      setOnboardingData(ob);
+      setSportActif(ob.sport);
     }
     // Sauvegarder le sport dans le profil
     if (ob?.sport) {
@@ -5215,11 +5227,13 @@ export default function VoltraApp() {
       setPricingRetour(false);
       setScreen("pricing");
       startGeneration(ob);
+    } else if (progs && !progs.length) {
+      setScreen("onboarding");
     } else {
       setScreen("app");
     }
   }} />;
-  if (screen === "onboarding") return <OnboardingScreen onComplete={(data, programme) => {
+  if (screen === "onboarding") return <OnboardingScreen onLogin={user ? null : () => setScreen("auth")} onComplete={(data, programme) => {
     if (programme) setProgrammeActif(programme);
     setSportActif(data.sport);
     setOnboardingData(data);
