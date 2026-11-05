@@ -3,7 +3,7 @@
 Générée automatiquement à chaque commit : ne pas modifier à la main.
 Pour lire un bloc : `sed -n 'début,finp' fichier`.
 
-## src/App.jsx (5706 lignes)
+## src/App.jsx (5744 lignes)
 
 Écrans : auth, cycle-complete, objectif, objectif-edit, onboarding, payment-success, pricing, programme-generating, splash, theme-choice, welcome
 Tables : avatars, exercices, logs_performance, matchs, profiles, programmes, seances, tests_performance
@@ -105,54 +105,54 @@ Fonctions SQL : appliquer_deload, calculer_progression, check_deload_needed
   - skipGeneration : 2520
   - toggleDouleur : 2526
   - canNext : 2541
-- PricingScreen : 3001-3124
-- MatchsScreen : 3125-3269
-- DashboardScreen : 3270-3512
-- HistoriqueScreen : 3513-3800
-- callSubscription : 3801-3813
-- SubscriptionScreen : 3814-3981
-- MaSalleScreen : 3982-4014
-- ProfilScreen : 4015-4451
-  - handleAvatarUpload : 4036
-  - openEdit : 4120
-  - saveEdit : 4125
-- JOUR_MS : 4452-4452
-- CIBLES : 4453-4458
-- dateLocale : 4459-4459
-- isoDans : 4460-4460
-- joursAvant : 4461-4461
-- dateLongue : 4462-4464
-- phasesObjectif : 4465-4481
-- etatPlan : 4482-4495
-- datesDeMatch : 4496-4502
-- adaptationDuJour : 4503-4516
-- cleExercice : 4517-4518
-- ressentisParExercice : 4519-4538
-- poidsLePlusProche : 4539-4546
-- appliquerRessenti : 4547-4562
-- exerciceDepuisFiche : 4563-4577
-- adapterSeance : 4578-4590
-- Bloom : 4591-4593
-- ObjectifScreen : 4594-4735
-- MissionCard : 4736-4777
-- SemaineCard : 4778-4816
-- TESTS_PERF : 4817-4821
-- virgule : 4822-4822
-- INTERVALLE_TEST : 4823-4824
-- useTests : 4825-4835
-- TestCard : 4836-4851
-- TestScreen : 4852-4924
-- dessinerSlide : 4925-4956
-- CarrouselScreen : 4957-5024
-- BottomNav : 5025-5051
-- VoltraApp : 5052-5706
-  - changerAbsentes : 5085
-  - chargerRessentis : 5090
-  - profilDeCharges : 5102
-  - remplacerExercice : 5114
-  - launchSeance : 5120
-  - startGeneration : 5159
-  - handleLogout : 5376
+- PricingScreen : 3001-3125
+- MatchsScreen : 3126-3270
+- DashboardScreen : 3271-3513
+- HistoriqueScreen : 3514-3801
+- callSubscription : 3802-3814
+- SubscriptionScreen : 3815-4019
+- MaSalleScreen : 4020-4052
+- ProfilScreen : 4053-4489
+  - handleAvatarUpload : 4074
+  - openEdit : 4158
+  - saveEdit : 4163
+- JOUR_MS : 4490-4490
+- CIBLES : 4491-4496
+- dateLocale : 4497-4497
+- isoDans : 4498-4498
+- joursAvant : 4499-4499
+- dateLongue : 4500-4502
+- phasesObjectif : 4503-4519
+- etatPlan : 4520-4533
+- datesDeMatch : 4534-4540
+- adaptationDuJour : 4541-4554
+- cleExercice : 4555-4556
+- ressentisParExercice : 4557-4576
+- poidsLePlusProche : 4577-4584
+- appliquerRessenti : 4585-4600
+- exerciceDepuisFiche : 4601-4615
+- adapterSeance : 4616-4628
+- Bloom : 4629-4631
+- ObjectifScreen : 4632-4773
+- MissionCard : 4774-4815
+- SemaineCard : 4816-4854
+- TESTS_PERF : 4855-4859
+- virgule : 4860-4860
+- INTERVALLE_TEST : 4861-4862
+- useTests : 4863-4873
+- TestCard : 4874-4889
+- TestScreen : 4890-4962
+- dessinerSlide : 4963-4994
+- CarrouselScreen : 4995-5062
+- BottomNav : 5063-5089
+- VoltraApp : 5090-5744
+  - changerAbsentes : 5123
+  - chargerRessentis : 5128
+  - profilDeCharges : 5140
+  - remplacerExercice : 5152
+  - launchSeance : 5158
+  - startGeneration : 5197
+  - handleLogout : 5414
 
 ## src/Auth.jsx (119 lignes)
 
@@ -245,13 +245,18 @@ Secrets lus (noms seulement) : STRIPE_SECRET_KEY
 
 - JOURS_ESSAI : 20-84
 
-## supabase/functions/stripe-portal/index.ts (127 lignes)
+## supabase/functions/stripe-portal/index.ts (187 lignes)
 
-Secrets lus (noms seulement) : STRIPE_SECRET_KEY, SUPABASE_ANON_KEY, SUPABASE_URL
+Secrets lus (noms seulement) : RESEND_API_KEY, STRIPE_SECRET_KEY, SUPABASE_ANON_KEY, SUPABASE_URL
 
 - json : 10-12
 - stripe : 13-27
-- findSubscription : 28-127
+- findSubscription : 28-38
+- RETRACTATION_SECONDES : 39-41
+- paiementsRemboursables : 42-46
+- totalEuros : 47-49
+- euros : 50-52
+- envoyerAccuseRetractation : 53-187
 
 ## supabase/functions/stripe-webhook/index.ts (155 lignes)
 

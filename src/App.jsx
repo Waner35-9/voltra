@@ -2081,7 +2081,7 @@ function SplashScreen({ onDone }) {
 // DOCUMENTS LEGAUX
 // ─────────────────────────────────────────────
 const LEGAL_EMAIL = "contact.voltra1@gmail.com";
-const LEGAL_DATE = "4 novembre 2026";
+const LEGAL_DATE = "5 novembre 2026";
 // À compléter par Erwan : affichés automatiquement dès qu'ils sont renseignés
 const LEGAL_SIRET = "";
 const LEGAL_STATUT = "";
@@ -2093,10 +2093,10 @@ const LEGAL_DOCS = {
     sections: [
       ["1. Objet", "Voltra est une application web de préparation physique qui génère des programmes d'entraînement personnalisés grâce à l'intelligence artificielle, et propose un coach virtuel (Ace). Les présentes conditions encadrent l'utilisation de l'application et la vente des abonnements. En créant un compte, tu les acceptes."],
       ["2. Éditeur", `Voltra, édité par Erwan Mantouba, Rennes (35000), France. Contact : ${LEGAL_EMAIL}.`],
-      ["3. Compte", "Tu dois avoir au moins 12 ans pour créer un compte. Les moins de 15 ans doivent avoir l'accord de leur représentant légal pour l'utilisation de leurs données personnelles, et les mineurs doivent avoir l'accord de leur représentant légal pour tout achat. Tu es responsable de la confidentialité de tes identifiants et des informations que tu fournis, qui doivent être exactes."],
+      ["3. Compte et âge", `Tu dois avoir au moins 15 ans pour créer un compte. L'abonnement doit être souscrit par une personne majeure ou par un parent. Si un mineur s'est abonné sans cet accord, son représentant légal peut écrire à ${LEGAL_EMAIL} : l'abonnement est arrêté et remboursé, et le compte supprimé sur simple demande. Tu es responsable de la confidentialité de tes identifiants et des informations que tu fournis, qui doivent être exactes.`],
       ["4. Offres et prix", "Voltra propose deux abonnements, mensuel et annuel, avec un essai gratuit de 7 jours. Une carte bancaire est demandée pour démarrer l'essai, mais aucun paiement n'est prélevé pendant celui-ci. Sans résiliation avant la fin de l'essai, l'abonnement démarre automatiquement et le premier paiement est prélevé. Un e-mail de rappel est envoyé avant la fin de l'essai. Les tarifs en vigueur sont affichés dans l'application, toutes taxes comprises, avant le paiement. Les paiements sont traités de façon sécurisée par Stripe ; Voltra n'a jamais accès à tes données bancaires."],
       ["5. Abonnements et résiliation", `Les abonnements se renouvellent automatiquement à chaque échéance (mensuelle ou annuelle) jusqu'à résiliation. Tu peux résilier à tout moment, en quelques clics, depuis ton profil (« Gérer mon abonnement »), ou en écrivant à ${LEGAL_EMAIL} ; la résiliation prend effet à la prochaine échéance et l'accès Pro reste actif jusqu'à la fin de la période déjà payée. Une réduction de bienvenue peut s'appliquer à la première année de l'abonnement annuel uniquement, dans les conditions affichées lors de l'offre.`],
-      ["6. Droit de rétractation", `Conformément au Code de la consommation, tu disposes de 14 jours à compter de ta souscription pour te rétracter, sans avoir à te justifier, en écrivant à ${LEGAL_EMAIL}. Le contenu numérique (programme généré, accès Pro) étant fourni immédiatement, en validant ton achat tu demandes l'exécution immédiate du service et reconnais perdre ton droit de rétractation une fois le service pleinement exécuté ; en cas de rétractation dans le délai, tu ne paies que la part de service déjà utilisée.`],
+      ["6. Droit de rétractation", `Tu disposes de 14 jours à compter de ta souscription pour te rétracter, sans avoir à te justifier et sans frais.\n\nComment faire : dans ton profil, ouvre « Gérer mon abonnement », choisis « Renoncer au contrat ici », puis « Confirmer la rétractation ». Tu peux aussi nous écrire à ${LEGAL_EMAIL}, avec le modèle ci-dessous ou toute autre déclaration claire. Nous t'envoyons un accusé de réception par e-mail.\n\nEffets : ton abonnement et ton accès Pro s'arrêtent immédiatement, et nous te remboursons intégralement tous les paiements effectués, au plus tard 14 jours après ta demande, par le même moyen de paiement. Pendant l'essai gratuit, rien n'a été prélevé : il n'y a rien à rembourser.\n\nModèle de rétractation :\nÀ l'attention de Voltra, Erwan Mantouba, Rennes (35000), France, ${LEGAL_EMAIL}.\nJe vous notifie par la présente ma rétractation du contrat portant sur l'abonnement Voltra Pro.\nSouscrit le : ...\nNom et e-mail du compte : ...\nDate : ...`],
       ["7. Santé et sécurité — important", "Voltra fournit des conseils sportifs généraux et ne remplace en aucun cas un avis médical. Avant de commencer un programme, consulte un médecin, surtout en cas de blessure, de douleur, de pathologie, de grossesse ou de reprise après une longue pause. Les programmes et les réponses du coach IA sont générés automatiquement : ils peuvent comporter des erreurs et doivent être adaptés à ta condition. Tu t'entraînes sous ta seule responsabilité et tu arrêtes immédiatement en cas de douleur ou de malaise. Dans la mesure permise par la loi, Voltra ne peut être tenu responsable des blessures liées à une mauvaise utilisation du service."],
       ["8. Utilisation acceptable", "Tu t'engages à ne pas détourner l'application (piratage, extraction automatisée, partage de ton compte, contournement des limites de l'essai gratuit) ni à demander au coach IA des contenus illicites ou dangereux. Voltra peut suspendre un compte en cas d'abus."],
       ["9. Propriété intellectuelle", "L'application, son design, sa marque et ses contenus sont protégés. Tu bénéficies d'un droit d'usage personnel, non exclusif et non transférable. Les programmes générés pour toi sont à ton usage personnel."],
@@ -2118,7 +2118,7 @@ const LEGAL_DOCS = {
       ["Durée de conservation", "Tes données sont conservées tant que ton compte est actif, puis supprimées dans un délai de 30 jours après la suppression du compte. Les données de facturation sont conservées 10 ans (obligation légale comptable) par notre prestataire de paiement."],
       ["Tes droits", `Tu disposes des droits d'accès, de rectification, d'effacement, de limitation, d'opposition, de portabilité et du droit de retirer ton consentement à tout moment. Pour les exercer : ${LEGAL_EMAIL} (réponse sous 1 mois). Tu peux aussi modifier tes informations directement dans ton profil. En cas de désaccord, tu peux saisir la CNIL (www.cnil.fr).`],
       ["Cookies et stockage local", "Voltra utilise uniquement le stockage de ton navigateur pour le fonctionnement de l'application (session de connexion, thème clair/sombre, séance en pause). Nous n'utilisons pas de cookies publicitaires."],
-      ["Mineurs", `Voltra est accessible dès 12 ans. Pour les moins de 15 ans, le traitement des données (y compris de santé) nécessite l'accord d'un représentant légal ; sur demande à ${LEGAL_EMAIL}, nous supprimons sans délai les données d'un mineur collectées sans cet accord.`],
+      ["Mineurs", `Voltra est accessible dès 15 ans. Sur demande d'un représentant légal à ${LEGAL_EMAIL}, nous supprimons sans délai le compte et les données d'un mineur.`],
       ["Sécurité", "Les échanges sont chiffrés (HTTPS) et l'accès aux données est protégé par des règles d'accès par utilisateur. Aucun système n'étant infaillible, nous t'informerons en cas d'incident te concernant, conformément à la loi."],
       ["Dernière mise à jour", LEGAL_DATE],
     ],
@@ -2324,7 +2324,7 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 16 }}>
             <div onClick={() => setAccepted(a => !a)} style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1, cursor: "pointer", background: accepted ? DS.colors.primary : "transparent", border: `2px solid ${accepted ? DS.colors.primary : DS.colors.textSec}`, display: "flex", alignItems: "center", justifyContent: "center", color: "#000", fontSize: 13, fontWeight: 800 }}>{accepted ? "✓" : ""}</div>
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, lineHeight: 1.5, color: DS.colors.textSec, margin: 0 }}>
-              J'ai au moins 12 ans (accord d'un parent si moins de 15 ans) et j'accepte les <span onClick={() => setShowLegal("cgu")} style={{ color: DS.colors.primary, fontWeight: 700, textDecoration: "underline", cursor: "pointer" }}>CGU</span> et la <span onClick={() => setShowLegal("privacy")} style={{ color: DS.colors.primary, fontWeight: 700, textDecoration: "underline", cursor: "pointer" }}>politique de confidentialité</span>, et que mes données de santé facultatives (blessures, poids, âge) soient utilisées pour personnaliser mon programme.
+              J'ai au moins 15 ans et j'accepte les <span onClick={() => setShowLegal("cgu")} style={{ color: DS.colors.primary, fontWeight: 700, textDecoration: "underline", cursor: "pointer" }}>CGU</span> et la <span onClick={() => setShowLegal("privacy")} style={{ color: DS.colors.primary, fontWeight: 700, textDecoration: "underline", cursor: "pointer" }}>politique de confidentialité</span>, et que mes données de santé facultatives (blessures, poids, âge) soient utilisées pour personnaliser mon programme.
             </p>
           </div>
         )}
@@ -2934,7 +2934,7 @@ function OnboardingScreen({ onComplete, onLogin }) {
         {contentStep === 6 && (
           <div>
             <StepTitle title="Quel âge as-tu ?" sub="Ton âge nous aide à doser les charges et la récupération." />
-            <WheelPicker values={Array.from({ length: 59 }, (_, i) => i + 12)} value={data.age ?? 20} onChange={v => setData(d => ({ ...d, age: v }))} format={v => `${v} ans`} />
+            <WheelPicker values={Array.from({ length: 56 }, (_, i) => i + 15)} value={data.age ?? 20} onChange={v => setData(d => ({ ...d, age: v }))} format={v => `${v} ans`} />
           </div>
         )}
 
@@ -3114,6 +3114,7 @@ function PricingScreen({ programme, user, cible, onBack, onLogout }) {
         {loading ? "Redirection vers Stripe..." : "Essayer 7 jours gratuitement"}
       </PrimaryButton>
       <p style={{ fontSize: 12, color: DS.colors.textSec, textAlign: "center", marginTop: 10, lineHeight: 1.4 }}>Carte demandée · Rien à payer aujourd'hui · Annule avant le {premierPaiement} en quelques clics</p>
+      <p style={{ fontSize: 11, color: DS.colors.textSec, textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>L'abonnement doit être souscrit par une personne majeure ou par un parent.</p>
       {onLogout && <button onClick={onLogout} style={{ display: "block", width: "100%", marginTop: 12, padding: 8, background: "none", border: "none", color: DS.colors.textSec, fontSize: 13, cursor: "pointer" }}>Se déconnecter</button>}
     </div>
   );
@@ -3814,10 +3815,11 @@ async function callSubscription(action, extra = {}) {
 function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
   const [info, setInfo] = useState(null);
   const [loadErr, setLoadErr] = useState("");
-  const [flow, setFlow] = useState(0); // 0 normal, 1 avant de partir, 2 offre, 3 confirmation
+  const [flow, setFlow] = useState(0); // 0 normal, 1 avant de partir, 2 offre, 3 confirmation, 4 rétractation, 5 rétractation faite
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [retraction, setRetraction] = useState(null);
 
   const load = async () => {
     try { setInfo(await callSubscription("info")); setLoadErr(""); }
@@ -3853,6 +3855,13 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
     setBusy(false);
   };
 
+  const retract = async () => {
+    setBusy(true); setMsg("");
+    try { setRetraction(await callSubscription("retract")); setFlow(5); }
+    catch (e) { setMsg(e.code === "retractation_expired" ? "Le délai de 14 jours est dépassé." : "La rétractation n'a pas abouti. Réessaie ou écris à contact.voltra1@gmail.com"); }
+    setBusy(false);
+  };
+
   const card = { background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 };
   const h = { fontFamily: "'Inter',sans-serif", fontWeight: 800, color: DS.colors.textPrimary, margin: 0 };
   const t = { fontFamily: "'Inter',sans-serif", fontSize: 13, lineHeight: 1.55, color: DS.colors.textSec, margin: 0 };
@@ -3864,7 +3873,7 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: DS.colors.bg, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
       <div style={{ padding: "52px 16px 12px", display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${DS.colors.border}`, position: "sticky", top: 0, background: DS.colors.bg, zIndex: 2 }}>
-        <button onClick={flow ? () => setFlow(0) : onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: 20, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 16, cursor: "pointer" }}>←</button>
+        <button onClick={flow === 5 ? () => window.location.reload() : flow ? () => setFlow(0) : onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: 20, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 16, cursor: "pointer" }}>←</button>
         <p style={{ ...h, fontSize: 18 }}>Mon abonnement</p>
       </div>
 
@@ -3915,6 +3924,14 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
               <p style={{ ...t, marginBottom: 12 }}>Change ta carte bancaire, consulte et télécharge tes factures.</p>
               <button onClick={() => goPortal("portal")} disabled={busy} style={btnGhost}>{busy ? "Ouverture..." : "Moyen de paiement et factures"}</button>
             </div>
+
+            {info.canRetract && (
+              <div style={card}>
+                <p style={{ ...h, fontSize: 14, marginBottom: 6 }}>Droit de rétractation</p>
+                <p style={{ ...t, marginBottom: 12 }}>Tu peux changer d'avis jusqu'au {dateFr(info.retractUntil)}. {info.refundable > 0 ? "Remboursement intégral." : "Aucun paiement prélevé pour l'instant."}</p>
+                <button onClick={() => { setMsg(""); setFlow(4); }} style={btnGhost}>Renoncer au contrat ici</button>
+              </div>
+            )}
 
             {!info.cancelAtPeriodEnd && (
               <p onClick={() => { setMsg(""); setFlow(1); }} style={link}>Résilier mon abonnement</p>
@@ -3971,6 +3988,27 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
             </div>
             <button onClick={onBack} style={btnMain}>Finalement, je reste</button>
             <button onClick={() => goPortal("cancel_flow")} disabled={busy} style={{ ...btnGhost, marginTop: 12, color: "#FF2D55", borderColor: "rgba(255,45,85,0.3)" }}>{busy ? "Ouverture..." : "Confirmer la résiliation"}</button>
+          </>
+        )}
+
+        {info && flow === 4 && (
+          <>
+            <div style={card}>
+              <p style={{ ...h, fontSize: 20, marginBottom: 8 }}>Te rétracter</p>
+              <p style={t}>{enEssai ? "Ton essai" : "Ton abonnement"} et ton accès Pro s'arrêtent tout de suite. {info.refundable > 0 ? <>Nous te remboursons <b>{info.refundable.toFixed(2).replace(".", ",")} €</b> sur ton moyen de paiement, sous 14 jours au plus tard.</> : "Aucun paiement n'a été prélevé, et tu ne seras pas débité."} Tu garderas ton compte et ton historique.</p>
+            </div>
+            <button onClick={onBack} style={btnMain}>Finalement, je reste</button>
+            <button onClick={retract} disabled={busy} style={{ ...btnGhost, marginTop: 12, color: "#FF2D55", borderColor: "rgba(255,45,85,0.3)" }}>{busy ? "Envoi..." : "Confirmer la rétractation"}</button>
+          </>
+        )}
+
+        {flow === 5 && retraction && (
+          <>
+            <div style={card}>
+              <p style={{ ...h, fontSize: 20, marginBottom: 8 }}>Rétractation confirmée</p>
+              <p style={t}>{retraction.refunded > 0 ? `Ton remboursement de ${retraction.refunded.toFixed(2).replace(".", ",")} € est lancé. Il arrive sous 14 jours au plus tard.` : "Tu n'as rien à payer."} {retraction.emailSent ? "Une confirmation vient de t'être envoyée par e-mail." : "Si tu veux une confirmation écrite, écris à contact.voltra1@gmail.com"}</p>
+            </div>
+            <button onClick={() => window.location.reload()} style={btnMain}>Retour à l'accueil</button>
           </>
         )}
       </div>

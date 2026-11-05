@@ -3,8 +3,9 @@
 À ne pas rediscuter sauf si Waner le demande.
 
 - **Pas de plafond de messages** sur le coach pour l'instant.
-- **Pas de case de rétractation** dans le parcours d'achat : le sujet est dans les CGU. Risque légal à faire relire par un juriste.
-- **Âge minimum 12 ans**, accord parental sous 15 ans. Pas de notation du physique par photo, à cause des mineurs.
+- **Pas de case de rétractation** dans le parcours d'achat : à la place, remboursement intégral et arrêt immédiat sur demande pendant 14 jours après la souscription.
+- **Pas de relecture par un juriste** pour le lancement : choix de Waner, le 5 novembre 2026.
+- **Âge minimum 15 ans** (5 novembre 2026), abonnement souscrit par un adulte ou un parent. Pas de notation du physique par photo, à cause des mineurs.
 - **Machines : des dessins, pas de photos ni de tutoriel**, car les salles ont déjà leurs explications. Les mouvements libres gardent le bonhomme animé.
 - **Pas de 3D pour le MVP** (essai Blender abandonné ; vidéos de test non versionnées dans `docs/videos-test/`).
 - **Le plan va jusqu'à la date de l'objectif**, pas un nombre fixe de semaines.
