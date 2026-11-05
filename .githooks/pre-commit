@@ -1,0 +1,7 @@
+#!/bin/sh
+# Remet à jour la carte du code à chaque commit. Ne bloque jamais un commit.
+export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+command -v node >/dev/null 2>&1 || exit 0
+node scripts/carte-du-code.mjs >/dev/null 2>&1 || exit 0
+git add cerveau/carte-du-code.md >/dev/null 2>&1
+exit 0
