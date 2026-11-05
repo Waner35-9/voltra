@@ -112,7 +112,10 @@ serve(async (req) => {
       }
 
       case "customer.subscription.trial_will_end": {
-        await envoyerRappelEssai(event.data?.object);
+        // Pas de rappel de paiement à quelqu'un qui a déjà résilié
+        const abonnement = event.data?.object;
+        if (abonnement?.cancel_at || abonnement?.cancel_at_period_end) break;
+        await envoyerRappelEssai(abonnement);
         break;
       }
 

@@ -1995,7 +1995,7 @@ const LEGAL_DOCS = {
       ["Données que nous collectons", "• Compte : prénom, adresse e-mail, mot de passe (stocké chiffré, jamais lisible).\n• Profil sportif : sport, objectif, poste ou discipline, niveau, fréquence et jours d'entraînement, équipement.\n• Données de santé : zones de douleur ou de blessure, poids, âge, taille. Ces informations sont facultatives et servent uniquement à adapter tes programmes.\n• Activité : séances réalisées, charges, répétitions, historique, records.\n• Photo de profil (facultative).\n• Échanges avec le coach IA.\n• Paiement : géré par Stripe ; nous recevons seulement l'état de ton abonnement, jamais ton numéro de carte."],
       ["Pourquoi (finalités et bases légales)", "• Créer ton compte et fournir le service, générer tes programmes et le coach IA : exécution du contrat.\n• Traiter tes données de santé (blessures, poids, âge) pour personnaliser l'entraînement : ton consentement explicite, que tu donnes en les renseignant et que tu peux retirer à tout moment.\n• Gérer les paiements et obligations comptables : exécution du contrat et obligation légale.\n• Sécuriser le service et prévenir les abus : intérêt légitime."],
       ["Intelligence artificielle", "Pour générer ton programme et répondre au coach, les informations utiles de ton profil (sport, objectif, niveau, blessures, poids, âge, séance en cours) et tes messages sont transmis à notre prestataire d'IA (Anthropic). Ton adresse e-mail et ton identité ne sont pas nécessaires à cette génération. Les décisions prises par l'IA (programme, conseils) ne produisent pas d'effet juridique sur toi."],
-      ["Prestataires et transferts hors UE", "Nous faisons appel à : Supabase (base de données, authentification, stockage), Vercel (hébergement de l'application), Stripe (paiement), Anthropic (intelligence artificielle). Certains sont situés aux États-Unis ou ailleurs hors Union européenne ; les transferts sont encadrés par des garanties appropriées (clauses contractuelles types de la Commission européenne ou équivalent). Nous ne vendons jamais tes données."],
+      ["Prestataires et transferts hors UE", "Nous faisons appel à : Supabase (base de données, authentification, stockage), Vercel (hébergement de l'application), Stripe (paiement), Anthropic (intelligence artificielle), Resend (envoi des e-mails). Certains sont situés aux États-Unis ou ailleurs hors Union européenne ; les transferts sont encadrés par des garanties appropriées (clauses contractuelles types de la Commission européenne ou équivalent). Nous ne vendons jamais tes données."],
       ["Durée de conservation", "Tes données sont conservées tant que ton compte est actif, puis supprimées dans un délai de 30 jours après la suppression du compte. Les données de facturation sont conservées 10 ans (obligation légale comptable) par notre prestataire de paiement."],
       ["Tes droits", `Tu disposes des droits d'accès, de rectification, d'effacement, de limitation, d'opposition, de portabilité et du droit de retirer ton consentement à tout moment. Pour les exercer : ${LEGAL_EMAIL} (réponse sous 1 mois). Tu peux aussi modifier tes informations directement dans ton profil. En cas de désaccord, tu peux saisir la CNIL (www.cnil.fr).`],
       ["Cookies et stockage local", "Voltra utilise uniquement le stockage de ton navigateur pour le fonctionnement de l'application (session de connexion, thème clair/sombre, séance en pause). Nous n'utilisons pas de cookies publicitaires."],
@@ -3703,6 +3703,8 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
   const dateFr = (unix) => unix ? new Date(unix * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
   const isYear = info?.interval === "year";
   const planLabel = info ? `${isYear ? "Annuel" : "Mensuel"} · ${String(info.amount).replace(".", ",")} €/${isYear ? "an" : "mois"}` : "";
+  const enEssai = info?.status === "trialing";
+  const premierPaiement = info ? String(isYear && info.hasDiscount ? 56.24 : info.amount).replace(".", ",") : "";
 
   const goPortal = async (action) => {
     setBusy(true); setMsg("");
@@ -3764,10 +3766,12 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
               </div>
               <p style={{ ...t, color: DS.colors.textPrimary, fontWeight: 600 }}>{planLabel}</p>
               <p style={{ ...t, marginTop: 6 }}>
-                {info.cancelAtPeriodEnd ? `Résiliation prévue : ton accès reste actif jusqu'au ${dateFr(info.periodEnd)}.`
+                {enEssai && info.cancelAtPeriodEnd ? `Résiliation prévue : ton essai reste actif jusqu'au ${dateFr(info.periodEnd)}. Tu ne seras pas débité.`
+                  : enEssai ? `Essai gratuit jusqu'au ${dateFr(info.periodEnd)}. Premier paiement ce jour-là : ${premierPaiement} €, sauf si tu résilies avant.`
+                  : info.cancelAtPeriodEnd ? `Résiliation prévue : ton accès reste actif jusqu'au ${dateFr(info.periodEnd)}.`
                   : info.paused ? `Pause active : ton prochain mois est offert.`
                   : `Prochain renouvellement le ${dateFr(info.periodEnd)}.`}
-                {info.hasDiscount && !info.cancelAtPeriodEnd ? " 🎁 Réduction de fidélité appliquée." : ""}
+                {info.offerUsed && info.hasDiscount && !info.cancelAtPeriodEnd ? " 🎁 Réduction de fidélité appliquée." : ""}
               </p>
               {info.cancelAtPeriodEnd && <button onClick={resume} disabled={busy} style={{ ...btnMain, marginTop: 14 }}>{busy ? "..." : "Réactiver mon abonnement"}</button>}
             </div>
@@ -3808,7 +3812,7 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
               </div>
             </div>
             <button onClick={onBack} style={btnMain}>Garder mon abonnement</button>
-            <p onClick={() => setFlow(info.offerUsed ? 3 : 2)} style={link}>Continuer la résiliation</p>
+            <p onClick={() => setFlow(info.offerUsed || enEssai ? 3 : 2)} style={link}>Continuer la résiliation</p>
           </>
         )}
 
@@ -3838,7 +3842,7 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
           <>
             <div style={card}>
               <p style={{ ...h, fontSize: 20, marginBottom: 8 }}>Dernière étape</p>
-              <p style={t}>Ton accès Pro reste actif jusqu'au <b>{dateFr(info.periodEnd)}</b>, puis il s'arrêtera. Tu ne seras plus facturé. Tu garderas ton compte et ton historique.</p>
+              <p style={t}>{enEssai ? "Ton essai" : "Ton accès Pro"} reste actif jusqu'au <b>{dateFr(info.periodEnd)}</b>, puis il s'arrêtera. Tu ne seras {enEssai ? "pas débité" : "plus facturé"}. Tu garderas ton compte et ton historique.</p>
             </div>
             <button onClick={onBack} style={btnMain}>Finalement, je reste</button>
             <button onClick={() => goPortal("cancel_flow")} disabled={busy} style={{ ...btnGhost, marginTop: 12, color: "#FF2D55", borderColor: "rgba(255,45,85,0.3)" }}>{busy ? "Ouverture..." : "Confirmer la résiliation"}</button>
@@ -3851,8 +3855,6 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
 
 function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appTheme, onThemeChange, onLogout, onRegenerateProgram }) {
   const stagger = useStaggerUneFois("profil");
-  const [notifOn, setNotifOn] = useState(false);
-  const [notifHeure, setNotifHeure] = useState("08:00");
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [editData, setEditData] = useState({ sport: null, objectif: null, frequence: 3, jours: [1, 3, 5] });
   const [showLegal, setShowLegal] = useState(null);
@@ -4205,35 +4207,6 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             </div>
           </div>
           <span style={{ color: accentLisible(theme.accent), fontSize: 18 }}>→</span>
-        </div>
-
-        {/* Notifications */}
-        <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: notifOn ? 14 : 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 40, height: 40, background: "rgba(255,229,0,0.1)", border: "1px solid rgba(255,229,0,0.2)", borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔔</div>
-              <div>
-                <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Rappels de séance</p>
-                <p style={{ color: DS.colors.textSec, fontSize: 11, fontFamily: "'Inter',sans-serif" }}>{notifOn ? `TOUS LES JOURS À ${notifHeure}` : "DÉSACTIVÉ"}</p>
-              </div>
-            </div>
-            <div onClick={() => {
-              if (!notifOn) {
-                if ("Notification" in window) {
-                  Notification.requestPermission().then(p => { if (p === "granted") setNotifOn(true); });
-                } else { setNotifOn(true); }
-              } else { setNotifOn(false); }
-            }} style={{ width: 50, height: 28, background: notifOn ? theme.accent : DS.colors.surfaceHigh, borderRadius: DS.radius.full, position: "relative", cursor: "pointer", transition: "background 0.25s", flexShrink: 0 }}>
-              <div style={{ position: "absolute", top: 3, left: 3, transform: `translateX(${notifOn ? 22 : 0}px)`, width: 22, height: 22, background: "white", borderRadius: DS.radius.full, transition: "transform 200ms var(--ease-out)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
-            </div>
-          </div>
-          {notifOn && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px" }}>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", flex: 1 }}>HEURE DU RAPPEL</p>
-              <input type="time" value={notifHeure} onChange={e => setNotifHeure(e.target.value)}
-                style={{ background: "transparent", border: `1px solid ${theme.accent}40`, borderRadius: 8, padding: "6px 10px", color: accentLisible(theme.accent), fontFamily: "'Inter',sans-serif", fontSize: 14, outline: "none", colorScheme: "dark", cursor: "pointer" }} />
-            </div>
-          )}
         </div>
 
         {/* Theme */}
@@ -4701,8 +4674,7 @@ function TestScreen({ user, tests, onSaved, onBack, onCarrousel }) {
         {erreur && <p style={{ color: "#FF2D55", fontSize: 13, textAlign: "center", marginTop: 12 }}>{erreur}</p>}
         <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
           {!trop_tot && <PrimaryButton onClick={enregistrer} disabled={saving} style={{ height: 58 }}>{saving ? "Enregistrement..." : "Enregistrer mes résultats"}</PrimaryButton>}
-          {tests?.length >= 2 && <PrimaryButton onClick={onCarrousel} style={{ height: 58 }}>Créer mon carrousel avant / après →</PrimaryButton>}
-          {tests?.length === 1 && trop_tot && <p style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center" }}>Ton carrousel avant / après sera prêt après ton prochain test.</p>}
+          {tests?.length >= 2 && new URLSearchParams(window.location.search).has("carrousel") && <PrimaryButton onClick={onCarrousel} style={{ height: 58 }}>Créer mon carrousel avant / après →</PrimaryButton>}
         </div>
       </div>
     </div>
