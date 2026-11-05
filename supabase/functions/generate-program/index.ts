@@ -23,8 +23,8 @@ const RATIOS: Record<string, Record<string, number[]>> = {
   halteres: { squat: [0.12, 0.2, 0.3], hinge: [0.15, 0.25, 0.35], bench: [0.15, 0.25, 0.35], ohp: [0.1, 0.16, 0.22], row: [0.15, 0.25, 0.35], lunge: [0.1, 0.17, 0.25], curl: [0.06, 0.1, 0.14], raise: [0.04, 0.07, 0.11], olympic: [0.1, 0.15, 0.22], defaut: [0.08, 0.14, 0.2] },
   haltere_unique: { squat: [0.2, 0.3, 0.4], thrust: [0.2, 0.3, 0.45], defaut: [0.15, 0.25, 0.35] },
   kettlebell: { swing: [0.2, 0.3, 0.4], squat: [0.2, 0.3, 0.4], defaut: [0.12, 0.2, 0.28] },
-  machine: { legpress: [1.0, 1.6, 2.4], defaut: [0.4, 0.6, 0.9] },
-  poulie: { defaut: [0.2, 0.3, 0.45] },
+  machine: { legpress: [1.0, 1.6, 2.4], squat: [0.5, 0.9, 1.3], bench: [0.35, 0.55, 0.8], ohp: [0.2, 0.35, 0.5], row: [0.35, 0.55, 0.8], curl: [0.12, 0.2, 0.3], raise: [0.1, 0.18, 0.25], triceps: [0.2, 0.3, 0.45], legext: [0.25, 0.45, 0.65], legcurl: [0.2, 0.35, 0.5], thrust: [0.6, 1.0, 1.5], hanche: [0.3, 0.45, 0.65], mollets: [0.4, 0.8, 1.2], abdos: [0.15, 0.3, 0.45], pecdeck: [0.25, 0.4, 0.6], defaut: [0.4, 0.6, 0.9] },
+  poulie: { row: [0.3, 0.5, 0.7], curl: [0.1, 0.18, 0.25], triceps: [0.15, 0.25, 0.35], raise: [0.05, 0.1, 0.15], defaut: [0.2, 0.3, 0.45] },
 };
 const KETTLEBELLS = [4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48];
 const MEDBALLS = [2, 3, 4, 5, 6, 8, 10];
@@ -34,13 +34,14 @@ const SANS_CHARGE = /push[- ]?up|pull[- ]?up|chin[- ]?up|plank|jump|sprint|burpe
 function detecterMateriel(ex: any): string {
   const m = String(ex.materiel || "").toLowerCase();
   const n = String(ex.nom || "").toLowerCase();
+  if (/assisted|glute ham|back extension|captain|roman chair|sled|battle rope|rowing machine|air bike|ski ?erg/.test(n)) return "poids_du_corps";
   if (/medicine ball|med ball|medball/.test(n) || m === "medball") return "medball";
   if (/kettlebell|\bkb\b/.test(n) || m === "kettlebell") return "kettlebell";
   if (/dumbbell|\bdb\b/.test(n) || m === "halteres" || m === "haltere") {
     return /goblet|single dumbbell|one dumbbell|hip thrust|glute bridge/.test(n) ? "haltere_unique" : "halteres";
   }
   if (/cable|pulley|poulie/.test(n) || m === "poulie") return "poulie";
-  if (/machine|leg press|lever|smith|hack squat|leg extension|leg curl|pec deck/.test(n) || m === "machine") return "machine";
+  if (/machine|leg press|lever|smith|hack squat|pendulum squat|belt squat|leg extension|leg curl|pec deck|lat pulldown|calf raise/.test(n) || m === "machine") return "machine";
   if (/barbell|trap bar|hex bar|ez bar|\bbar\b/.test(n) || m === "barre") return "barre";
   if (/weighted/.test(n)) return "halteres";
   if (SANS_CHARGE.test(n) || m === "poids_du_corps" || m === "elastique") return "poids_du_corps";
@@ -49,7 +50,15 @@ function detecterMateriel(ex: any): string {
 
 function detecterMouvement(nom: string): string {
   const n = nom.toLowerCase();
+  if (/calf/.test(n)) return "mollets";
   if (/leg press/.test(n)) return "legpress";
+  if (/leg curl/.test(n)) return "legcurl";
+  if (/leg extension/.test(n)) return "legext";
+  if (/abduct|adduct|multi hip|kickback/.test(n)) return "hanche";
+  if (/triceps|pushdown|seated dip/.test(n)) return "triceps";
+  if (/abdominal|crunch|torso/.test(n)) return "abdos";
+  if (/reverse pec|reverse fly|rear delt/.test(n)) return "raise";
+  if (/pec deck|butterfly/.test(n)) return "pecdeck";
   if (/clean|snatch|jerk/.test(n)) return "olympic";
   if (/swing/.test(n)) return "swing";
   if (/hip thrust|glute bridge/.test(n)) return "thrust";
@@ -117,6 +126,45 @@ const SYSTEM_PROMPT = `Tu es un préparateur physique expert (certifié NSCA/CSC
 RÈGLE ABSOLUE : JSON valide uniquement. Aucun texte. Aucun markdown. Maximum 8 exercices par séance.
 Tu raisonnes comme un vrai coach : charges réalistes pour CE corps et CE niveau, technique avant la charge, progression sûre.`;
 
+// Noms des machines que l'IA peut proposer : mêmes noms que src/catalogueEquipements.js
+const MACHINES_SALLE = [
+  "chest press machine", "incline chest press machine", "decline chest press machine", "pec deck machine",
+  "lat pulldown", "assisted pull-up machine", "seated row machine", "high row machine", "t-bar row", "chest supported row",
+  "shoulder press machine", "lateral raise machine", "reverse pec deck",
+  "biceps curl machine", "preacher curl machine", "seated dip machine", "triceps extension machine",
+  "leg press", "hack squat machine", "pendulum squat", "belt squat", "smith machine squat", "leg extension",
+  "seated leg curl", "lying leg curl", "standing leg curl",
+  "hip thrust machine", "glute kickback machine", "hip abductor machine", "hip adductor machine",
+  "seated calf raise", "standing calf raise", "abdominal crunch machine", "rotary torso machine",
+];
+const CROSS_SALLE = ["sled push", "battle ropes", "rowing machine", "air bike", "ski erg", "medball wall ball", "landmine press"];
+
+// Si l'IA oublie les machines en salle complète : on en ajoute une, compatible avec les douleurs
+const MACHINES_SECOURS = [
+  { nom: "seated leg curl", muscles: "Ischio-jambiers", conseil: "Controle le retour, bassin fixe.", eviter: [] },
+  { nom: "lat pulldown", muscles: "Grand dorsal Biceps", conseil: "Tire vers le haut de la poitrine, sans te pencher.", eviter: ["epaule"] },
+  { nom: "leg press", muscles: "Quadriceps Fessiers", conseil: "Bas du dos colle au dossier, sans verrouiller les genoux.", eviter: ["genou", "cheville", "dos"] },
+  { nom: "seated row machine", muscles: "Grand dorsal Rhomboides", conseil: "Poitrine haute, serre les omoplates.", eviter: [] },
+  { nom: "chest press machine", muscles: "Pectoraux Triceps", conseil: "Poignees au milieu de la poitrine, epaules collees au dossier.", eviter: ["epaule", "poignet"] },
+  { nom: "leg extension", muscles: "Quadriceps", conseil: "Monte sans a-coup, controle le retour.", eviter: ["genou"] },
+];
+
+function garantirMachines(prog: any, douleurs: string[] = []) {
+  const possibles = MACHINES_SECOURS.filter(m => !m.eviter.some(d => douleurs.includes(d)));
+  const seances = prog?.semaines?.[0]?.seances;
+  if (!Array.isArray(seances) || possibles.length === 0) return prog;
+  seances.forEach((se: any, i: number) => {
+    const exercices = se.exercices || [];
+    if (exercices.length >= 8 || exercices.some((ex: any) => detecterMateriel(ex) === "machine")) return;
+    const m = possibles[i % possibles.length];
+    const machine = { id: `${se.id || `s${i}`}_machine`, nom: m.nom, materiel: "machine", muscles: m.muscles, sets: 3, reps: "10", chargeKg: 0, reposSec: 75, conseil: m.conseil };
+    // Avant le dernier exercice, en général le gainage
+    exercices.splice(Math.max(exercices.length - 1, 0), 0, machine);
+    se.exercices = exercices;
+  });
+  return prog;
+}
+
 // Construit les semaines 2 a 4 a partir de la semaine 1 (progression deterministe)
 const FACTEURS_SEMAINE = [1, 1.05, 1.1, 0.9];
 function expandWeeks(prog: any) {
@@ -182,7 +230,7 @@ function buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, do
   const freq = Math.min(Number(frequence), 4);
 
   const equipementConfig: Record<string, { desc: string; nb: string; sets: string }> = {
-    salle_complete: { desc: "salle complete (barres, halteres, kettlebells, machines, poulies)", nb: "4-5 exos", sets: "3-4 series" },
+    salle_complete: { desc: "salle complete (barres, halteres, kettlebells, machines, poulies)", nb: "5-6 exos", sets: "3-4 series" },
     salle_basique: { desc: "salle basique : barres, halteres, kettlebells, banc. PAS de machines ni poulies", nb: "4-5 exos", sets: "3-4 series" },
     maison: { desc: "MAISON poids du corps SEUL, INTERDIT halteres/barres/machines", nb: "6-8 exos", sets: "2-3 series" },
     terrain: { desc: "EXTERIEUR poids du corps SEUL, INTERDIT halteres/barres/machines", nb: "6-8 exos", sets: "2-3 series" },
@@ -292,6 +340,9 @@ chargeKg = charge realiste en kg. Pour halteres/kettlebells : TOUJOURS le poids 
   }
 
   const niv = String(niveau || "").toLowerCase();
+  const machinesTexte = equipement === "salle_complete"
+    ? `MACHINES OBLIGATOIRES: chaque seance contient ${niv.startsWith("deb") ? "2" : "1 a 2"} exercices sur machine (materiel "machine"), jamais en premier: d'abord explosif et gros mouvement libre, puis machines. Varie les machines sur la semaine et choisis-les utiles au sport et coherentes avec les contraintes blessures. Noms exacts a utiliser: ${MACHINES_SALLE.join(", ")}. Autorise, au plus 1 par semaine et en fin de seance (materiel "poids_du_corps", chargeKg 0): ${CROSS_SALLE.join(", ")}.`
+    : "";
   const niveauTexte = niv.startsWith("deb")
     ? "NIVEAU DEBUTANT: exercices simples et stables (goblet squat, halteres, machines si dispo), pas de mouvements olympiques ni de pliometrie a fort impact, 2-3 series, charges legeres (RPE 6-7)."
     : niv.startsWith("inter")
@@ -307,6 +358,7 @@ ORDRE: explosif/pliometrie d'abord, force ensuite, accessoires/gainage en dernie
 CYCLE ${startCycle}: ${cycleProfile}
 ${niveauTexte}
 MATERIEL: ${c.desc}. ${c.nb}, ${c.sets}.
+${machinesTexte}
 ${chargesTexte}
 ${morphoTexte}
 ${ageTexte}
@@ -401,6 +453,7 @@ serve(async (req: Request) => {
       cycle: startCycle,
       avecCharges: equipement === "salle_complete" || equipement === "salle_basique",
     };
+    if (equipement === "salle_complete") programme = garantirMachines(programme, Array.isArray(douleurs) ? douleurs : []);
     programme = securiserProgramme(expandWeeks(programme), profil);
 
     const { data: savedProg, error: saveError } = await supabase

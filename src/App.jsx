@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { Fragment, useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { ficheExercice, alternativesDisponibles, machinesParCategorie } from "./catalogueEquipements";
 
 // Lien de confirmation d'email : on lit l'URL tout de suite, avant que Supabase ne la nettoie
 const URL_AU_CHARGEMENT = window.location.hash + window.location.search;
@@ -56,8 +57,8 @@ const RATIOS_CHARGE = {
   halteres: { squat: [0.12, 0.2, 0.3], hinge: [0.15, 0.25, 0.35], bench: [0.15, 0.25, 0.35], ohp: [0.1, 0.16, 0.22], row: [0.15, 0.25, 0.35], lunge: [0.1, 0.17, 0.25], curl: [0.06, 0.1, 0.14], raise: [0.04, 0.07, 0.11], olympic: [0.1, 0.15, 0.22], defaut: [0.08, 0.14, 0.2] },
   haltere_unique: { squat: [0.2, 0.3, 0.4], thrust: [0.2, 0.3, 0.45], defaut: [0.15, 0.25, 0.35] },
   kettlebell: { swing: [0.2, 0.3, 0.4], squat: [0.2, 0.3, 0.4], defaut: [0.12, 0.2, 0.28] },
-  machine: { legpress: [1.0, 1.6, 2.4], defaut: [0.4, 0.6, 0.9] },
-  poulie: { defaut: [0.2, 0.3, 0.45] },
+  machine: { legpress: [1.0, 1.6, 2.4], squat: [0.5, 0.9, 1.3], bench: [0.35, 0.55, 0.8], ohp: [0.2, 0.35, 0.5], row: [0.35, 0.55, 0.8], curl: [0.12, 0.2, 0.3], raise: [0.1, 0.18, 0.25], triceps: [0.2, 0.3, 0.45], legext: [0.25, 0.45, 0.65], legcurl: [0.2, 0.35, 0.5], thrust: [0.6, 1.0, 1.5], hanche: [0.3, 0.45, 0.65], mollets: [0.4, 0.8, 1.2], abdos: [0.15, 0.3, 0.45], pecdeck: [0.25, 0.4, 0.6], defaut: [0.4, 0.6, 0.9] },
+  poulie: { row: [0.3, 0.5, 0.7], curl: [0.1, 0.18, 0.25], triceps: [0.15, 0.25, 0.35], raise: [0.05, 0.1, 0.15], defaut: [0.2, 0.3, 0.45] },
 };
 const KETTLEBELLS = [4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48];
 const MEDBALLS = [2, 3, 4, 5, 6, 8, 10];
@@ -66,13 +67,14 @@ const SANS_CHARGE = /push[- ]?up|pull[- ]?up|chin[- ]?up|plank|jump|sprint|burpe
 function detecterMateriel(ex) {
   const m = String(ex.materiel || "").toLowerCase();
   const n = `${ex.nomEn || ""} ${ex.nom || ""}`.toLowerCase();
+  if (/assisted|glute ham|back extension|captain|roman chair|sled|battle rope|rowing machine|air bike|ski ?erg/.test(n)) return "poids_du_corps";
   if (/medicine ball|med ball|medball/.test(n) || m === "medball") return "medball";
   if (/kettlebell|\bkb\b/.test(n) || m === "kettlebell") return "kettlebell";
   if (/dumbbell|\bdb\b|halt[eè]re/.test(n) || m === "halteres" || m === "haltere") {
     return /goblet|single dumbbell|one dumbbell|hip thrust|glute bridge/.test(n) ? "haltere_unique" : "halteres";
   }
   if (/cable|pulley|poulie/.test(n) || m === "poulie") return "poulie";
-  if (/machine|leg press|lever|smith|hack squat|leg extension|leg curl|pec deck|presse/.test(n) || m === "machine") return "machine";
+  if (/machine|leg press|lever|smith|hack squat|pendulum squat|belt squat|leg extension|leg curl|pec deck|lat pulldown|calf raise|presse/.test(n) || m === "machine") return "machine";
   if (/barbell|trap bar|hex bar|ez bar|\bbar\b|barre/.test(n) || m === "barre") return "barre";
   if (/weighted|lest/.test(n)) return "halteres";
   if (SANS_CHARGE.test(n) || m === "poids_du_corps" || m === "elastique") return "poids_du_corps";
@@ -81,7 +83,15 @@ function detecterMateriel(ex) {
 
 function detecterMouvement(ex) {
   const n = `${ex.nomEn || ""} ${ex.nom || ""}`.toLowerCase();
+  if (/calf|mollet/.test(n)) return "mollets";
   if (/leg press|presse/.test(n)) return "legpress";
+  if (/leg curl/.test(n)) return "legcurl";
+  if (/leg extension/.test(n)) return "legext";
+  if (/abduct|adduct|multi hip|kickback/.test(n)) return "hanche";
+  if (/triceps|pushdown|seated dip/.test(n)) return "triceps";
+  if (/abdominal|crunch|torso/.test(n)) return "abdos";
+  if (/reverse pec|reverse fly|rear delt/.test(n)) return "raise";
+  if (/pec deck|butterfly/.test(n)) return "pecdeck";
   if (/clean|snatch|jerk|epaul|arrach/.test(n)) return "olympic";
   if (/swing/.test(n)) return "swing";
   if (/hip thrust|glute bridge/.test(n)) return "thrust";
@@ -848,7 +858,9 @@ function motifExercice(ex) {
   const n = `${ex?.nomEn || ""} ${ex?.nom || ""}`.toLowerCase();
   const materiel = detecterMateriel(ex || {});
   let motif = detecterMouvement(ex || {});
-  if (/push[- ]?up|pompe/.test(n)) motif = "pushup";
+  const animationFiche = ficheExercice(ex)?.animation;
+  if (animationFiche) motif = animationFiche;
+  else if (/push[- ]?up|pompe/.test(n)) motif = "pushup";
   else if (/pull[- ]?up|chin[- ]?up|traction|pulldown|pull-down/.test(n)) motif = "pullup";
   else if (/plank|gainage|dead bug|bird dog|hollow|crunch|sit[- ]?up|pallof|mountain climber/.test(n)) motif = "plank";
   else if (/sprint|run|course|skip|high knee|carioca|shuffle|accel/.test(n)) motif = "sprint";
@@ -954,7 +966,10 @@ function ExerciseAnimation({ exercice, accent = "#9BE84F", couleur = "#F4F4F5" }
   );
 }
 
-function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
+function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, absentes = [], onRemplacer }) {
+  const [exercices, setExercices] = useState(seance?.exercices || []);
+  const [showRemplacer, setShowRemplacer] = useState(false);
+  const [retenirAbsente, setRetenirAbsente] = useState(false);
   const [exIdx, setExIdx] = useState(resumeState?.exIdx || 0);
   const [setIdx, setSetIdx] = useState(resumeState?.setIdx || 0);
   const [resting, setResting] = useState(false);
@@ -1002,8 +1017,16 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
 
   const formatElapsed = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
-  const exercices = seance?.exercices || [];
   const currentEx = exercices[exIdx] || null;
+  const ficheCourante = ficheExercice(currentEx);
+  const alternatives = ficheCourante && ["machine", "poulie"].includes(ficheCourante.type) ? alternativesDisponibles(ficheCourante, absentes).slice(0, 4) : [];
+  const remplacerCourant = (alt) => {
+    const nouveau = onRemplacer(currentEx, alt, retenirAbsente && ficheCourante.id);
+    setExercices(liste => liste.map((ex, i) => i === exIdx ? nouveau : ex));
+    setShowRemplacer(false);
+    setRetenirAbsente(false);
+    setAnimKey(k => k + 1);
+  };
 
   // Message coach proactif quand exercice change
   useEffect(() => {
@@ -1114,7 +1137,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
   const handlePause = () => {
     try {
       localStorage.setItem("voltra_paused_session", JSON.stringify({
-        seance, exIdx, setIdx, completedSets, elapsed, sport, savedAt: Date.now()
+        seance: { ...seance, exercices }, exIdx, setIdx, completedSets, elapsed, sport, savedAt: Date.now()
       }));
     } catch (e) {}
     setShowExitModal(false);
@@ -1275,12 +1298,38 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
         );
       })()}
 
+      {showRemplacer && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setShowRemplacer(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, background: "#16181C", borderRadius: "24px 24px 0 0", padding: "22px 20px calc(24px + env(safe-area-inset-bottom, 0px))", color: "white" }}>
+            <p style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Par quoi remplacer ?</p>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 14 }}>Mêmes muscles que {currentEx.nom}. La charge est recalculée pour toi.</p>
+            {alternatives.map(alt => (
+              <button key={alt.id} onClick={() => remplacerCourant(alt)} style={{ display: "block", width: "100%", textAlign: "left", padding: "12px 14px", marginBottom: 8, borderRadius: 14, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "white", cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+                <span style={{ display: "block", fontSize: 15, fontWeight: 700 }}>{alt.fr}</span>
+                <span style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>{alt.muscle}</span>
+              </button>
+            ))}
+            <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 2px", fontSize: 13, color: "rgba(255,255,255,0.75)", cursor: "pointer" }}>
+              <input type="checkbox" checked={retenirAbsente} onChange={e => setRetenirAbsente(e.target.checked)} style={{ width: 18, height: 18, accentColor }} />
+              Il n'y en a pas dans ma salle : ne plus me la proposer
+            </label>
+            <button onClick={() => setShowRemplacer(false)} style={{ width: "100%", height: 44, marginTop: 6, background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Garder cet exercice</button>
+          </div>
+        </div>
+      )}
+
       {/* ── Photo immersive ── */}
       <div key={animKey} style={{ position: "relative", height: "36vh", minHeight: 260, overflow: "hidden", flexShrink: 0 }}>
         {/* Démo animée du mouvement (dessinée par l'app, instantanée) */}
         <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 70% 60% at 50% 62%, ${accentColor}26, transparent 70%), linear-gradient(180deg, #0B0D10 0%, #000 100%)` }} />
         <div key={currentEx?.nom} className="v-pop" style={{ position: "absolute", left: "10%", right: "10%", top: 78, bottom: 30 }}>
-          <ExerciseAnimation exercice={currentEx} accent={accentColor} />
+          {ficheCourante && !ficheCourante.animation ? (
+            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 6 }}>
+              <span style={{ fontSize: 44 }}>{ficheCourante.type === "cross" ? "🔥" : "🏋️"}</span>
+              <p style={{ fontSize: 13, fontWeight: 800, color: accentColor }}>{ficheCourante.muscle}</p>
+              {ficheCourante.erreur && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.35 }}>À éviter : {ficheCourante.erreur}</p>}
+            </div>
+          ) : <ExerciseAnimation exercice={currentEx} accent={accentColor} />}
         </div>
 
         {/* Header sur la photo */}
@@ -1313,6 +1362,9 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState }) {
           <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", color: accentColor, marginBottom: 6 }}>EXERCICE {exIdx + 1}/{exercices.length}{currentEx.muscles ? ` · ${(currentEx.muscles || "").split(/[\s,]+/)[0].toUpperCase()}` : ""}</p>
           <h1 style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, letterSpacing: "-0.02em", textTransform: "uppercase", color: "white" }}>{currentEx.nom}</h1>
           {currentEx.conseil && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8, fontStyle: "italic" }}>💡 {currentEx.conseil}</p>}
+          {currentEx.ajustement && <p style={{ fontSize: 12, fontWeight: 700, color: accentColor, marginTop: 8 }}>{currentEx.ajustement}</p>}
+          {currentEx.remplace && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 8 }}>Remplace {currentEx.remplace}</p>}
+          {alternatives.length > 0 && onRemplacer && <button onClick={() => setShowRemplacer(true)} style={{ marginTop: 8, padding: "6px 10px", background: "none", border: "none", color: "rgba(255,255,255,0.65)", fontSize: 13, fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}>{ficheCourante.type === "poulie" ? "Poulie prise ou absente ?" : "Machine prise ou absente ?"}</button>}
         </div>
 
         {/* Chiffre géant */}
@@ -3293,7 +3345,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: `1px solid ${DS.colors.border}` }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: theme.accent, opacity: 0.7 }} />
-                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textPrimary, fontWeight: 500 }}>{ex.nom}</span>
+                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textPrimary, fontWeight: 500 }}>{ficheExercice(ex)?.fr || ex.nom}</span>
                   </div>
                   <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec }}>{ex.sets}×{ex.reps}</span>
                 </div>
@@ -3862,7 +3914,42 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
   );
 }
 
-function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appTheme, onThemeChange, onLogout, onRegenerateProgram }) {
+// « Ma salle » : tout est disponible par défaut, l'utilisateur décoche ce qui manque
+function MaSalleScreen({ absentes, onChange, onBack }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const basculer = (id) => onChange(absentes.includes(id) ? absentes.filter(a => a !== id) : [...absentes, id]);
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: DS.colors.bg, color: DS.colors.textPrimary, overflowY: "auto", WebkitOverflowScrolling: "touch", fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ maxWidth: 430, margin: "0 auto", padding: "calc(20px + env(safe-area-inset-top, 0px)) 20px 60px" }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "8px 0", marginBottom: 8 }}>← Retour</button>
+        <h1 style={{ fontWeight: 900, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.03em", textTransform: "uppercase" }}>Ma <span style={{ color: ac }}>salle</span></h1>
+        <p style={{ fontSize: 14, color: DS.colors.textSec, lineHeight: 1.45, margin: "8px 0 20px" }}>Décoche ce qu'il n'y a pas dans ta salle. Tes séances le remplaceront par un exercice qui travaille les mêmes muscles.</p>
+        {machinesParCategorie().map(([categorie, machines]) => (
+          <div key={categorie} style={{ marginBottom: 18 }}>
+            <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.06em", color: ac, textTransform: "uppercase", marginBottom: 8 }}>{categorie}</p>
+            <div style={{ background: DS.colors.surface, borderRadius: 18, boxShadow: DS.shadow.card, overflow: "hidden" }}>
+              {machines.map((m, i) => {
+                const dispo = !absentes.includes(m.id);
+                return (
+                  <button key={m.id} onClick={() => basculer(m.id)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 14px", background: "none", border: "none", borderTop: i ? `1px solid ${DS.colors.border}` : "none", color: DS.colors.textPrimary, textAlign: "left", cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 14, fontWeight: 700, opacity: dispo ? 1 : 0.5 }}>{m.fr}</span>
+                      <span style={{ display: "block", fontSize: 12, color: DS.colors.textSec, marginTop: 1 }}>{m.en}</span>
+                    </span>
+                    <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, border: `2px solid ${dispo ? DS.colors.primary : DS.colors.textDim}`, background: dispo ? DS.colors.primary : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#0B0B0C", fontSize: 13, fontWeight: 900 }}>{dispo ? "✓" : ""}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appTheme, onThemeChange, onLogout, onRegenerateProgram, absentes = [], onChangeAbsentes }) {
+  const [showSalle, setShowSalle] = useState(false);
   const stagger = useStaggerUneFois("profil");
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [editData, setEditData] = useState({ sport: null, objectif: null, frequence: 3, jours: [1, 3, 5] });
@@ -3993,6 +4080,8 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
     setSaving(false);
     setShowEditDrawer(false);
   };
+
+  if (showSalle) return <MaSalleScreen absentes={absentes} onChange={onChangeAbsentes} onBack={() => setShowSalle(false)} />;
 
   return (
     <div className={stagger} style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", paddingBottom: 130, overflow: "hidden" }}>
@@ -4218,6 +4307,18 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
           <span style={{ color: accentLisible(theme.accent), fontSize: 18 }}>→</span>
         </div>
 
+        {/* Ma salle */}
+        <div onClick={() => setShowSalle(true)} style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 40, height: 40, background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🏋️</div>
+            <div>
+              <p style={{ color: DS.colors.textPrimary, fontSize: 15, ...s.heading, marginBottom: 2 }}>Ma salle</p>
+              <p style={{ color: DS.colors.textSec, fontSize: 12, fontFamily: "'Inter',sans-serif" }}>{absentes.length ? `${absentes.length} machine${absentes.length > 1 ? "s" : ""} absente${absentes.length > 1 ? "s" : ""}` : "Choisis les machines disponibles"}</p>
+            </div>
+          </div>
+          <span style={{ color: accentLisible(theme.accent), fontSize: 18 }}>→</span>
+        </div>
+
         {/* Theme */}
         <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -4344,6 +4445,54 @@ function adaptationDuJour(matchs, cible, decalage = 0) {
   if (avant === 2 || avant === 3) return { charge: 0.7, setsMoins: 1, label: "−30 %", ic: "💪", note: `Match dans ${avant} jours : charges réduites de 30 % pour arriver frais.` };
   if (cible?.date && !cible.open && joursAvant(cible.date) - decalage >= 0 && joursAvant(cible.date) - decalage <= 7) return { charge: 0.8, setsMoins: 1, label: "Affûtage", ic: "💪", note: "Dernière ligne droite : volume réduit pour arriver frais." };
   return null;
+}
+
+// Ressenti de séance : Facile +5 %, Dur -5 %, cumulés par exercice sur le programme en cours, sans dépasser ±15 %
+const cleExercice = (nom) => ficheExercice({ nom })?.id || String(nom || "").toLowerCase().trim();
+
+function ressentisParExercice(logs) {
+  const ressentis = {};
+  for (const log of logs || []) {
+    const nom = log.exercices?.nom;
+    if (!nom || !["easy", "hard"].includes(log.feedback)) continue;
+    const cle = cleExercice(nom);
+    const suivant = (ressentis[cle] ?? 1) * (log.feedback === "easy" ? 1.05 : 0.95);
+    ressentis[cle] = Math.min(1.15, Math.max(0.85, suivant));
+  }
+  return ressentis;
+}
+
+// Le poids réel le plus proche : une petite hausse attend d'atteindre le disque ou l'haltère suivant
+function poidsLePlusProche(kg, materiel) {
+  const proche = (liste) => liste.reduce((a, b) => Math.abs(b - kg) < Math.abs(a - kg) ? b : a);
+  if (materiel === "kettlebell") return proche(KETTLEBELLS);
+  if (materiel === "medball") return proche(MEDBALLS);
+  const pas = materiel === "machine" ? 5 : materiel === "halteres" || materiel === "haltere_unique" ? 2 : 2.5;
+  return Math.max(pas, Math.round(kg / pas) * pas);
+}
+
+function appliquerRessenti(ex, ressentis, profil) {
+  const m = ressentis?.[cleExercice(ex.nom)];
+  if (!m || m === 1 || !(ex.chargeKg > 0)) return ex;
+  const ajuste = securiserExercice({ ...ex, chargeKg: poidsLePlusProche(ex.chargeKg * m, ex.materiel) }, profil);
+  if (ajuste.chargeKg === ex.chargeKg) return ex;
+  return { ...ajuste, ajustement: `${ajuste.chargeKg > ex.chargeKg ? "↗" : "↘"} ${ajuste.chargeKg} kg au lieu de ${ex.chargeKg} kg : tes dernières séances étaient ${m > 1 ? "faciles" : "dures"}` };
+}
+
+// Prend les infos de la fiche du catalogue, en gardant séries et répétitions
+function exerciceDepuisFiche(ex, f, remplace) {
+  return {
+    ...ex,
+    nom: f.fr,
+    nomEn: f.en,
+    materiel: f.materiel,
+    muscles: remplace || !ex.muscles ? [f.muscle, ...f.secondaires].join(" ") : ex.muscles,
+    conseil: remplace || !ex.conseil ? f.conseil : ex.conseil,
+    chargeKg: remplace ? 0 : ex.chargeKg,
+    chargeUnite: "",
+    ajustement: undefined,
+    remplace: remplace ? ex.nom : ex.remplace,
+  };
 }
 
 function adapterSeance(seance, adaptation) {
@@ -4845,23 +4994,57 @@ export default function VoltraApp() {
   const [pendingSeance, setPendingSeance] = useState(null);
   const [authConfirmation, setAuthConfirmation] = useState(null);
   const [profilPhysique, setProfilPhysique] = useState(null);
+  const [ressentis, setRessentis] = useState({});
+  const [absentesEtat, setAbsentesEtat] = useState(null);
 
   // Objectif de l'athlète : gardé avec son compte, retrouvé sur tous ses appareils
   const cible = cibleEtat || user?.user_metadata?.cible || user?.user_metadata?.onboarding?.cible || onboardingData?.cible || null;
 
-  const launchSeance = (seanceBrute) => {
-    const rawSeance = adapterSeance(seanceBrute, adaptationDuJour(matchs, cible));
+  // Machines absentes de la salle : gardées avec le compte
+  const machinesAbsentes = absentesEtat || user?.user_metadata?.machines_absentes || [];
+  const changerAbsentes = (liste) => {
+    setAbsentesEtat(liste);
+    supabase.auth.updateUser({ data: { machines_absentes: liste } });
+  };
+
+  const chargerRessentis = async (programmeId) => {
+    if (!programmeId) return setRessentis({});
+    const { data } = await supabase
+      .from("logs_performance")
+      .select("feedback, logged_at, exercices(nom), seances!inner(programme_id)")
+      .eq("seances.programme_id", programmeId)
+      .order("logged_at", { ascending: true })
+      .limit(1000);
+    setRessentis(ressentisParExercice(data));
+  };
+  useEffect(() => { if (user?.id) chargerRessentis(programmeActif?.id); }, [user?.id, programmeActif?.id]);
+
+  const profilDeCharges = () => {
     const dj = programmeActif?.data_json || {};
-    const profilCharges = {
+    return {
       poids: profilPhysique?.poids ?? onboardingData?.poids ?? null,
       age: profilPhysique?.age ?? onboardingData?.age ?? null,
       niveau: dj.niveau || programmeActif?.niveau || onboardingData?.niveau || "debutant",
       cycle: dj.cycle || 1,
       avecCharges: !["maison", "terrain"].includes(dj.equipement || onboardingData?.equipement),
     };
+  };
+
+  // Machine prise ou absente : l'alternative choisie est chargée comme un exercice de la séance
+  const remplacerExercice = (ex, alt, absenteId) => {
+    if (absenteId && !machinesAbsentes.includes(absenteId)) changerAbsentes([...machinesAbsentes, absenteId]);
+    const profil = profilDeCharges();
+    return appliquerRessenti(securiserExercice(exerciceDepuisFiche(ex, alt, true), profil), ressentis, profil);
+  };
+
+  const launchSeance = (seanceBrute) => {
+    const rawSeance = adapterSeance(seanceBrute, adaptationDuJour(matchs, cible));
+    const profilCharges = profilDeCharges();
     const seance = {
       ...rawSeance,
-      exercices: (rawSeance.exercices || []).map((ex, i) => securiserExercice({
+      exercices: (rawSeance.exercices || []).map((ex, i) => {
+        const preparer = (e) => appliquerRessenti(securiserExercice(e, profilCharges), ressentis, profilCharges);
+        const base = {
         materiel: ex.materiel || "",
         chargeUnite: ex.chargeUnite || "",
         id: ex.id || `ex_${i}`,
@@ -4874,7 +5057,15 @@ export default function VoltraApp() {
         reposSec: ex.reposSec || ex.repos_sec || 90,
         conseil: ex.conseil || "",
         ordre: ex.ordre || i + 1,
-      }, profilCharges))
+        };
+        const f = ficheExercice(base);
+        if (!f) return preparer(base);
+        if (machinesAbsentes.includes(f.id)) {
+          const alt = alternativesDisponibles(f, machinesAbsentes)[0];
+          if (alt) return preparer(exerciceDepuisFiche({ ...base, nom: f.fr }, alt, true));
+        }
+        return preparer(exerciceDepuisFiche(base, f, false));
+      })
     };
     setResumeState(null);
     localStorage.removeItem("voltra_paused_session");
@@ -5110,6 +5301,7 @@ export default function VoltraApp() {
     setIsPro(false);
     setUser(null);
     setCibleEtat(null);
+    setAbsentesEtat(null);
     setPricingRetour(false);
     setScreen("welcome");
   };
@@ -5294,13 +5486,16 @@ if (screen === "pricing") return <PricingScreen key={appTheme} programme={progra
           resumeState={resumeState}
           seance={seanceActive}
           sport={sportActif}
+          absentes={machinesAbsentes}
+          onRemplacer={remplacerExercice}
           onBack={() => setSeanceActive(null)}
           onFinish={async (feedback, completedSetsData, exercices, durationMin) => {
             let ecranSuivant = "app";
             try {
               let resultat = null;
               if (programmeActif?.id && feedback) {
-                resultat = await saveCompleteSession(programmeActif.id, seanceActive, completedSetsData, feedback, durationMin);
+                resultat = await saveCompleteSession(programmeActif.id, { ...seanceActive, exercices }, completedSetsData, feedback, durationMin);
+                await chargerRessentis(programmeActif.id);
                 const { data } = await supabase.from("programmes").select("*").eq("id", programmeActif.id).single();
                 if (data) setProgrammeActif(data);
               }
@@ -5408,7 +5603,7 @@ if (screen === "pricing") return <PricingScreen key={appTheme} programme={progra
             />
           )}
           {activeTab === "historique" && <HistoriqueScreen />}
-          {activeTab === "profil" && <ProfilScreen isPro={isPro} user={user} programme={programmeActif} sportActif={sportActif} appTheme={appTheme} onThemeChange={setAppTheme} onLogout={handleLogout} onRegenerateProgram={async (data, shouldRegen = true) => {
+          {activeTab === "profil" && <ProfilScreen isPro={isPro} user={user} programme={programmeActif} sportActif={sportActif} appTheme={appTheme} onThemeChange={setAppTheme} onLogout={handleLogout} absentes={machinesAbsentes} onChangeAbsentes={changerAbsentes} onRegenerateProgram={async (data, shouldRegen = true) => {
             try {
               if (shouldRegen) {
                 const prog0 = await generateProgramIA(data);
