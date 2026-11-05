@@ -969,6 +969,9 @@ function ExerciseAnimation({ exercice, accent = "#9BE84F", couleur = "#F4F4F5" }
   );
 }
 
+// Faute de frappe probable (800 au lieu de 80) : très loin du poids prévu
+const poidsAnormal = (kg, prevu) => kg > 500 || (kg > prevu * 1.5 && kg - prevu >= 15) || (kg < prevu * 0.4 && prevu - kg >= 10);
+
 function ChampSerie({ label, valeur, unite, pas, onChange, accent }) {
   const changer = (delta) => onChange(String(Math.max(0, Math.round(((Number(valeur) || 0) + delta) * 100) / 100)));
   const bouton = { width: 40, height: 44, flexShrink: 0, borderRadius: 12, background: "rgba(255,255,255,0.1)", border: "none", color: "white", fontSize: 22, fontWeight: 700, cursor: "pointer" };
@@ -988,6 +991,8 @@ function ChampSerie({ label, valeur, unite, pas, onChange, accent }) {
 function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, absentes = [], onRemplacer }) {
   const [saisieKg, setSaisieKg] = useState("");
   const [saisieReps, setSaisieReps] = useState("");
+  const [aConfirmer, setAConfirmer] = useState(null);
+  const poidsConfirme = useRef(null);
   const [exercices, setExercices] = useState(seance?.exercices || []);
   const [showRemplacer, setShowRemplacer] = useState(false);
   const [retenirAbsente, setRetenirAbsente] = useState(false);
@@ -1145,6 +1150,16 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
   };
 
   const handleSetComplete = () => {
+    const kg = Number(saisieKg);
+    const deja = poidsConfirme.current;
+    if (avecCharge && kg > 0 && poidsAnormal(kg, currentEx.chargeKg) && !(deja?.exIdx === exIdx && deja?.kg === kg)) {
+      setAConfirmer(kg);
+      return;
+    }
+    validerSerie();
+  };
+
+  const validerSerie = () => {
     const key = `${exIdx}-${setIdx}`;
     setCompletedSets(prev => ({ ...prev, [key]: {
       reps: repsChiffrees ? (Number(saisieReps) || parseInt(currentEx.reps) || 8) : (parseInt(currentEx.reps) || 8),
@@ -1330,6 +1345,17 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
           </div>
         );
       })()}
+
+      {aConfirmer !== null && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div role="alertdialog" aria-label="Confirmer le poids" style={{ width: "100%", maxWidth: 360, background: "#16181C", borderRadius: 24, padding: "24px 20px", color: "white", textAlign: "center" }}>
+            <p style={{ fontSize: 22, fontWeight: 900, marginBottom: 6 }}>Tu confirmes {aConfirmer} kg ?</p>
+            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.4, marginBottom: 18 }}>C'est très différent des {currentEx.chargeKg} kg prévus. Ta prochaine séance partira de ce poids.</p>
+            <button onClick={() => setAConfirmer(null)} style={{ width: "100%", height: 52, borderRadius: 16, background: accentColor, border: "none", color: "#000", fontSize: 16, fontWeight: 800, cursor: "pointer" }}>Corriger</button>
+            <button onClick={() => { poidsConfirme.current = { exIdx, kg: aConfirmer }; setAConfirmer(null); validerSerie(); }} style={{ width: "100%", height: 48, marginTop: 8, borderRadius: 16, background: "rgba(255,255,255,0.1)", border: "none", color: "white", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Oui, {aConfirmer} kg</button>
+          </div>
+        </div>
+      )}
 
       {showRemplacer && (
         <div style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setShowRemplacer(false)}>
