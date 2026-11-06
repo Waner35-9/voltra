@@ -8,11 +8,14 @@
 - `logs_performance` : exercice_id, seance_id, user_id, reps_par_set, charge_kg (**le poids réellement soulevé**), rpe, feedback, statut, logged_at
 - `exercice_state` : état par exercice calculé par `calculer_progression`, **jamais relu par l'app**
 - `matchs`, `tests_performance`, `coach_usage`, `exercise_gifs` (ancien cache d'images)
+- `bilans_semaine` : user_id, semaine (lundi de la semaine résumée), seances, prevues, gains, texte. Une ligne par semaine : c'est ce qui limite le coût IA.
+- `rappels` : user_id, seance_matin (non par défaut), relance (oui par défaut), derniere_relance, nb_relances. Pas de ligne = valeurs par défaut.
 
 ## Stocké dans le compte (`user_metadata`)
 - `cible` : objectif `{type, date, open, debut}`
 - `onboarding` : réponses au questionnaire
 - `machines_absentes` : ids du catalogue décochés dans « Ma salle »
+- `missions` : objectifs terminés `{type, date, debut, resultat}`, 20 au maximum
 
 ## Pièges
 - `seances` n'a **pas** de colonne `feedback` : il est dans `logs_performance`. L'emoji de la dernière séance au tableau de bord est donc faux.
@@ -20,4 +23,4 @@
 - Stockage : buckets `avatars` et `exercise-gifs`.
 
 ## Fichiers SQL
-`supabase/lancement.sql`, `supabase/objectif.sql` et `supabase/securite-fonctions.sql` sont déjà appliqués. Waner colle le SQL lui-même ; je ne fais que des lectures.
+`supabase/lancement.sql`, `supabase/objectif.sql` et `supabase/securite-fonctions.sql` sont déjà appliqués. `supabase/retention.sql` et `supabase/rappels-cron.sql` restent à appliquer (voir lancement). Waner colle le SQL lui-même ; je ne fais que des lectures.

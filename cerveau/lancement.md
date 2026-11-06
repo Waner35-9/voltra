@@ -6,6 +6,13 @@
 - [ ] Adresse postale complète dans les CGU et les mentions légales (aujourd'hui seulement « Rennes »).
 - [ ] Tester la rétractation sur un vrai paiement (faite sur un compte d'essai le 6 novembre 2026).
 
+## Waner : mise en ligne des 5 fonctions de rétention (avant de pousser le code)
+- [ ] Coller `supabase/retention.sql` dans le SQL Editor.
+- [ ] Coller `coach-chat` (remplace l'ancienne), `bilan-semaine` et `rappels` dans les Edge Functions, sans décocher « Verify JWT ».
+- [ ] Ajouter le secret `RAPPELS_SECRET` dans Supabase, généré avec `openssl rand -hex 32`.
+- [ ] Coller `supabase/rappels-cron.sql` avec ce secret, **seulement après avoir retiré le Pro des faux comptes** : sinon ils reçoivent des e-mails qui reviennent en erreur et abîment la réputation de `voltra-app.fr`.
+- [ ] Ace partout n'a pas de plafond de messages : poser le plafond de dépenses Anthropic ci-dessous avant de vendre.
+
 ## Waner : avant le lancement
 - [ ] Supprimer les comptes `reloterwan+test1`, `test3`, `test4` et `test5` dans Supabase.
 - [ ] Retirer le Pro des faux comptes, après le 11 novembre 2026 pour vérifier d'abord la coupure automatique du compte de test.

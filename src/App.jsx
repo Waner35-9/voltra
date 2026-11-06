@@ -270,9 +270,13 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
 
     for (let exI = 0; exI < seance.exercices.length; exI++) {
       const ex = seance.exercices[exI];
+      const kgReels = Array.from({ length: ex.sets || 3 }, (_, setI) => completedSetsData[`${exI}-${setI}`]?.kg).filter(kg => kg > 0);
+      const chargeReelle = kgReels.length ? Math.max(...kgReels) : (ex.chargeKg || 0);
+      // Séance allégée (fatigue, gêne) : elle ne fait ni monter ni baisser les charges suivantes
+      const chargePrevue = seance.allegee && ex.chargeKg > 0 ? Math.max(ex.chargeKg, chargeReelle) : (ex.chargeKg || 0);
       const { data: exRecord, error: exErr } = await supabase
         .from("exercices")
-        .insert({ seance_id: seanceRecord.id, nom: ex.nom, muscles: ex.muscles, sets: ex.sets, reps: String(ex.reps), charge_kg: ex.chargeKg || 0, repos_sec: ex.reposSec || 90, ordre: exI + 1, conseil: ex.conseil })
+        .insert({ seance_id: seanceRecord.id, nom: ex.nom, muscles: ex.muscles, sets: ex.sets, reps: String(ex.reps), charge_kg: chargePrevue, repos_sec: ex.reposSec || 90, ordre: exI + 1, conseil: ex.conseil })
         .select().single();
       if (exErr) continue;
 
@@ -281,14 +285,12 @@ async function saveCompleteSession(programmeId, seance, completedSetsData, feedb
         const setData = completedSetsData[`${exI}-${setI}`];
         repsParSet.push(setData?.reps || parseInt(ex.reps) || 8);
       }
-      const kgReels = Array.from({ length: ex.sets || 3 }, (_, setI) => completedSetsData[`${exI}-${setI}`]?.kg).filter(kg => kg > 0);
-      const chargeReelle = kgReels.length ? Math.max(...kgReels) : (ex.chargeKg || 0);
       const repsCible = parseInt(ex.reps) || 8;
       const taux = repsParSet.filter(r => r >= repsCible).length / repsParSet.length;
 
       await supabase.from("logs_performance").insert({
         exercice_id: exRecord.id, seance_id: seanceRecord.id, user_id: userId,
-        reps_par_set: repsParSet, charge_kg: chargeReelle, feedback,
+        reps_par_set: repsParSet, charge_kg: chargeReelle, feedback: seance.allegee ? "good" : feedback,
         statut: taux === 1 ? "reussite" : taux >= 0.5 ? "partiel" : "echec",
       });
     }
@@ -1118,6 +1120,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
 
       const sessionContext = {
         seance_titre: seance?.titre,
+        adaptation_du_jour: seance?.adaptation,
         sport,
         exercice_actuel: {
           nom: currentEx?.nom,
@@ -1405,6 +1408,11 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
           </div>
           <button onClick={() => setShowCoach(true)} style={{ width: 36, height: 36, borderRadius: 18, background: `${accentColor}30`, backdropFilter: "blur(10px)", border: `1px solid ${accentColor}60`, cursor: "pointer", padding: 3, display: "flex", alignItems: "center", justifyContent: "center" }}><AceAvatar size={28} /></button>
         </div>
+
+        {/* Par-dessus l'animation : la note ne doit pas pousser le bouton de validation hors de l'écran */}
+        {seance?.adaptation && exIdx === 0 && setIdx === 0 && (
+          <p style={{ position: "absolute", bottom: 26, left: 20, right: 20, zIndex: 2, margin: 0, fontSize: 12, lineHeight: 1.4, color: "white", background: "rgba(0,0,0,0.72)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, padding: "8px 12px" }}>{seance.adaptation}</p>
+        )}
 
         {/* Progression exercices — segments */}
         <div style={{ position: "absolute", bottom: 12, left: 20, right: 20, zIndex: 2, display: "flex", gap: 4 }}>
@@ -2088,7 +2096,7 @@ function SplashScreen({ onDone }) {
 // DOCUMENTS LEGAUX
 // ─────────────────────────────────────────────
 const LEGAL_EMAIL = "contact.voltra1@gmail.com";
-const LEGAL_DATE = "5 novembre 2026";
+const LEGAL_DATE = "6 novembre 2026";
 // À compléter par Erwan : affichés automatiquement dès qu'ils sont renseignés
 const LEGAL_SIRET = "";
 const LEGAL_STATUT = "";
@@ -2119,8 +2127,8 @@ const LEGAL_DOCS = {
     sections: [
       ["Responsable du traitement", `Voltra, édité par Erwan Mantouba, Rennes (35000), France — ${LEGAL_EMAIL}.`],
       ["Données que nous collectons", "• Compte : prénom, adresse e-mail, mot de passe (stocké chiffré, jamais lisible).\n• Profil sportif : sport, objectif, poste ou discipline, niveau, fréquence et jours d'entraînement, équipement.\n• Données de santé : zones de douleur ou de blessure, poids, âge, taille. Ces informations sont facultatives et servent uniquement à adapter tes programmes.\n• Activité : séances réalisées, charges, répétitions, historique, records.\n• Photo de profil (facultative).\n• Échanges avec le coach IA.\n• Paiement : géré par Stripe ; nous recevons seulement l'état de ton abonnement, jamais ton numéro de carte."],
-      ["Pourquoi (finalités et bases légales)", "• Créer ton compte et fournir le service, générer tes programmes et le coach IA : exécution du contrat.\n• Traiter tes données de santé (blessures, poids, âge) pour personnaliser l'entraînement : ton consentement explicite, que tu donnes en les renseignant et que tu peux retirer à tout moment.\n• Gérer les paiements et obligations comptables : exécution du contrat et obligation légale.\n• Sécuriser le service et prévenir les abus : intérêt légitime."],
-      ["Intelligence artificielle", "Pour générer ton programme et répondre au coach, les informations utiles de ton profil (sport, objectif, niveau, blessures, poids, âge, séance en cours) et tes messages sont transmis à notre prestataire d'IA (Anthropic). Ton adresse e-mail et ton identité ne sont pas nécessaires à cette génération. Les décisions prises par l'IA (programme, conseils) ne produisent pas d'effet juridique sur toi."],
+      ["Pourquoi (finalités et bases légales)", "• Créer ton compte et fournir le service, générer tes programmes et le coach IA : exécution du contrat.\n• Traiter tes données de santé (blessures, poids, âge) pour personnaliser l'entraînement : ton consentement explicite, que tu donnes en les renseignant et que tu peux retirer à tout moment.\n• Gérer les paiements et obligations comptables : exécution du contrat et obligation légale.\n• T'envoyer des rappels d'entraînement par e-mail : intérêt légitime. Tu peux les désactiver dans ton profil ou par le lien présent dans chaque e-mail.\n• Sécuriser le service et prévenir les abus : intérêt légitime."],
+      ["Intelligence artificielle", "Pour générer ton programme, écrire ton bilan de la semaine et répondre au coach, les informations utiles de ton profil (sport, objectif, niveau, blessures, poids, âge, séance en cours, charges et records) et tes messages sont transmis à notre prestataire d'IA (Anthropic). Ton adresse e-mail et ton identité ne sont pas nécessaires à cette génération. Les décisions prises par l'IA (programme, conseils) ne produisent pas d'effet juridique sur toi."],
       ["Prestataires et transferts hors UE", "Nous faisons appel à : Supabase (base de données, authentification, stockage), Vercel (hébergement de l'application), Stripe (paiement), Anthropic (intelligence artificielle), Resend (envoi des e-mails). Certains sont situés aux États-Unis ou ailleurs hors Union européenne ; les transferts sont encadrés par des garanties appropriées (clauses contractuelles types de la Commission européenne ou équivalent). Nous ne vendons jamais tes données."],
       ["Durée de conservation", "Tes données sont conservées tant que ton compte est actif, puis supprimées dans un délai de 30 jours après la suppression du compte. Les données de facturation sont conservées 10 ans (obligation légale comptable) par notre prestataire de paiement."],
       ["Tes droits", `Tu disposes des droits d'accès, de rectification, d'effacement, de limitation, d'opposition, de portabilité et du droit de retirer ton consentement à tout moment. Pour les exercer : ${LEGAL_EMAIL} (réponse sous 1 mois). Tu peux aussi modifier tes informations directement dans ton profil. En cas de désaccord, tu peux saisir la CNIL (www.cnil.fr).`],
@@ -3400,7 +3408,7 @@ function MatchsScreen({ user, onBack }) {
 
 // ─────────────────────────────────────────────
 // DASHBOARD
-function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs, onResumeSession, cible, onEditCible }) {
+function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs, onResumeSession, cible, onEditCible, onMissionSuivante, onAbonnement }) {
   const stagger = useStaggerUneFois("dashboard");
   const { tests, charger: chargerTests } = useTests(user);
   const [vueTest, setVueTest] = useState(null);
@@ -3456,6 +3464,8 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
 
   if (vueTest === "carrousel") return <CarrouselScreen tests={tests} onBack={() => setVueTest("test")} />;
   if (vueTest === "test") return <TestScreen user={user} tests={tests} onSaved={async () => { await chargerTests(); }} onBack={() => setVueTest(null)} onCarrousel={() => setVueTest("carrousel")} />;
+  if (vueTest === "mission") return <BilanMissionScreen user={user} cible={cible} tests={tests} onBack={() => setVueTest(null)} onSuivante={onMissionSuivante} />;
+  if (vueTest === "ace") return <AceScreen user={user} sport={sport} cible={cible} matchs={matchs} programme={programme} onBack={() => setVueTest(null)} />;
 
   return (
     <div style={{ minHeight: "100dvh", background: DS.colors.bg, paddingBottom: 130 }}>
@@ -3500,7 +3510,8 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
           </div>
         )}
 
-        <MissionCard cible={cible} onEdit={onEditCible} />
+        <MissionCard cible={cible} onEdit={onEditCible} onBilan={isPro ? () => setVueTest("mission") : null} />
+        <BilanSemaineCard user={user} isPro={isPro} />
         <SemaineCard jours={progData?.jours || DEFAULT_JOURS[Math.min(programme?.frequence || 3, 5)]} matchs={matchs} cible={cible} onAjouterMatch={onOpenMatchs} />
         {!pausedSession && !programmeLoading && <InstallPrompt variante="tableau" ds={DS} />}
 
@@ -3562,6 +3573,15 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
             </div>
           </div>
         )}
+
+        <button onClick={() => isPro ? setVueTest("ace") : onAbonnement()} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", marginBottom: 16, padding: 14, borderRadius: 20, background: DS.colors.surface, boxShadow: DS.shadow.card, border: "none", textAlign: "left", cursor: "pointer", color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif" }}>
+          <AceAvatar size={32} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ display: "block", fontSize: 14 }}>Parle à Ace</b>
+            <span style={{ fontSize: 12, color: DS.colors.textSec }}>Une question sur ton entraînement ? Il connaît ton objectif.</span>
+          </span>
+          <span style={{ color: DS.colors.textSec }}>›</span>
+        </button>
 
         <TestCard tests={tests} onOpen={() => setVueTest("test")} />
 
@@ -3948,8 +3968,12 @@ async function callSubscription(action, extra = {}) {
 const AVANTAGES_PRO = [
   ["🧠", "Un programme fait pour ton sport", "Créé par l'IA selon ton niveau, ton matériel et ton objectif, jusqu'à ta date."],
   ["📈", "Des charges qui suivent tes progrès", "Tu notes ton ressenti et ton poids réel : la séance suivante s'ajuste toute seule."],
-  ["🤖", "Ace, ton coach à chaque séance", "Une question, un doute, une gêne : il te répond pendant que tu t'entraînes."],
+  ["🔋", "Une séance adaptée à ta forme du jour", "Fatigue, gêne ou peu de temps : tu le dis en 5 secondes et la séance s'ajuste."],
+  ["🤖", "Ace, ton coach quand tu veux", "En séance ou depuis ton tableau de bord, il connaît ton objectif et te répond."],
   ["🏆", "Des séances adaptées à tes matchs", "Ta charge s'allège avant un match pour que tu arrives frais."],
+  ["📊", "Un bilan chaque semaine", "Tes séances, tes progrès et le conseil d'Ace pour la semaine qui suit."],
+  ["🏁", "Un bilan à chaque objectif", "Ce que tu as gagné pendant ta mission, puis la suivante."],
+  ["⏰", "Des rappels pour garder le rythme", "Un e-mail le matin de tes séances et une relance si tu décroches, si tu le souhaites."],
 ];
 
 function SubscriptionScreen({ onBack, accent, totalSeances, streak, recordKg, semaine, totalSemaines }) {
@@ -4625,6 +4649,8 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
         </div>
 
         {/* Abonnement */}
+        {isPro && user?.id && <RappelsCard user={user} />}
+
         {isPro && (
           <div style={{ background: DS.colors.surface, border: `1px solid ${theme.accent}40`, borderRadius: DS.radius.xl, padding: "18px 20px", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
@@ -4803,12 +4829,37 @@ function adapterSeance(seance, adaptation) {
   return {
     ...seance,
     adaptation: adaptation.note,
+    allegee: !!adaptation.allegee,
     exercices: (seance.exercices || []).map(ex => ({
       ...ex,
       chargeKg: ex.chargeKg > 0 ? ex.chargeKg * adaptation.charge : ex.chargeKg,
       sets: adaptation.sets ? Math.min(adaptation.sets, ex.sets || 3) : Math.max(1, (ex.sets || 3) - (adaptation.setsMoins || 0)),
     })),
   };
+}
+
+// Forme du jour : la réponse sert à cette séance seulement, elle n'est pas enregistrée
+const FORMES = [
+  { id: "forme", ic: "💪", t: "En forme", s: "Programme complet", charge: 1, note: "Tu es en forme : programme complet. Si c'est facile, dis-le à la fin pour monter la prochaine fois." },
+  { id: "normal", ic: "🙂", t: "Normal", s: "Programme complet", charge: 1 },
+  { id: "fatigue", ic: "😴", t: "Fatigue", s: "Charges -15 %, 1 série de moins", charge: 0.85, setsMoins: 1, allegee: true, note: "Séance allégée pour ta fatigue : charges -15 % et 1 série de moins. Tes prochaines séances ne baissent pas." },
+  { id: "gene", ic: "🩹", t: "Une gêne", s: "Charges -30 %, 1 série de moins", charge: 0.7, setsMoins: 1, allegee: true, note: "Séance allégée pour ta gêne : charges -30 % et 1 série de moins. Si ça fait mal, arrête. Si ça persiste, consulte." },
+];
+
+// Le match et la forme du jour ne s'additionnent pas : le plus léger des deux s'applique
+function adaptationAvecForme(match, forme) {
+  if (!forme) return match;
+  if (!match || match.charge > forme.charge) return forme;
+  return { ...match, allegee: forme.allegee, note: forme.id === "gene" ? `${match.note} Si ta gêne fait mal, arrête. Si elle persiste, consulte.` : match.note };
+}
+
+// Peu de temps : on garde les premiers exercices, les plus importants de la séance
+function seanceCourte(seance) {
+  const exercices = seance.exercices || [];
+  const garde = Math.max(2, Math.ceil(exercices.length * 0.6));
+  if (exercices.length <= garde) return seance;
+  const note = `Version courte : ${garde} exercices sur ${exercices.length}.`;
+  return { ...seance, exercices: exercices.slice(0, garde), adaptation: [seance.adaptation, note].filter(Boolean).join(" ") };
 }
 
 const Bloom = ({ echelle = 1 }) => <div className="v-bloom" style={{ transform: `scale(${echelle})` }} />;
@@ -4956,7 +5007,7 @@ function ObjectifScreen({ initial, onboardingData, edition, onDone, onBack }) {
 }
 
 // ── Carte du tableau de bord ──
-function MissionCard({ cible, onEdit }) {
+function MissionCard({ cible, onEdit, onBilan }) {
   if (!cible?.date) return (
     <button onClick={onEdit} className="v-mission" style={{ width: "100%", textAlign: "left", border: "none", cursor: "pointer" }}>
       <span className="v-mission-lab">🎯 TON OBJECTIF</span>
@@ -4967,10 +5018,10 @@ function MissionCard({ cible, onEdit }) {
   const j = joursAvant(cible.date);
   const c = CIBLES[cible.type] || CIBLES.perso;
   if (j < 0) return (
-    <button onClick={onEdit} className="v-mission" style={{ width: "100%", textAlign: "left", border: "none", cursor: "pointer" }}>
+    <button onClick={onBilan || onEdit} className="v-mission" style={{ width: "100%", textAlign: "left", border: "none", cursor: "pointer" }}>
       <span className="v-mission-lab">{c.ic} JOUR J PASSÉ</span>
-      <span style={{ display: "block", fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", marginTop: 8, color: "#fff" }}>Quel est ton prochain objectif ?</span>
-      <span style={{ display: "block", fontSize: 14, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>Choisis une nouvelle date pour relancer ton plan →</span>
+      <span style={{ display: "block", fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", marginTop: 8, color: "#fff" }}>{onBilan ? "Découvre ton bilan" : "Quel est ton prochain objectif ?"}</span>
+      <span style={{ display: "block", fontSize: 14, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>{onBilan ? "Ce que tu as gagné, puis ta prochaine mission →" : "Choisis une nouvelle date pour relancer ton plan →"}</span>
     </button>
   );
   const etat = etatPlan(cible);
@@ -5272,7 +5323,371 @@ function BottomNav({ activeTab, setTab }) {
 // ─────────────────────────────────────────────
 // APP ROOT
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// FORME DU JOUR
+// ─────────────────────────────────────────────
+function FormeDuJour({ onChoix, onFermer }) {
+  const [peuDeTemps, setPeuDeTemps] = useState(false);
+  const police = { fontFamily: "'Inter',sans-serif", margin: 0 };
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div style={{ width: "100%", maxWidth: 430, background: DS.colors.surface, borderRadius: "24px 24px 0 0", padding: "22px 16px calc(20px + env(safe-area-inset-bottom, 0px))" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <AceAvatar size={36} />
+          <p style={{ ...police, flex: 1, fontSize: 19, fontWeight: 800, color: DS.colors.textPrimary }}>Comment tu te sens ?</p>
+          <button onClick={onFermer} aria-label="Fermer" style={{ width: 36, height: 36, borderRadius: 18, background: DS.colors.surfaceHigh, border: "none", color: DS.colors.textPrimary, fontSize: 15, cursor: "pointer" }}>✕</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+          {FORMES.map(f => (
+            <button key={f.id} onClick={() => onChoix(f, peuDeTemps)} style={{ minHeight: 104, padding: 12, textAlign: "left", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 16, cursor: "pointer" }}>
+              <span style={{ display: "block", fontSize: 22, marginBottom: 6 }}>{f.ic}</span>
+              <span style={{ ...police, display: "block", fontSize: 14, fontWeight: 800, color: DS.colors.textPrimary, marginBottom: 2 }}>{f.t}</span>
+              <span style={{ ...police, display: "block", fontSize: 12, lineHeight: 1.3, color: DS.colors.textSec }}>{f.s}</span>
+            </button>
+          ))}
+        </div>
+        <button role="switch" aria-checked={peuDeTemps} onClick={() => setPeuDeTemps(v => !v)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", minHeight: 48, padding: "8px 12px", textAlign: "left", background: "none", border: `1px solid ${peuDeTemps ? DS.colors.primary : DS.colors.border}`, borderRadius: 14, cursor: "pointer" }}>
+          <span style={{ fontSize: 18 }}>⏱</span>
+          <span style={{ ...police, flex: 1, fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary }}>J'ai peu de temps : moins d'exercices</span>
+          <Interrupteur actif={peuDeTemps} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Interrupteur({ actif }) {
+  return (
+    <span style={{ width: 42, height: 24, flexShrink: 0, borderRadius: 12, padding: 2, background: actif ? DS.colors.primary : DS.colors.border, transition: "background 160ms var(--ease-out)" }}>
+      <span style={{ display: "block", width: 20, height: 20, borderRadius: 10, background: "#fff", transform: `translateX(${actif ? 18 : 0}px)`, transition: "transform 160ms var(--ease-out)" }} />
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────
+// BILANS : ce que l'athlète a vraiment gagné
+// ─────────────────────────────────────────────
+// Premier poids et meilleur poids de chaque exercice (logs du plus ancien au plus récent)
+function progresExercices(logs) {
+  const parNom = {};
+  for (const log of logs || []) {
+    const nom = log.exercices?.nom;
+    const kg = Number(log.charge_kg) || 0;
+    if (!nom || kg <= 0) continue;
+    const e = parNom[nom] || (parNom[nom] = { nom, de: kg, a: kg });
+    e.a = Math.max(e.a, kg);
+  }
+  return Object.values(parNom).filter(e => e.a > e.de).sort((x, y) => (y.a - y.de) - (x.a - x.de));
+}
+
+const virguleKg = (n) => String(n).replace(".", ",");
+const RESULTATS_MISSION = [
+  { id: "atteint", ic: "🏆", t: "Objectif atteint", r: "Bravo, tu l'as fait. Garde cet élan pour la suite." },
+  { id: "presque", ic: "🎯", t: "Presque", r: "Tu y étais presque. Tu repars de ce niveau, pas de zéro." },
+  { id: "pas_encore", ic: "💪", t: "Pas cette fois", r: "Ça arrive. Tout ce que tu as gagné reste." },
+];
+
+function BilanMissionScreen({ user, cible, tests, onBack, onSuivante }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const c = CIBLES[cible.type] || CIBLES.perso;
+  const debut = cible.debut || user.created_at;
+  const [donnees, setDonnees] = useState(null);
+  const [resultat, setResultat] = useState(null);
+
+  useEffect(() => {
+    const fin = `${cible.date}T23:59:59`;
+    Promise.all([
+      supabase.from("seances").select("duree_min").eq("user_id", user.id).eq("statut", "faite").gte("date_realisee", debut).lte("date_realisee", fin),
+      supabase.from("logs_performance").select("charge_kg, exercices(nom)").eq("user_id", user.id).gte("logged_at", debut).lte("logged_at", fin).order("logged_at", { ascending: true }).limit(1000),
+    ]).then(([seances, logs]) => setDonnees({ seances: seances.data || [], progres: progresExercices(logs.data) }))
+      .catch(() => setDonnees({ seances: [], progres: [] }));
+  }, []);
+
+  const testsMission = (tests || []).filter(t => t.date_test >= String(debut).slice(0, 10) && t.date_test <= cible.date);
+  const premier = testsMission[0];
+  const dernier = testsMission.length > 1 ? testsMission[testsMission.length - 1] : null;
+  const heures = Math.round((donnees?.seances || []).reduce((total, s) => total + (s.duree_min || 0), 0) / 60);
+  const carte = { background: DS.colors.surface, borderRadius: 20, boxShadow: DS.shadow.card, padding: 16, marginBottom: 12 };
+  const titreCarte = { fontSize: 15, fontWeight: 800, color: DS.colors.textPrimary, margin: "0 0 10px" };
+  const ligne = (cle, nom, valeur, i) => (
+    <div key={cle} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "9px 0", borderTop: i ? `1px solid ${DS.colors.border}` : "none", fontSize: 13 }}>
+      <span style={{ minWidth: 0, color: DS.colors.textPrimary, fontWeight: 600 }}>{nom}</span>
+      <span style={{ flexShrink: 0, color: DS.colors.isDark ? ac : DS.colors.textPrimary, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{valeur}</span>
+    </div>
+  );
+
+  return (
+    <div className="v-plein" style={{ background: DS.colors.bg, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", position: "relative", isolation: "isolate", overflowX: "clip", padding: `${hautSur(48)} 16px calc(24px + env(safe-area-inset-bottom, 0px))` }}>
+        <Bloom echelle={0.8} />
+        <button onClick={onBack} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0 }}>← Retour</button>
+        <p style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: ac, margin: 0 }}>{c.ic} BILAN DE MISSION</p>
+        <h1 style={{ fontWeight: 900, fontSize: 32, lineHeight: 1.05, letterSpacing: "-0.02em", margin: "8px 0 4px" }}>Mission terminée</h1>
+        <p style={{ fontSize: 14, color: DS.colors.textSec, margin: "0 0 18px" }}>{c.t} · {dateLongue(cible.date)}</p>
+
+        {!donnees && <p style={{ fontSize: 13, color: DS.colors.textSec }}>Calcul de ton bilan...</p>}
+        {donnees && (
+          <>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              {[[donnees.seances.length, donnees.seances.length > 1 ? "séances" : "séance"], [heures, heures > 1 ? "heures" : "heure"], [donnees.progres.length, donnees.progres.length > 1 ? "exercices en progrès" : "exercice en progrès"]].map(([val, label]) => (
+                <div key={label} style={{ flex: 1, minWidth: 0, background: DS.colors.surface, boxShadow: DS.shadow.card, borderRadius: 16, padding: "14px 6px", textAlign: "center" }}>
+                  <p style={{ fontSize: 24, fontWeight: 900, color: ac, margin: 0, fontVariantNumeric: "tabular-nums" }}>{val}</p>
+                  <p style={{ fontSize: 11, lineHeight: 1.25, color: DS.colors.textSec, margin: "2px 0 0" }}>{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {donnees.progres.length > 0 && (
+              <div style={carte}>
+                <p style={titreCarte}>Tes charges</p>
+                {donnees.progres.slice(0, 5).map((e, i) => ligne(e.nom, e.nom, `${virguleKg(e.de)} → ${virguleKg(e.a)} kg`, i))}
+              </div>
+            )}
+
+            {dernier && (
+              <div style={carte}>
+                <p style={titreCarte}>Tes tests</p>
+                {TESTS_PERF.filter(t => premier[t.k] != null && dernier[t.k] != null).map((t, i) => ligne(t.k, t.t, `${virgule(premier[t.k], t.dec)} → ${virgule(dernier[t.k], t.dec)}${t.u ? ` ${t.u}` : ""}`, i))}
+              </div>
+            )}
+
+            {donnees.seances.length === 0 && <p style={{ fontSize: 13, color: DS.colors.textSec, margin: "0 0 12px" }}>Aucune séance enregistrée pendant cette mission. La prochaine peut commencer aujourd'hui.</p>}
+
+            <div style={carte}>
+              <p style={titreCarte}>Comment ça s'est passé ?</p>
+              <div style={{ display: "flex", gap: 8 }}>
+                {RESULTATS_MISSION.map(r => (
+                  <button key={r.id} onClick={() => setResultat(r)} aria-pressed={resultat?.id === r.id} style={{ flex: 1, minWidth: 0, minHeight: 76, padding: "10px 4px", background: DS.colors.surfaceHigh, border: `2px solid ${resultat?.id === r.id ? ac : "transparent"}`, borderRadius: 14, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    <span style={{ display: "block", fontSize: 20, marginBottom: 4 }}>{r.ic}</span>{r.t}
+                  </button>
+                ))}
+              </div>
+              {resultat && <p style={{ fontSize: 13, lineHeight: 1.45, color: DS.colors.textSec, margin: "12px 0 0" }}>{resultat.r}</p>}
+            </div>
+
+            <PrimaryButton onClick={() => onSuivante(resultat?.id || null)} style={{ height: 56 }}>Choisir ma prochaine mission →</PrimaryButton>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function appelerFonction(nom, jeton, corps = {}) {
+  return fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${nom}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${jeton}`, "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY },
+    body: JSON.stringify(corps),
+  });
+}
+
+function lundiCourant() {
+  const d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function BilanSemaineCard({ user, isPro }) {
+  const cleFerme = `voltra_bilan_ferme_${user?.id}`;
+  const [bilan, setBilan] = useState(null);
+
+  useEffect(() => {
+    if (!isPro || !user?.id) return;
+    try { if (localStorage.getItem(cleFerme) === lundiCourant()) return; } catch {}
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => session ? appelerFonction("bilan-semaine", session.access_token) : null)
+      .then(res => res?.ok ? res.json() : null)
+      .then(d => setBilan(d?.bilan || null))
+      .catch(() => {});
+  }, [isPro, user?.id]);
+
+  if (!bilan) return null;
+  const fermer = () => {
+    try { localStorage.setItem(cleFerme, lundiCourant()); } catch {}
+    setBilan(null);
+  };
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  return (
+    <div style={{ background: DS.colors.surface, boxShadow: DS.shadow.card, borderRadius: 20, padding: 16, marginBottom: 16, fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <AceAvatar size={32} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 15, fontWeight: 800, color: DS.colors.textPrimary, margin: 0 }}>Ta semaine, par Ace</p>
+          <p style={{ fontSize: 12, color: DS.colors.textSec, margin: 0 }}>{bilan.seances} séance{bilan.seances > 1 ? "s" : ""}{bilan.prevues ? ` sur ${bilan.prevues}` : ""}</p>
+        </div>
+        <button onClick={fermer} aria-label="Fermer le bilan" style={{ width: 32, height: 32, borderRadius: 16, background: DS.colors.surfaceHigh, border: "none", color: DS.colors.textSec, fontSize: 13, cursor: "pointer" }}>✕</button>
+      </div>
+      {(bilan.gains || []).map(g => (
+        <div key={g.nom} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "6px 0", fontSize: 13 }}>
+          <span style={{ minWidth: 0, color: DS.colors.textPrimary, fontWeight: 600 }}>{g.nom}</span>
+          <span style={{ flexShrink: 0, color: DS.colors.isDark ? ac : DS.colors.textPrimary, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{virguleKg(g.de)} → {virguleKg(g.a)} kg</span>
+        </div>
+      ))}
+      <p style={{ fontSize: 13, lineHeight: 1.5, color: DS.colors.textSec, margin: "8px 0 0" }}>{bilan.texte}</p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// ACE EN DEHORS DES SÉANCES
+// ─────────────────────────────────────────────
+const QUESTIONS_ACE = ["Comment préparer mon prochain match ?", "Je peux m'entraîner si je suis courbaturé ?", "Sur quoi je dois me concentrer cette semaine ?"];
+const ACCUEIL_ACE = { role: "assistant", text: "Salut, je connais ton objectif et tes charges. Pose-moi ta question." };
+
+function AceScreen({ user, sport, cible, matchs, programme, onBack }) {
+  const theme = getSportTheme(sport);
+  const cle = `voltra_ace_${user.id}`;
+  const [messages, setMessages] = useState(() => {
+    try { const sauves = JSON.parse(localStorage.getItem(cle) || "[]"); return Array.isArray(sauves) && sauves.length ? sauves : [ACCUEIL_ACE]; }
+    catch { return [ACCUEIL_ACE]; }
+  });
+  const [texte, setTexte] = useState("");
+  const [enCours, setEnCours] = useState(false);
+  const [records, setRecords] = useState([]);
+  const finRef = useRef(null);
+
+  useEffect(() => {
+    supabase.from("logs_performance").select("charge_kg, exercices(nom)").eq("user_id", user.id).order("charge_kg", { ascending: false }).limit(100)
+      .then(({ data }) => {
+        const vus = {};
+        for (const l of data || []) if (l.exercices?.nom && l.charge_kg > 0 && !vus[l.exercices.nom]) vus[l.exercices.nom] = l.charge_kg;
+        setRecords(Object.entries(vus).slice(0, 5).map(([nom, kg]) => `${nom} ${kg} kg`));
+      });
+  }, []);
+  useEffect(() => {
+    finRef.current?.scrollIntoView({ block: "end" });
+    try { localStorage.setItem(cle, JSON.stringify(messages.slice(-30))); } catch {}
+  }, [messages, enCours]);
+
+  const envoyer = async (question) => {
+    const message = String(question || "").trim();
+    if (!message || enCours) return;
+    const historique = messages.slice(-8);
+    setTexte("");
+    setMessages(prev => [...prev, { role: "user", text: message }]);
+    setEnCours(true);
+    try {
+      await supabase.auth.refreshSession();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Pas de session");
+      const dj = programme?.data_json || {};
+      const res = await appelerFonction("coach-chat", session.access_token, {
+        mode: "libre",
+        message,
+        history: historique,
+        context: {
+          sport,
+          niveau: dj.niveau || programme?.niveau,
+          objectif: cible?.date ? `${(CIBLES[cible.type] || CIBLES.perso).t}, le ${dateLongue(cible.date)}` : "",
+          jours_avant: cible?.date ? joursAvant(cible.date) : null,
+          matchs: (matchs || []).map(m => m.date_match),
+          semaine: programme?.semaine_courante,
+          total_semaines: programme?.total_semaines,
+          douleurs: dj.douleurs,
+          records,
+        },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      setMessages(prev => [...prev, { role: "assistant", text: d.reply || "Réessaie dans un instant." }]);
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", text: "Erreur de connexion. Réessaie." }]);
+    }
+    setEnCours(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: DS.colors.bg, display: "flex", flexDirection: "column", fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ padding: `${hautSur(52)} 16px 12px`, display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${DS.colors.border}` }}>
+        <button onClick={onBack} aria-label="Retour" style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: 20, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 16, cursor: "pointer" }}>←</button>
+        <AceAvatar size={32} />
+        <p style={{ flex: 1, fontSize: 18, fontWeight: 800, color: DS.colors.textPrimary, margin: 0 }}>Ace</p>
+        {messages.length > 1 && <button onClick={() => setMessages([ACCUEIL_ACE])} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 8 }}>Effacer</button>}
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+        {messages.map((m, i) => (
+          <div key={i} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "82%", padding: "10px 14px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.role === "user" ? theme.accent : DS.colors.surfaceHigh, color: m.role === "user" ? "#000" : DS.colors.textPrimary, fontSize: 14, lineHeight: 1.5, overflowWrap: "anywhere" }}>
+            {m.text.split("**").map((part, j) => j % 2 === 1 ? <strong key={j}>{part}</strong> : part)}
+          </div>
+        ))}
+        {enCours && <p style={{ fontSize: 13, color: DS.colors.textSec, margin: 0 }}>Ace écrit...</p>}
+        {messages.length === 1 && !enCours && QUESTIONS_ACE.map(q => (
+          <button key={q} onClick={() => envoyer(q)} style={{ alignSelf: "flex-start", minHeight: 40, padding: "8px 14px", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, textAlign: "left", cursor: "pointer" }}>{q}</button>
+        ))}
+        <div ref={finRef} />
+      </div>
+
+      <div style={{ display: "flex", gap: 8, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))", borderTop: `1px solid ${DS.colors.border}` }}>
+        <input enterKeyHint="send" value={texte} onChange={e => setTexte(e.target.value)} onKeyDown={e => e.key === "Enter" && envoyer(texte)} placeholder="Parle à Ace..." aria-label="Ton message à Ace" style={{ flex: 1, minWidth: 0, height: 46, padding: "0 16px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 16, outline: "none", fontFamily: "'Inter',sans-serif" }} />
+        <button onClick={() => envoyer(texte)} disabled={!texte.trim() || enCours} aria-label="Envoyer" style={{ width: 46, height: 46, flexShrink: 0, borderRadius: DS.radius.full, background: texte.trim() ? theme.accent : DS.colors.surfaceHigh, border: "none", color: texte.trim() ? "#000" : DS.colors.textSec, fontSize: 18, fontWeight: 700, cursor: "pointer" }}>→</button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// RAPPELS PAR E-MAIL
+// ─────────────────────────────────────────────
+function RappelsCard({ user }) {
+  const [etat, setEtat] = useState(null);
+  useEffect(() => {
+    supabase.from("rappels").select("seance_matin, relance").eq("user_id", user.id).maybeSingle()
+      .then(({ data, error }) => { if (!error) setEtat(data || { seance_matin: false, relance: true }); });
+  }, [user.id]);
+  if (!etat) return null;
+
+  const changer = async (cle) => {
+    const suivant = { ...etat, [cle]: !etat[cle] };
+    setEtat(suivant);
+    const { error } = await supabase.from("rappels").upsert({ user_id: user.id, ...suivant }, { onConflict: "user_id" });
+    if (error) setEtat(etat);
+  };
+  const options = [
+    ["seance_matin", "Le matin de mes séances", "Un e-mail pour te rappeler ta séance du jour."],
+    ["relance", "Si je décroche", "Un e-mail après 5 jours sans séance, 3 fois au maximum."],
+  ];
+  return (
+    <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "16px 20px", marginBottom: 14, fontFamily: "'Inter',sans-serif" }}>
+      <p style={{ fontSize: 15, fontWeight: 800, color: DS.colors.textPrimary, margin: "0 0 6px" }}>⏰ Rappels</p>
+      {options.map(([cle, titre, detail], i) => (
+        <button key={cle} role="switch" aria-checked={etat[cle]} onClick={() => changer(cle)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", minHeight: 56, padding: "8px 0", background: "none", border: "none", borderTop: i ? `1px solid ${DS.colors.border}` : "none", textAlign: "left", cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: DS.colors.textPrimary }}>{titre}</span>
+            <span style={{ display: "block", fontSize: 12, lineHeight: 1.35, color: DS.colors.textSec }}>{detail}</span>
+          </span>
+          <Interrupteur actif={etat[cle]} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Page ouverte par le lien de désinscription des e-mails : aucune connexion demandée
+const JETON_STOP_RAPPELS = /[?&]rappels=stop/.test(URL_AU_CHARGEMENT) ? new URLSearchParams(window.location.search).get("t") : null;
+
+function RappelsStopScreen({ jeton }) {
+  const [etat, setEtat] = useState("attente");
+  useEffect(() => {
+    appelerFonction("rappels", import.meta.env.VITE_SUPABASE_ANON_KEY, { action: "desactiver", jeton })
+      .then(res => setEtat(res.ok ? "ok" : "erreur"))
+      .catch(() => setEtat("erreur"));
+  }, []);
+  const texte = {
+    attente: ["Un instant...", ""],
+    ok: ["Rappels désactivés", "Tu ne recevras plus d'e-mails de rappel. Tu peux les réactiver dans ton profil."],
+    erreur: ["Ça n'a pas marché", `Réessaie plus tard, ou écris à ${LEGAL_EMAIL}.`],
+  }[etat];
+  return (
+    <div style={{ minHeight: "100dvh", background: DS.colors.bg, display: "flex", flexDirection: "column", justifyContent: "center", padding: 24, textAlign: "center", fontFamily: "'Inter',sans-serif" }}>
+      <h1 style={{ fontSize: 26, fontWeight: 800, color: DS.colors.textPrimary, margin: "0 0 8px" }}>{texte[0]}</h1>
+      <p style={{ fontSize: 14, lineHeight: 1.5, color: DS.colors.textSec, margin: 0 }}>{texte[1]}</p>
+    </div>
+  );
+}
+
 export default function VoltraApp() {
+  if (JETON_STOP_RAPPELS) return <RappelsStopScreen jeton={JETON_STOP_RAPPELS} />;
   const [screen, setScreen] = useState("splash");
   const [appTheme, setAppTheme] = useState(() => localStorage.getItem("voltra_theme") || "light");
   const [themeChosen, setThemeChosen] = useState(() => !!localStorage.getItem("voltra_theme"));
@@ -5295,6 +5710,7 @@ export default function VoltraApp() {
   const [isPro, setIsPro] = useState(false);
   const [showDoubleSessionWarning, setShowDoubleSessionWarning] = useState(false);
   const [pendingSeance, setPendingSeance] = useState(null);
+  const [seanceAPreparer, setSeanceAPreparer] = useState(null);
   const [authConfirmation, setAuthConfirmation] = useState(null);
   const [profilPhysique, setProfilPhysique] = useState(null);
   const [ressentis, setRessentis] = useState({});
@@ -5340,8 +5756,9 @@ export default function VoltraApp() {
     return appliquerRessenti(securiserExercice(exerciceDepuisFiche(ex, alt, true), profil), ressentis, profil);
   };
 
-  const launchSeance = (seanceBrute) => {
-    const rawSeance = adapterSeance(seanceBrute, adaptationDuJour(matchs, cible));
+  const launchSeance = (seanceBrute, forme, peuDeTemps) => {
+    const adaptee = adapterSeance(seanceBrute, adaptationAvecForme(adaptationDuJour(matchs, cible), forme));
+    const rawSeance = peuDeTemps ? seanceCourte(adaptee) : adaptee;
     const profilCharges = profilDeCharges();
     const seance = {
       ...rawSeance,
@@ -5773,7 +6190,7 @@ if (screen === "pricing") return <PricingScreen key={appTheme} programme={progra
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, lineHeight: 1.6, marginBottom: 20 }}>
               Le repos fait partie de la progression. Es-tu sûr de vouloir enchaîner une 2ème séance ?
             </p>
-            <button onClick={() => { setShowDoubleSessionWarning(false); if (pendingSeance) launchSeance(pendingSeance); setPendingSeance(null); }} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: 999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 800, cursor: "pointer", marginBottom: 10 }}>
+            <button onClick={() => { setShowDoubleSessionWarning(false); if (pendingSeance) setSeanceAPreparer(pendingSeance); setPendingSeance(null); }} style={{ width: "100%", height: 52, background: DS.colors.primary, border: "none", borderRadius: 999, color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 800, cursor: "pointer", marginBottom: 10 }}>
               Oui, je continue
             </button>
             <button onClick={() => { setShowDoubleSessionWarning(false); setPendingSeance(null); }} style={{ width: "100%", background: "none", border: "none", color: DS.colors.textSec, fontFamily: "'Inter',sans-serif", fontSize: 13, cursor: "pointer" }}>
@@ -5781,6 +6198,13 @@ if (screen === "pricing") return <PricingScreen key={appTheme} programme={progra
             </button>
           </div>
         </div>
+      )}
+
+      {seanceAPreparer && (
+        <FormeDuJour
+          onChoix={(forme, peuDeTemps) => { launchSeance(seanceAPreparer, forme, peuDeTemps); setSeanceAPreparer(null); }}
+          onFermer={() => setSeanceAPreparer(null)}
+        />
       )}
 
       {showMatchs ? (
@@ -5878,6 +6302,14 @@ if (screen === "pricing") return <PricingScreen key={appTheme} programme={progra
               onOpenMatchs={() => setShowMatchs(true)}
               cible={cible}
               onEditCible={() => setScreen("objectif-edit")}
+              isPro={isPro}
+              onAbonnement={() => { setPricingRetour(true); setScreen("pricing"); }}
+              onMissionSuivante={(resultat) => {
+                const passees = user?.user_metadata?.missions || [];
+                const mission = { type: cible?.type, date: cible?.date, debut: cible?.debut, resultat };
+                supabase.auth.updateUser({ data: { missions: [...passees.filter(m => m.date !== mission.date), mission].slice(-20) } });
+                setScreen("objectif-edit");
+              }}
               onResumeSession={(paused) => {
                 setResumeState({ exIdx: paused.exIdx, setIdx: paused.setIdx, completedSets: paused.completedSets, elapsed: paused.elapsed });
                 localStorage.removeItem("voltra_paused_session");
@@ -5910,7 +6342,7 @@ if (screen === "pricing") return <PricingScreen key={appTheme} programme={progra
                     return;
                   }
                 }
-                launchSeance(rawSeance);
+                setSeanceAPreparer(rawSeance);
               }}
             />
           )}

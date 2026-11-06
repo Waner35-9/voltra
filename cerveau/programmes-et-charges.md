@@ -16,6 +16,11 @@ Dans l'ordre : adaptation aux matchs, renommage et remplacement par le catalogue
 
 Un poids que l'utilisateur a soulevé passe outre le plafond de sécurité (jusqu'à 110 % de ce poids). Un poids très éloigné du prévu demande confirmation (`poidsAnormal`).
 
+## Forme du jour (`FormeDuJour`, `src/App.jsx`)
+Question posée à chaque lancement de séance : réponse non enregistrée. Fatigue -15 %, gêne -30 %, 1 série de moins. « Peu de temps » garde 60 % des exercices, les premiers.
+- Avec un match, c'est le plus léger des deux qui s'applique, jamais les deux.
+- `seance.allegee` : `saveCompleteSession` enregistre un ressenti neutre et ne compte pas un poids supérieur au prévu, pour que la séance ne fasse pas bouger les charges suivantes. Une adaptation de match seule n'a pas cette protection.
+
 ## Catalogue et images
 - `src/catalogueEquipements.js` : 83 fiches sans doublons, 1 fiche = 1 fonction, les autres noms sont dans `variantes`. Ajouter une machine : une fiche ici, son nom dans `MACHINES_SALLE` de `generate-program`, un dessin ci-dessous.
 - `src/illustrationsMachines.jsx` : dessins créés pour Voltra pour les machines, poulies et matériel de préparation physique, reliés par `DESSIN_PAR_FICHE`.
