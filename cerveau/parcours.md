@@ -18,6 +18,9 @@ Lien `?invitation=CODE` : le code est gardé dans `voltra_invitation` (localStor
 - Rappels : réglages dans le profil. Fonction `rappels` lancée par `pg_cron` chaque matin. Le lien de désinscription (`?rappels=stop&t=…`) marche sans connexion. Les e-mails disent « ouvre Voltra » sans lien vers l'app, car sur iPhone un lien s'ouvre dans Safari.
 - `coach-chat` refuse désormais les comptes sans Pro. Il parle d'alimentation avec tout le monde ; régime, perte de poids et compléments seulement si `profiles.age` indique 18 ans ou plus.
 
+## Effet de construction du plan
+`ConstructionPlan`, dans `ObjectifScreen` : une case par semaine se remplit aux couleurs des phases pendant que le J- descend, puis le jour J s'allume en orange. Durées dans `PLAN_*`, le délai de `.v-plan-flash` doit rester égal à `PLAN_JOUR_J`. Un appui passe à l'étape suivante.
+
 ## À savoir
 - La session est liée à l'adresse du site : chaque lien de déploiement Vercel a la sienne. **Tester sur `www.voltra-app.fr`.**
 - `?carrousel` dans l'adresse affiche le bouton du carrousel, réservé aux publicités de Waner.

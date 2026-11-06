@@ -4916,6 +4916,73 @@ function seanceCourte(seance) {
 const Bloom = ({ echelle = 1 }) => <div className="v-bloom" style={{ transform: `scale(${echelle})` }} />;
 
 // ── Les 4 temps : objectif, date, construction, plan ──
+// Durées de la construction du plan, en ms
+const PLAN_DEBUT = 250, PLAN_REMPLISSAGE = 2300, PLAN_JOUR_J = PLAN_DEBUT + PLAN_REMPLISSAGE + 200, PLAN_FIN = PLAN_JOUR_J + 1500;
+
+// Une case par semaine se remplit pendant que le compte à rebours descend, jusqu'au jour J
+function ConstructionPlan({ phases, jours, date, ouvert, ic, onClick }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const total = phases.reduce((n, p) => n + p.w, 0);
+  const colonnes = total <= 7 ? 4 : total <= 23 ? 6 : 8;
+  const couleurs = phases.flatMap(p => Array(p.w).fill(p.c));
+  // Lent au départ, rapide à l'arrivée
+  const delai = (i) => PLAN_DEBUT + PLAN_REMPLISSAGE * (1 - Math.pow(1 - i / total, 1.6));
+  const [avance, setAvance] = useState(0);
+  const [arrive, setArrive] = useState(false);
+
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { setAvance(1); setArrive(true); return; }
+    const debut = performance.now();
+    let id;
+    const tick = (t) => {
+      const p = Math.min(1, Math.max(0, (t - debut - PLAN_DEBUT) / PLAN_REMPLISSAGE));
+      setAvance(1 - Math.pow(1 - p, 1 / 1.6));
+      if (t - debut < PLAN_JOUR_J) id = requestAnimationFrame(tick);
+      else setArrive(true);
+    };
+    id = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const semaineEnCours = Math.min(total, Math.floor(avance * total) + 1);
+  let semaine = 0;
+  return (
+    <div onClick={onClick} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", cursor: "pointer" }}>
+      <div className="v-plan-flash" />
+      <p className="v-in" style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: ac, textAlign: "center" }}>On construit ton plan</p>
+      <div style={{ textAlign: "center", margin: "10px 0 18px", height: 112 }}>
+        {arrive
+          ? <div key="arrive" className="v-plan-arrive" style={{ height: 84, fontSize: ouvert ? 54 : 76, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: "84px", color: DS.colors.warning }}>{ouvert ? "TU ES PRÊT" : "JOUR J"}</div>
+          : ouvert
+            ? <div style={{ height: 84, fontSize: 76, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: "84px", fontVariantNumeric: "tabular-nums" }}><span style={{ fontSize: 34, color: ac, marginRight: 6, letterSpacing: "-0.02em" }}>SEM.</span>{semaineEnCours}</div>
+            : <div style={{ height: 84, fontSize: 76, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: "84px", fontVariantNumeric: "tabular-nums" }}><span style={{ fontSize: 34, color: ac, marginRight: 2, letterSpacing: "-0.02em" }}>J-</span>{Math.max(1, Math.round(jours * (1 - avance)))}</div>}
+        <p className="v-premiere" style={{ fontSize: 15, fontWeight: 700, color: DS.colors.textSec, marginTop: 2 }}>{ouvert ? `${total} semaines de préparation` : dateLocale(date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</p>
+      </div>
+      <div className="v-plan-grille" style={{ gridTemplateColumns: `repeat(${colonnes}, 1fr)`, "--impact": `${PLAN_JOUR_J}ms` }}>
+        {couleurs.map((c, i) => (
+          <div key={i} className="v-plan-case" style={{ background: DS.colors.surfaceHigh }}>
+            <i style={{ background: c, animationDelay: `${delai(i)}ms` }} />
+          </div>
+        ))}
+        <div className="v-plan-case jour-j" style={{ "--orange": DS.colors.warning, "--impact": `${PLAN_JOUR_J}ms` }}><b /><span>{ic}</span><span>{ouvert ? "Cap atteint" : dateLongue(date)}</span></div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 20 }}>
+        {phases.map(p => {
+          const depart = semaine;
+          semaine += p.w;
+          return (
+            <div key={p.n} className="v-plan-phase" style={{ animationDelay: `${delai(depart)}ms` }}>
+              <span style={{ width: 12, height: 12, borderRadius: 4, background: p.c, flexShrink: 0 }} />
+              <b style={{ fontSize: 14, fontWeight: 800, flex: 1 }}>{p.n}</b>
+              <span style={{ fontSize: 13, color: DS.colors.textSec, fontVariantNumeric: "tabular-nums" }}>{p.w} sem.</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ObjectifScreen({ initial, onboardingData, edition, onDone, onBack }) {
   const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
   const [etape, setEtape] = useState(0);
@@ -4932,7 +4999,7 @@ function ObjectifScreen({ initial, onboardingData, edition, onDone, onBack }) {
 
   useEffect(() => {
     if (etape !== 2) return;
-    const t = setTimeout(() => setEtape(3), 3000);
+    const t = setTimeout(() => setEtape(3), PLAN_FIN);
     return () => clearTimeout(t);
   }, [etape]);
 
@@ -4998,27 +5065,12 @@ function ObjectifScreen({ initial, onboardingData, edition, onDone, onBack }) {
     );
   }
 
-  if (etape === 2) {
-    const lignes = [`${semaines} semaines avant ${c.fin}`, `${phases.length} phases réparties à partir de la date`, "Dernière semaine allégée pour arriver frais", `${freq} séances par semaine, adaptées à ton sport`];
-    return (
-      <div key="construction" onClick={() => setEtape(3)} style={{ ...cadre, justifyContent: "center", cursor: "pointer" }}>
-        <p className="v-in" style={{ ...sur, textAlign: "center" }}>On construit ton plan</p>
-        <svg viewBox="0 0 320 140" width="100%" style={{ margin: "6px 0 22px" }}>
-          <path d="M12 124 C 70 124, 80 72, 140 80 S 220 96, 250 46 S 290 22, 300 22" fill="none" stroke={DS.colors.surfaceHigh} strokeWidth="7" strokeLinecap="round" />
-          <path className="v-route" pathLength="1" d="M12 124 C 70 124, 80 72, 140 80 S 220 96, 250 46 S 290 22, 300 22" fill="none" stroke="#9BE84F" strokeWidth="7" strokeLinecap="round" />
-          <circle cx="12" cy="124" r="7" fill="#9BE84F" />
-          <text className="v-drapeau" x="288" y="20" fontSize="26">🏁</text>
-        </svg>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {lignes.map((l, i) => (
-            <div key={l} className="v-in" style={{ "--i": 0, animationDelay: `${300 + i * 480}ms`, display: "flex", gap: 10, alignItems: "center", fontSize: 14, fontWeight: 600 }}>
-              <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", background: DS.colors.primary, color: "#0B0B0C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>✓</span>{l}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (etape === 2) return (
+    <div key="construction" style={cadre}>
+      <Bloom echelle={0.8} />
+      <ConstructionPlan phases={phases} jours={jours} date={date} ouvert={ouvert} ic={ouvert ? "🏁" : c.ic} onClick={() => setEtape(3)} />
+    </div>
+  );
 
   let debut = 1;
   return (
@@ -5939,7 +5991,20 @@ export default function VoltraApp() {
       .v-range::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #9BE84F; border: 4px solid var(--bord); }
       .v-route { stroke-dasharray: 1; stroke-dashoffset: 1; animation: vTrace 2100ms var(--ease-out) 150ms forwards; }
       @keyframes vTrace { to { stroke-dashoffset: 0; } }
-      .v-drapeau { transform-box: fill-box; transform-origin: bottom left; animation: vScaleIn 400ms var(--ease-spring) 2000ms backwards; }
+      .v-plan-grille { display: grid; gap: 6px; width: 100%; animation: vPlanImpact 500ms var(--ease-out) var(--impact) both; }
+      @keyframes vPlanImpact { 0%, 100% { transform: scale(1); } 35% { transform: scale(1.035); } }
+      .v-plan-case { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; }
+      .v-plan-case i { position: absolute; inset: 0; border-radius: inherit; opacity: 0; animation: vPlanCase 340ms var(--ease-spring) forwards; }
+      @keyframes vPlanCase { from { opacity: 0; transform: scale(0.35); } to { opacity: 1; transform: scale(1); } }
+      .v-plan-case.jour-j { grid-column: 1 / -1; aspect-ratio: auto; height: 54px; border-radius: 16px; overflow: visible; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px; font-weight: 900; color: #0B0B0C; background: var(--orange); box-shadow: 0 0 24px var(--orange); animation: vPlanJ 620ms var(--ease-spring) var(--impact) backwards; }
+      .v-plan-case.jour-j b { position: absolute; inset: 0; border-radius: inherit; border: 3px solid var(--orange); opacity: 0; animation: vPlanOnde 950ms var(--ease-out) var(--impact) forwards; pointer-events: none; }
+      @keyframes vPlanJ { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+      @keyframes vPlanOnde { from { opacity: 0.9; transform: scale(1); } to { opacity: 0; transform: scale(1.14, 2.6); } }
+      .v-plan-phase { display: flex; align-items: center; gap: 10px; animation: vFadeUp 380ms var(--ease-out) backwards; }
+      .v-plan-arrive { animation: vPlanArrive 480ms var(--ease-spring) backwards; }
+      @keyframes vPlanArrive { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+      .v-plan-flash { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 55%, rgba(255,159,10,0.42), transparent 62%); animation: vPlanFlash 1200ms var(--ease-out) 2750ms forwards; }
+      @keyframes vPlanFlash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
       .v-timeline { position: relative; padding-left: 26px; }
       .v-timeline::before { content: ""; position: absolute; left: 8px; top: 8px; bottom: 28px; width: 3px; border-radius: 3px; background: var(--fond); }
       .v-timeline::after { content: ""; position: absolute; left: 8px; top: 8px; height: 60px; width: 3px; border-radius: 3px; background: #9BE84F; transform-origin: top; animation: vGrow 700ms var(--ease-out) 300ms backwards; }
