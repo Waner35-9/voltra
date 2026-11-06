@@ -2171,7 +2171,25 @@ function LegalScreen({ initial = "cgu", onBack }) {
   );
 }
 
+// L'adresse qui attend son code, gardée si l'iPhone recharge l'app pendant qu'on lit ses mails
+const CLE_CODE_EMAIL = "voltra_code_email";
+function lireCodeEmail() {
+  try {
+    const { email, le } = JSON.parse(localStorage.getItem(CLE_CODE_EMAIL));
+    return Date.now() - le < 60 * 60 * 1000 ? email : null;
+  } catch { return null; }
+}
+function garderCodeEmail(email) {
+  try {
+    if (email) localStorage.setItem(CLE_CODE_EMAIL, JSON.stringify({ email, le: Date.now() }));
+    else localStorage.removeItem(CLE_CODE_EMAIL);
+  } catch {}
+}
+
 function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
+  const [codeEmail, setCodeEmail] = useState(() => confirmation ? null : lireCodeEmail());
+  const [code, setCode] = useState("");
+  const [attente, setAttente] = useState(0);
   const [accepted, setAccepted] = useState(false);
   const [showLegal, setShowLegal] = useState(null);
   const [mode, setMode] = useState("login");
@@ -2187,6 +2205,46 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  useEffect(() => {
+    if (attente <= 0) return;
+    const t = setTimeout(() => setAttente(a => a - 1), 1000);
+    return () => clearTimeout(t);
+  }, [attente]);
+
+  // Un lien d'e-mail s'ouvrirait dans Safari, hors de l'app installée : on valide le compte avec un code
+  const demanderCode = (adresse) => {
+    garderCodeEmail(adresse);
+    setCodeEmail(adresse);
+    setCode("");
+    setAttente(60);
+  };
+
+  const validerCode = async (valeur = code) => {
+    setError(""); setSuccess("");
+    if (valeur.length < 6) { setError("Entre le code reçu par e-mail."); return; }
+    setLoading(true);
+    const { data, error: e } = await supabase.auth.verifyOtp({ email: codeEmail, token: valeur, type: "email" });
+    if (e) {
+      setError(e.status === 429 ? "Trop d'essais. Attends quelques minutes avant de réessayer."
+        : e.code === "otp_expired" ? "Code incorrect ou expiré. Vérifie-le ou demande-en un nouveau."
+        : "Impossible de vérifier le code. Vérifie ta connexion et réessaie.");
+      setLoading(false);
+      return;
+    }
+    garderCodeEmail(null);
+    await onAuth(data.user);
+    setLoading(false);
+  };
+
+  const renvoyerCode = async () => {
+    setError(""); setSuccess("");
+    const { error: e } = await supabase.auth.resend({ type: "signup", email: codeEmail });
+    if (e) { setError(e.status === 429 ? "Attends une minute avant de demander un nouveau code." : "Impossible d'envoyer le code. Vérifie ta connexion et réessaie."); return; }
+    setCode("");
+    setAttente(60);
+    setSuccess("Nouveau code envoyé !");
+  };
+
   const handleSubmit = async () => {
     setError(""); setSuccess("");
     if (!email || !password) { setError("Remplis tous les champs."); return; }
@@ -2198,10 +2256,23 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
       // Les réponses de l'onboarding sont gardées avec le compte, pour les retrouver même si l'email est confirmé ailleurs
       const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { name, ...(onboardingData ? { onboarding: onboardingData } : {}) }, emailRedirectTo: `${window.location.origin}/?confirmed=true` } });
       if (e) { setError(e.message === "User already registered" ? "Email déjà utilisé." : e.message); setLoading(false); return; }
-      if (data.user && !data.session) { setSuccess("Vérifie ta boîte mail pour confirmer ton compte !"); setLoading(false); return; }
+      if (data.user && !data.session) {
+        // Adresse déjà confirmée : Supabase répond sans identité et n'envoie aucun e-mail
+        if (data.user.identities?.length === 0) setError("Email déjà utilisé.");
+        else demanderCode(email);
+        setLoading(false);
+        return;
+      }
       onAuth(data.user);
     } else {
       const { data, error: e } = await supabase.auth.signInWithPassword({ email, password });
+      if (e?.code === "email_not_confirmed") {
+        // Compte jamais validé : on renvoie un code plutôt que de le bloquer ici
+        await supabase.auth.resend({ type: "signup", email });
+        demanderCode(email);
+        setLoading(false);
+        return;
+      }
       if (e) { setError(e.message === "Invalid login credentials" ? "Email ou mot de passe incorrect." : e.message); setLoading(false); return; }
       onAuth(data.user);
     }
@@ -2261,6 +2332,53 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
           ) : (
             <PrimaryButton onClick={handleResetPassword}>Mettre à jour mon mot de passe</PrimaryButton>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // Ecran du code reçu par e-mail
+  if (codeEmail) {
+    return (
+      <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: "0 24px" }}>
+        <Bloom echelle={0.8} />
+        <div className="v-stagger" style={{ paddingTop: "calc(64px + env(safe-area-inset-top, 0px))", paddingBottom: 32 }}>
+          <LogoVoltra taille={52} style={{ marginBottom: 24 }} />
+          <h1 className="v-up" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 10 }}>
+            Entre ton<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>code</span>
+          </h1>
+          <p style={{ fontFamily: "'Inter',sans-serif", color: DS.colors.textSec, fontSize: 15, lineHeight: 1.5, overflowWrap: "anywhere" }}>On vient de l'envoyer à <strong style={{ color: DS.colors.textPrimary }}>{codeEmail}</strong>. Regarde dans tes mails (et tes spams), puis reviens ici.</p>
+        </div>
+        <div className="v-up" style={{ flex: 1, animationDelay: "0.15s" }}>
+          <input
+            value={code}
+            onChange={e => {
+              const valeur = e.target.value.replace(/\D/g, "").slice(0, 10);
+              // Code collé ou proposé par le clavier : on valide tout de suite
+              const colle = valeur.length >= 6 && valeur.length - code.length > 1;
+              setCode(valeur);
+              if (colle && !loading) validerCode(valeur);
+            }}
+            onKeyDown={e => { if (e.key === "Enter" && !loading) validerCode(); }}
+            inputMode="numeric" autoComplete="one-time-code" enterKeyHint="done" aria-label="Code reçu par e-mail" placeholder="000000"
+            style={{ width: "100%", height: 68, padding: "0 12px", marginBottom: 16, background: DS.colors.surface, border: `1.5px solid ${DS.colors.border}`, borderRadius: DS.radius.lg, color: DS.colors.textPrimary, fontSize: 30, fontWeight: 800, letterSpacing: "0.22em", textAlign: "center", outline: "none", boxShadow: DS.shadow.card, fontFamily: "'Inter',sans-serif", fontVariantNumeric: "tabular-nums" }}
+          />
+          {error && <div style={{ background: DS.colors.warningSoft, border: `1px solid rgba(255,107,53,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.warning, fontSize: 13 }}>⚠ {error}</p></div>}
+          {success && <div style={{ background: DS.colors.successSoft, border: `1px solid rgba(76,175,80,0.3)`, borderRadius: DS.radius.md, padding: "12px 16px", marginBottom: 16 }}><p style={{ color: DS.colors.success, fontSize: 13 }}>✓ {success}</p></div>}
+          {loading ? (
+            <div style={{ height: 56, borderRadius: DS.radius.full, background: DS.colors.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, color: DS.colors.primary, fontSize: 15, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>
+              <div style={{ width: 16, height: 16, borderRadius: DS.radius.full, background: DS.colors.primary, animation: "pulse 1s infinite" }} />
+              Vérification...
+            </div>
+          ) : (
+            <PrimaryButton onClick={() => validerCode()}>Valider mon compte</PrimaryButton>
+          )}
+          <button onClick={renvoyerCode} disabled={attente > 0} style={{ width: "100%", marginTop: 16, background: "none", border: "none", color: attente > 0 ? DS.colors.textDim : DS.colors.textPrimary, fontSize: 14, fontWeight: 600, cursor: attente > 0 ? "default" : "pointer", fontFamily: "'Inter',sans-serif", fontVariantNumeric: "tabular-nums" }}>
+            {attente > 0 ? `Renvoyer le code dans ${attente} s` : "Renvoyer le code"}
+          </button>
+          <button onClick={() => { garderCodeEmail(null); setEmail(codeEmail); setCodeEmail(null); setError(""); setSuccess(""); }} style={{ width: "100%", marginTop: 14, marginBottom: 32, background: "none", border: "none", color: DS.colors.textSec, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+            ← Changer d'adresse e-mail
+          </button>
         </div>
       </div>
     );
@@ -5405,6 +5523,9 @@ export default function VoltraApp() {
         setScreen("app");
       } else if (isConfirmed || hasToken) {
         // Vient de la confirmation email → aller à la connexion
+        setScreen("auth");
+      } else if (lireCodeEmail()) {
+        // L'iPhone a rechargé l'app pendant la lecture des mails : on revient sur l'écran du code
         setScreen("auth");
       } else {
         setScreen("welcome");

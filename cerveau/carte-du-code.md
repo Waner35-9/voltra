@@ -3,7 +3,7 @@
 Générée automatiquement à chaque commit : ne pas modifier à la main.
 Pour lire un bloc : `sed -n 'début,finp' fichier`.
 
-## src/App.jsx (5758 lignes)
+## src/App.jsx (5879 lignes)
 
 Écrans : app, auth, cycle-complete, objectif, objectif-edit, onboarding, payment-success, pricing, programme-generating, splash, theme-choice, welcome
 Tables : avatars, exercices, logs_performance, matchs, profiles, programmes, seances, tests_performance
@@ -91,69 +91,72 @@ Fonctions SQL : appliquer_deload, calculer_progression, check_deload_needed
 - LEGAL_STATUT : 2094-2094
 - LEGAL_MEDIATEUR : 2095-2095
 - LEGAL_DOCS : 2096-2144
-- LegalScreen : 2145-2173
-- AuthScreen : 2174-2364
-- POSTES_PAR_SPORT : 2365-2403
-- DOULEURS : 2404-2412
-- EQUIPEMENTS : 2413-2419
-- TOTAL_STEPS : 2420-2421
-- OnboardingScreen : 2422-3007
-  - getStepContent : 2442
-  - goNext : 2454
-  - getReactionMessage : 2471
-  - handleFinish : 2511
-  - retryGeneration : 2522
-  - skipGeneration : 2527
-  - toggleDouleur : 2533
-  - canNext : 2548
-- PricingScreen : 3008-3132
-- MatchsScreen : 3133-3277
-- DashboardScreen : 3278-3521
-- HistoriqueScreen : 3522-3809
-- callSubscription : 3810-3822
-- SubscriptionScreen : 3823-4027
-- MaSalleScreen : 4028-4060
-- ProfilScreen : 4061-4497
-  - handleAvatarUpload : 4082
-  - openEdit : 4166
-  - saveEdit : 4171
-- JOUR_MS : 4498-4498
-- CIBLES : 4499-4504
-- dateLocale : 4505-4505
-- isoDans : 4506-4506
-- joursAvant : 4507-4507
-- dateLongue : 4508-4510
-- phasesObjectif : 4511-4527
-- etatPlan : 4528-4541
-- datesDeMatch : 4542-4548
-- adaptationDuJour : 4549-4562
-- cleExercice : 4563-4564
-- ressentisParExercice : 4565-4584
-- poidsLePlusProche : 4585-4592
-- appliquerRessenti : 4593-4608
-- exerciceDepuisFiche : 4609-4623
-- adapterSeance : 4624-4636
-- Bloom : 4637-4639
-- ObjectifScreen : 4640-4781
-- MissionCard : 4782-4823
-- SemaineCard : 4824-4862
-- TESTS_PERF : 4863-4867
-- virgule : 4868-4868
-- INTERVALLE_TEST : 4869-4870
-- useTests : 4871-4881
-- TestCard : 4882-4897
-- TestScreen : 4898-4970
-- dessinerSlide : 4971-5002
-- CarrouselScreen : 5003-5070
-- BottomNav : 5071-5097
-- VoltraApp : 5098-5758
-  - changerAbsentes : 5131
-  - chargerRessentis : 5136
-  - profilDeCharges : 5148
-  - remplacerExercice : 5160
-  - launchSeance : 5166
-  - startGeneration : 5205
-  - handleLogout : 5427
+- LegalScreen : 2145-2174
+- CLE_CODE_EMAIL : 2175-2175
+- lireCodeEmail : 2176-2181
+- garderCodeEmail : 2182-2188
+- AuthScreen : 2189-2482
+- POSTES_PAR_SPORT : 2483-2521
+- DOULEURS : 2522-2530
+- EQUIPEMENTS : 2531-2537
+- TOTAL_STEPS : 2538-2539
+- OnboardingScreen : 2540-3125
+  - getStepContent : 2560
+  - goNext : 2572
+  - getReactionMessage : 2589
+  - handleFinish : 2629
+  - retryGeneration : 2640
+  - skipGeneration : 2645
+  - toggleDouleur : 2651
+  - canNext : 2666
+- PricingScreen : 3126-3250
+- MatchsScreen : 3251-3395
+- DashboardScreen : 3396-3639
+- HistoriqueScreen : 3640-3927
+- callSubscription : 3928-3940
+- SubscriptionScreen : 3941-4145
+- MaSalleScreen : 4146-4178
+- ProfilScreen : 4179-4615
+  - handleAvatarUpload : 4200
+  - openEdit : 4284
+  - saveEdit : 4289
+- JOUR_MS : 4616-4616
+- CIBLES : 4617-4622
+- dateLocale : 4623-4623
+- isoDans : 4624-4624
+- joursAvant : 4625-4625
+- dateLongue : 4626-4628
+- phasesObjectif : 4629-4645
+- etatPlan : 4646-4659
+- datesDeMatch : 4660-4666
+- adaptationDuJour : 4667-4680
+- cleExercice : 4681-4682
+- ressentisParExercice : 4683-4702
+- poidsLePlusProche : 4703-4710
+- appliquerRessenti : 4711-4726
+- exerciceDepuisFiche : 4727-4741
+- adapterSeance : 4742-4754
+- Bloom : 4755-4757
+- ObjectifScreen : 4758-4899
+- MissionCard : 4900-4941
+- SemaineCard : 4942-4980
+- TESTS_PERF : 4981-4985
+- virgule : 4986-4986
+- INTERVALLE_TEST : 4987-4988
+- useTests : 4989-4999
+- TestCard : 5000-5015
+- TestScreen : 5016-5088
+- dessinerSlide : 5089-5120
+- CarrouselScreen : 5121-5188
+- BottomNav : 5189-5215
+- VoltraApp : 5216-5879
+  - changerAbsentes : 5249
+  - chargerRessentis : 5254
+  - profilDeCharges : 5266
+  - remplacerExercice : 5278
+  - launchSeance : 5284
+  - startGeneration : 5323
+  - handleLogout : 5548
 
 ## src/Auth.jsx (119 lignes)
 
