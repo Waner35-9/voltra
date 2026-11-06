@@ -1,7 +1,7 @@
 # Paiement
 
 ## Offres
-- Essai gratuit de 7 jours avec carte, sur tout. Pas de plan gratuit, pas d'accès à vie.
+- Essai gratuit de 7 jours avec carte, sur tout, une seule fois par adresse e-mail. Pas de plan gratuit, pas d'accès à vie.
 - Mensuel : 14,99 €/mois, sans promotion.
 - Annuel : 74,99 €/an, sélectionné par défaut, affiché 6,25 €/mois avec le badge -58 %. Première année à 56,24 € (-25 %), puis 74,99 €.
 - Coach sans plafond de messages pour l'instant.
@@ -13,6 +13,8 @@
 - Webhook `we_1UXJEO8P7FaKivctWllgO6zr` « Voltra production », 5 événements dont `customer.subscription.trial_will_end`.
 
 ## Comportement
+- `stripe-checkout` prend le compte et l'e-mail dans le jeton de connexion, jamais dans ce qu'envoie le navigateur.
+- Une adresse qui a déjà un abonnement chez Stripe, même résilié, paie tout de suite : pas d'essai, mais le même prix (coupon gardé). `PricingScreen` le demande avec `action: "eligibilite"` pour ne pas annoncer « rien à payer » ; c'est le serveur qui décide.
 - `checkout.session.completed` passe `profiles.is_pro` à vrai, `customer.subscription.deleted` à faux. Répond 500 en cas d'échec pour que Stripe réessaie.
 - **Une résiliation arrive de Stripe avec `cancel_at`, et `cancel_at_period_end` reste faux** : tester les deux champs (`stripe-portal`). Réactiver : vider `cancel_at`.
 - Pas de rappel de fin d'essai si l'abonnement est déjà résilié (`stripe-webhook`).
@@ -23,7 +25,7 @@
 ## Vérifié en réel (4 novembre 2026)
 Essai, activation du Pro, prochaine facture à 56,24 €, résiliation.
 Le 6 novembre 2026, compte d'essai : rétractation, abonnement arrêté, `is_pro` à faux, aucun prélèvement.
+Pas testé en réel, choix de Waner : remboursement d'une rétractation, paiement direct d'un ancien abonné (testé avec Stripe simulé).
 
 ## Limites connues
-- Un utilisateur peut reprendre un nouvel essai après avoir résilié (`stripe-checkout` ne vérifie pas l'historique).
-- `stripe-checkout` reçoit `user_id` et `email` du navigateur sans les comparer au compte connecté.
+- Une nouvelle adresse e-mail donne droit à un nouvel essai, alias Gmail `+` compris (pratique pour tester).

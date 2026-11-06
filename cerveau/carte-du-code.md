@@ -3,7 +3,7 @@
 Générée automatiquement à chaque commit : ne pas modifier à la main.
 Pour lire un bloc : `sed -n 'début,finp' fichier`.
 
-## src/App.jsx (6370 lignes)
+## src/App.jsx (6397 lignes)
 
 Écrans : app, auth, cycle-complete, objectif, objectif-edit, onboarding, payment-success, pricing, programme-generating, splash, theme-choice, welcome
 Tables : avatars, exercices, logs_performance, matchs, profiles, programmes, rappels, seances, tests_performance
@@ -110,73 +110,73 @@ Fonctions SQL : appliquer_deload, calculer_progression, check_deload_needed
   - skipGeneration : 2660
   - toggleDouleur : 2666
   - canNext : 2681
-- PricingScreen : 3141-3265
-- MatchsScreen : 3266-3410
-- DashboardScreen : 3411-3666
-- HistoriqueScreen : 3667-3954
-- callSubscription : 3955-3967
-- AVANTAGES_PRO : 3968-3978
-- SubscriptionScreen : 3979-4227
-- MaSalleScreen : 4228-4260
-- ProfilScreen : 4261-4700
-  - handleAvatarUpload : 4282
-  - openEdit : 4366
-  - saveEdit : 4371
-- JOUR_MS : 4701-4701
-- CIBLES : 4702-4707
-- dateLocale : 4708-4708
-- isoDans : 4709-4709
-- joursAvant : 4710-4710
-- dateLongue : 4711-4713
-- phasesObjectif : 4714-4730
-- etatPlan : 4731-4744
-- datesDeMatch : 4745-4751
-- adaptationDuJour : 4752-4765
-- cleExercice : 4766-4767
-- ressentisParExercice : 4768-4787
-- poidsLePlusProche : 4788-4795
-- appliquerRessenti : 4796-4811
-- exerciceDepuisFiche : 4812-4826
-- adapterSeance : 4827-4841
-- FORMES : 4842-4849
-- adaptationAvecForme : 4850-4856
-- seanceCourte : 4857-4864
-- Bloom : 4865-4867
-- ObjectifScreen : 4868-5009
-- MissionCard : 5010-5051
-- SemaineCard : 5052-5090
-- TESTS_PERF : 5091-5095
-- virgule : 5096-5096
-- INTERVALLE_TEST : 5097-5098
-- useTests : 5099-5109
-- TestCard : 5110-5125
-- TestScreen : 5126-5198
-- dessinerSlide : 5199-5230
-- CarrouselScreen : 5231-5298
-- BottomNav : 5299-5328
-- FormeDuJour : 5329-5358
-- Interrupteur : 5359-5370
-- progresExercices : 5371-5382
-- virguleKg : 5383-5383
-- RESULTATS_MISSION : 5384-5389
-- BilanMissionScreen : 5390-5475
-- appelerFonction : 5476-5483
-- lundiCourant : 5484-5489
-- BilanSemaineCard : 5490-5533
-- QUESTIONS_ACE : 5534-5534
-- ACCUEIL_ACE : 5535-5536
-- AceScreen : 5537-5631
-- RappelsCard : 5632-5666
-- JETON_STOP_RAPPELS : 5667-5668
-- RappelsStopScreen : 5669-5688
-- VoltraApp : 5689-6370
-  - changerAbsentes : 5724
-  - chargerRessentis : 5729
-  - profilDeCharges : 5741
-  - remplacerExercice : 5753
-  - launchSeance : 5759
-  - startGeneration : 5799
-  - handleLogout : 6024
+- PricingScreen : 3141-3289
+- MatchsScreen : 3290-3434
+- DashboardScreen : 3435-3690
+- HistoriqueScreen : 3691-3978
+- callSubscription : 3979-3991
+- AVANTAGES_PRO : 3992-4002
+- SubscriptionScreen : 4003-4251
+- MaSalleScreen : 4252-4284
+- ProfilScreen : 4285-4724
+  - handleAvatarUpload : 4306
+  - openEdit : 4390
+  - saveEdit : 4395
+- JOUR_MS : 4725-4725
+- CIBLES : 4726-4731
+- dateLocale : 4732-4732
+- isoDans : 4733-4733
+- joursAvant : 4734-4734
+- dateLongue : 4735-4737
+- phasesObjectif : 4738-4754
+- etatPlan : 4755-4768
+- datesDeMatch : 4769-4775
+- adaptationDuJour : 4776-4789
+- cleExercice : 4790-4791
+- ressentisParExercice : 4792-4811
+- poidsLePlusProche : 4812-4819
+- appliquerRessenti : 4820-4835
+- exerciceDepuisFiche : 4836-4850
+- adapterSeance : 4851-4865
+- FORMES : 4866-4873
+- adaptationAvecForme : 4874-4880
+- seanceCourte : 4881-4888
+- Bloom : 4889-4891
+- ObjectifScreen : 4892-5033
+- MissionCard : 5034-5075
+- SemaineCard : 5076-5114
+- TESTS_PERF : 5115-5119
+- virgule : 5120-5120
+- INTERVALLE_TEST : 5121-5122
+- useTests : 5123-5133
+- TestCard : 5134-5149
+- TestScreen : 5150-5222
+- dessinerSlide : 5223-5254
+- CarrouselScreen : 5255-5322
+- BottomNav : 5323-5352
+- FormeDuJour : 5353-5382
+- Interrupteur : 5383-5394
+- progresExercices : 5395-5406
+- virguleKg : 5407-5407
+- RESULTATS_MISSION : 5408-5413
+- BilanMissionScreen : 5414-5499
+- appelerFonction : 5500-5507
+- lundiCourant : 5508-5513
+- BilanSemaineCard : 5514-5557
+- QUESTIONS_ACE : 5558-5558
+- ACCUEIL_ACE : 5559-5560
+- AceScreen : 5561-5655
+- RappelsCard : 5656-5690
+- JETON_STOP_RAPPELS : 5691-5692
+- RappelsStopScreen : 5693-5712
+- VoltraApp : 5713-6397
+  - changerAbsentes : 5748
+  - chargerRessentis : 5753
+  - profilDeCharges : 5765
+  - remplacerExercice : 5777
+  - launchSeance : 5783
+  - startGeneration : 5823
+  - handleLogout : 6050
 
 ## src/Auth.jsx (119 lignes)
 
@@ -340,11 +340,14 @@ Secrets lus (noms seulement) : RAPPELS_SECRET, RESEND_API_KEY, SUPABASE_SERVICE_
 - maintenantParis : 37-41
 - contenuEmail : 42-172
 
-## supabase/functions/stripe-checkout/index.ts (84 lignes)
+## supabase/functions/stripe-checkout/index.ts (111 lignes)
 
-Secrets lus (noms seulement) : STRIPE_SECRET_KEY
+Secrets lus (noms seulement) : STRIPE_SECRET_KEY, SUPABASE_ANON_KEY, SUPABASE_URL
 
-- JOURS_ESSAI : 20-84
+- json : 10-23
+- JOURS_ESSAI : 24-31
+- lireStripe : 32-41
+- aDejaEteAbonne : 42-111
 
 ## supabase/functions/stripe-portal/index.ts (187 lignes)
 

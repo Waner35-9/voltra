@@ -1564,7 +1564,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
 // ─────────────────────────────────────────────
 // PAYMENT SUCCESS SCREEN
 // ─────────────────────────────────────────────
-function PaymentSuccessScreen({ plan, onContinue }) {
+function PaymentSuccessScreen({ plan, essai, onContinue }) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -1596,7 +1596,7 @@ function PaymentSuccessScreen({ plan, onContinue }) {
             BIENVENUE DANS<br />L'ÉQUIPE PRO ⚡
           </h1>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: DS.colors.textSec, marginBottom: 8, lineHeight: 1.6 }}>
-            Essai de 7 jours lancé sur le plan <strong style={{ color: DS.colors.textPrimary }}>{planLabel}</strong>. Ton programme personnalisé est en cours de génération.
+            {essai ? "Essai de 7 jours lancé" : "Abonnement activé"} sur le plan <strong style={{ color: DS.colors.textPrimary }}>{planLabel}</strong>. Ton programme personnalisé est en cours de génération.
           </p>
 
           {/* Features débloquées */}
@@ -2109,7 +2109,7 @@ const LEGAL_DOCS = {
       ["1. Objet", "Voltra est une application web de préparation physique qui génère des programmes d'entraînement personnalisés grâce à l'intelligence artificielle, et propose un coach virtuel (Ace). Les présentes conditions encadrent l'utilisation de l'application et la vente des abonnements. En créant un compte, tu les acceptes."],
       ["2. Éditeur", `Voltra, édité par Erwan Mantouba, Rennes (35000), France. Contact : ${LEGAL_EMAIL}.`],
       ["3. Compte et âge", `Tu dois avoir au moins 15 ans pour créer un compte. L'abonnement doit être souscrit par une personne majeure ou par un parent. Si un mineur s'est abonné sans cet accord, son représentant légal peut écrire à ${LEGAL_EMAIL} : l'abonnement est arrêté et remboursé, et le compte supprimé sur simple demande. Tu es responsable de la confidentialité de tes identifiants et des informations que tu fournis, qui doivent être exactes.`],
-      ["4. Offres et prix", "Voltra propose deux abonnements, mensuel et annuel, avec un essai gratuit de 7 jours. Une carte bancaire est demandée pour démarrer l'essai, mais aucun paiement n'est prélevé pendant celui-ci. Sans résiliation avant la fin de l'essai, l'abonnement démarre automatiquement et le premier paiement est prélevé. Un e-mail de rappel est envoyé avant la fin de l'essai. Les tarifs en vigueur sont affichés dans l'application, toutes taxes comprises, avant le paiement. Les paiements sont traités de façon sécurisée par Stripe ; Voltra n'a jamais accès à tes données bancaires."],
+      ["4. Offres et prix", "Voltra propose deux abonnements, mensuel et annuel, avec un essai gratuit de 7 jours. Une carte bancaire est demandée pour démarrer l'essai, mais aucun paiement n'est prélevé pendant celui-ci. Sans résiliation avant la fin de l'essai, l'abonnement démarre automatiquement et le premier paiement est prélevé. Un e-mail de rappel est envoyé avant la fin de l'essai. L'essai n'est proposé qu'une seule fois par adresse e-mail : si tu as déjà été abonné, le premier paiement est prélevé dès la souscription. Les tarifs en vigueur sont affichés dans l'application, toutes taxes comprises, avant le paiement. Les paiements sont traités de façon sécurisée par Stripe ; Voltra n'a jamais accès à tes données bancaires."],
       ["5. Abonnements et résiliation", `Les abonnements se renouvellent automatiquement à chaque échéance (mensuelle ou annuelle) jusqu'à résiliation. Tu peux résilier à tout moment, en quelques clics, depuis ton profil (« Gérer mon abonnement »), ou en écrivant à ${LEGAL_EMAIL} ; la résiliation prend effet à la prochaine échéance et l'accès Pro reste actif jusqu'à la fin de la période déjà payée. Une réduction de bienvenue peut s'appliquer à la première année de l'abonnement annuel uniquement, dans les conditions affichées lors de l'offre.`],
       ["6. Droit de rétractation", `Tu disposes de 14 jours à compter de ta souscription pour te rétracter, sans avoir à te justifier et sans frais.\n\nComment faire : dans ton profil, ouvre « Gérer mon abonnement », choisis « Renoncer au contrat ici », puis « Confirmer la rétractation ». Tu peux aussi nous écrire à ${LEGAL_EMAIL}, avec le modèle ci-dessous ou toute autre déclaration claire. Nous t'envoyons un accusé de réception par e-mail.\n\nEffets : ton abonnement et ton accès Pro s'arrêtent immédiatement, et nous te remboursons intégralement tous les paiements effectués, au plus tard 14 jours après ta demande, par le même moyen de paiement. Pendant l'essai gratuit, rien n'a été prélevé : il n'y a rien à rembourser.\n\nModèle de rétractation :\nÀ l'attention de Voltra, Erwan Mantouba, Rennes (35000), France, ${LEGAL_EMAIL}.\nJe vous notifie par la présente ma rétractation du contrat portant sur l'abonnement Voltra Pro.\nSouscrit le : ...\nNom et e-mail du compte : ...\nDate : ...`],
       ["7. Santé et sécurité — important", "Voltra fournit des conseils sportifs généraux et ne remplace en aucun cas un avis médical. Avant de commencer un programme, consulte un médecin, surtout en cas de blessure, de douleur, de pathologie, de grossesse ou de reprise après une longue pause. Les programmes et les réponses du coach IA sont générés automatiquement : ils peuvent comporter des erreurs et doivent être adaptés à ta condition. Tu t'entraînes sous ta seule responsabilité et tu arrêtes immédiatement en cas de douleur ou de malaise. Dans la mesure permise par la loi, Voltra ne peut être tenu responsable des blessures liées à une mauvaise utilisation du service."],
@@ -3143,10 +3143,42 @@ function PricingScreen({ programme, user, cible, onBack, onLogout }) {
   const [selected, setSelected] = useState("annual");
   const [loading, setLoading] = useState(false);
   const [stripeError, setStripeError] = useState("");
+  const [essai, setEssai] = useState(true);
   const annuel = selected === "annual";
+  const prixPremierPaiement = annuel ? "56,24 €" : "14,99 €";
   const premierPaiement = new Date(Date.now() + 7 * JOUR_MS).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
   const aDate = cible?.date && !cible.open && joursAvant(cible.date) >= 0;
   const seances = programme?.data_json?.semaines?.[0]?.seances || [];
+
+  const appelerCheckout = async (session, corps) => {
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+          "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify(corps),
+      }
+    );
+    return res.json();
+  };
+
+  // Le serveur décide de l'essai : ici, on évite juste d'annoncer « rien à payer » à un ancien abonné
+  useEffect(() => {
+    let actif = true;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const data = await appelerCheckout(session, { action: "eligibilite" });
+        if (actif && data.essai === false) setEssai(false);
+      } catch {}
+    })();
+    return () => { actif = false; };
+  }, []);
 
   const handleStripeCheckout = async (planId) => {
     setLoading(true);
@@ -3154,25 +3186,11 @@ function PricingScreen({ programme, user, cible, onBack, onLogout }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setStripeError("Connecte-toi pour continuer."); setLoading(false); return; }
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
-            "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({
-            plan: planId,
-            user_id: session.user.id,
-            email: session.user.email,
-            success_url: window.location.origin + window.location.pathname,
-            cancel_url: window.location.origin + window.location.pathname,
-          }),
-        }
-      );
-      const data = await res.json();
+      const data = await appelerCheckout(session, {
+        plan: planId,
+        success_url: window.location.origin + window.location.pathname,
+        cancel_url: window.location.origin + window.location.pathname,
+      });
       if (data.url) { window.location.href = data.url; return; }
       setStripeError("Erreur lors de la redirection. Réessaie.");
     } catch (err) {
@@ -3230,7 +3248,7 @@ function PricingScreen({ programme, user, cible, onBack, onLogout }) {
                     <span style={{ fontSize: 13, color: DS.colors.textSec }}>{plan.unit}</span>
                     {plan.savings && <span style={{ padding: "2px 8px", borderRadius: 99, background: DS.colors.primarySoft, color: ac, fontSize: 11, fontWeight: 800 }}>{plan.savings}</span>}
                   </div>
-                  <p style={{ fontSize: 12, color: DS.colors.textSec, marginTop: 3, lineHeight: 1.4 }}>{plan.priceDetail}</p>
+                  <p style={{ fontSize: 12, color: DS.colors.textSec, marginTop: 3, lineHeight: 1.4 }}>{essai ? plan.priceDetail : plan.priceDetail.replace("7 jours gratuits, puis ", "")}</p>
                 </div>
                 <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${on ? DS.colors.primary : DS.colors.textDim}`, background: on ? DS.colors.primary : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#0B0B0C", fontSize: 13, fontWeight: 900 }}>{on ? "✓" : ""}</span>
               </div>
@@ -3239,21 +3257,27 @@ function PricingScreen({ programme, user, cible, onBack, onLogout }) {
         })}
       </div>
 
-      <div className="v-in" style={{ "--i": 5, display: "flex", margin: "18px 0 16px" }}>
-        {[["Aujourd'hui", "Accès complet"], ["Jour 4", "Rappel par e-mail"], [premierPaiement, `1er paiement : ${annuel ? "56,24 €" : "14,99 €"}`]].map(([t, d], i) => (
-          <div key={t} style={{ flex: 1, position: "relative", paddingTop: 18, fontSize: 11, color: DS.colors.textSec, lineHeight: 1.3 }}>
-            <span style={{ position: "absolute", top: 3, left: 0, width: 10, height: 10, borderRadius: "50%", background: DS.colors.primary }} />
-            {i < 2 && <span style={{ position: "absolute", top: 7, left: 10, right: 0, height: 2, background: DS.colors.surfaceHigh }} />}
-            <b style={{ display: "block", color: DS.colors.textPrimary, fontSize: 12 }}>{t}</b>{d}
-          </div>
-        ))}
-      </div>
+      {essai ? (
+        <div className="v-in" style={{ "--i": 5, display: "flex", margin: "18px 0 16px" }}>
+          {[["Aujourd'hui", "Accès complet"], ["Jour 4", "Rappel par e-mail"], [premierPaiement, `1er paiement : ${prixPremierPaiement}`]].map(([t, d], i) => (
+            <div key={t} style={{ flex: 1, position: "relative", paddingTop: 18, fontSize: 11, color: DS.colors.textSec, lineHeight: 1.3 }}>
+              <span style={{ position: "absolute", top: 3, left: 0, width: 10, height: 10, borderRadius: "50%", background: DS.colors.primary }} />
+              {i < 2 && <span style={{ position: "absolute", top: 7, left: 10, right: 0, height: 2, background: DS.colors.surfaceHigh }} />}
+              <b style={{ display: "block", color: DS.colors.textPrimary, fontSize: 12 }}>{t}</b>{d}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="v-in" style={{ "--i": 5, margin: "18px 0 16px", fontSize: 13, color: DS.colors.textSec, lineHeight: 1.45 }}>
+          Tu as déjà profité de ton essai gratuit. <b style={{ color: DS.colors.textPrimary }}>Premier paiement aujourd'hui : {prixPremierPaiement}.</b>
+        </p>
+      )}
 
       {stripeError && <p style={{ color: "#FF2D55", fontSize: 12, textAlign: "center", marginBottom: 8 }}>⚠ {stripeError}</p>}
       <PrimaryButton onClick={() => handleStripeCheckout(selected)} disabled={loading} style={{ height: 58 }}>
-        {loading ? "Redirection vers Stripe..." : "Essayer 7 jours gratuitement"}
+        {loading ? "Redirection vers Stripe..." : essai ? "Essayer 7 jours gratuitement" : "Continuer vers le paiement"}
       </PrimaryButton>
-      <p style={{ fontSize: 12, color: DS.colors.textSec, textAlign: "center", marginTop: 10, lineHeight: 1.4 }}>Carte demandée · Rien à payer aujourd'hui · Annule avant le {premierPaiement} en quelques clics</p>
+      <p style={{ fontSize: 12, color: DS.colors.textSec, textAlign: "center", marginTop: 10, lineHeight: 1.4 }}>{essai ? `Carte demandée · Rien à payer aujourd'hui · Annule avant le ${premierPaiement} en quelques clics` : "Paiement aujourd'hui · Résiliable depuis ton profil"}</p>
       <p style={{ fontSize: 11, color: DS.colors.textSec, textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>L'abonnement doit être souscrit par une personne majeure ou par un parent.</p>
       {onLogout && <button onClick={onLogout} style={{ display: "block", width: "100%", marginTop: 12, padding: 8, background: "none", border: "none", color: DS.colors.textSec, fontSize: 13, cursor: "pointer" }}>Se déconnecter</button>}
     </div>
@@ -5806,6 +5830,7 @@ export default function VoltraApp() {
     return genPromiseRef.current;
   };
   const [paidPlan, setPaidPlan] = useState(null);
+  const [paidEssai, setPaidEssai] = useState(true);
   const [cycleComplete, setCycleComplete] = useState(false);
 
   useEffect(() => {
@@ -5973,6 +5998,7 @@ export default function VoltraApp() {
       if (isPaid && userRef.current) {
         window.history.replaceState({}, document.title, window.location.pathname);
         setPaidPlan(paidPlanParam);
+        setPaidEssai(params.get("essai") !== "0");
         setScreen("payment-success");
         // Le passage en Pro est fait uniquement par le webhook Stripe : on relit le profil (le webhook peut prendre quelques secondes)
         const uid = userRef.current.id;
@@ -6095,6 +6121,7 @@ export default function VoltraApp() {
   if (screen === "splash") return <SplashScreen onDone={() => setSplashDone(true)} />;
   if (screen === "payment-success") return <PaymentSuccessScreen
     plan={paidPlan}
+    essai={paidEssai}
     onContinue={() => {
       if (programmeLoading || !programmeActif) {
         setScreen("programme-generating");
