@@ -13,4 +13,5 @@
 - **Le carrousel TikTok sert aux publicités de Waner**, pas aux utilisateurs.
 - **Logo** (5 novembre 2026) : le V-éclair vert sur tuile noire. La forme est dans `src/logoForme.js` ; `npm run icones` régénère le favicon et les icônes. L'emoji ⚡ reste pour les contenus, pas comme logo.
 - **Moment d'installation** : sur l'accueil, le bloc reste sous le titre (choix de Waner, même si le bouton principal descend). Tableau de bord seulement après une séance terminée ou à partir du lendemain de la première visite. Jamais par-dessus un écran, ni pendant le paiement ou une séance.
+- **Mise à jour de l'app** : le toast n'apparaît que sur l'accueil et le tableau de bord, car recharger ferait perdre une séance en cours.
 - **Un fichier principal** `src/App.jsx` : le découper n'est pas prévu avant le lancement.

@@ -7,6 +7,7 @@
 - [ ] Coller `stripe-portal` dans Supabase, puis tester la rétractation sur un compte d'essai et sur un vrai paiement.
 
 ## Waner : avant le lancement
+- [ ] Après le push de la PWA : installer Voltra sur iPhone et tester la barre d'état, l'encoche, la connexion et le retour de Stripe.
 - [ ] Retirer le Pro des faux comptes, après le 11 novembre 2026 pour vérifier d'abord la coupure automatique du compte de test.
 - [ ] Supprimer les fonctions `exercise-gif`, `quick-processor`, `smart-processor`, `validate-session` dans Supabase. L'app ne les appelle plus, et `exercise-gif` est ouverte à tous.
 - [ ] Plafond de dépenses chez Anthropic.

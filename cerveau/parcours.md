@@ -13,6 +13,7 @@ splash → choix du thème → accueil (`WelcomeScreen`) → questionnaire (`Onb
 - La session est liée à l'adresse du site : chaque lien de déploiement Vercel a la sienne. **Tester sur `www.voltra-app.fr`.**
 - `?carrousel` dans l'adresse affiche le bouton du carrousel, réservé aux publicités de Waner.
 - `voltra_paused_session` (localStorage) garde une séance en pause, et `voltra_theme` le thème.
+- App installable (PWA) : logique dans `src/pwa.js`, bloc `InstallPrompt` sur l'accueil et le tableau de bord, toast `MiseAJour`. Fermer le bloc le cache 7 jours (`voltra_pwa_ferme_le`).
 - Sur iPhone, l'app installée a sa propre session : il faut se reconnecter une fois, et les liens des e-mails s'ouvrent dans Safari.
 - Retirer la PWA : ne pas juste enlever le plugin, sinon l'ancien service worker reste sur les téléphones. Déployer d'abord avec `selfDestroying: true` dans `vite.config.ts`.
 - Courbes d'animation : tokens `--ease-out`, `--ease-spring`, `--t-choix`. Animer seulement `transform` et `opacity`.

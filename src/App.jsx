@@ -5,7 +5,7 @@ import { ficheExercice, alternativesDisponibles, machinesParCategorie } from "./
 import { IllustrationMachine, aUneIllustration } from "./illustrationsMachines";
 import { LogoVoltra } from "./Logo";
 import { InstallPrompt } from "./InstallPrompt";
-import { marquerSeanceTerminee } from "./pwa";
+import { signalerEcran, marquerSeanceTerminee } from "./pwa";
 
 // Lien de confirmation d'email : on lit l'URL tout de suite, avant que Supabase ne la nettoie
 const URL_AU_CHARGEMENT = window.location.hash + window.location.search;
@@ -5220,6 +5220,11 @@ export default function VoltraApp() {
     document.body.style.color = DS.colors.textPrimary;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", DS.colors.bg);
   }, [appTheme]);
+
+  // Une mise à jour recharge la page : jamais pendant une séance, un paiement ou une génération
+  useEffect(() => {
+    signalerEcran({ theme: appTheme, calme: (screen === "welcome" || screen === "app") && !seanceActive && !programmeLoading });
+  }, [appTheme, screen, !!seanceActive, programmeLoading]);
 
   const ecranPrecedent = useRef(screen);
   // Transition douce à chaque changement d'écran ou d'onglet (opacité seulement, pour ne pas décaler les éléments fixés)
