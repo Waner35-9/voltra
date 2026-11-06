@@ -10,6 +10,8 @@
 - `matchs`, `tests_performance`, `coach_usage`, `exercise_gifs` (ancien cache d'images)
 - `bilans_semaine` : user_id, semaine (lundi de la semaine résumée), seances, prevues, gains, texte. Une ligne par semaine : c'est ce qui limite le coût IA.
 - `rappels` : user_id, seance_matin (non par défaut), relance (oui par défaut), derniere_relance, nb_relances. Pas de ligne = valeurs par défaut.
+- `invitations` : code, nom, places, utilisees, duree_jours, valable_jusquau. Lisible seulement dans le dashboard. Pour arrêter un lien : `valable_jusquau` à une date passée, ne pas supprimer la ligne.
+- `invitations_utilisees` : user_id, code, fin_le, terminee, client_stripe. Une par compte. La tâche `voltra-fin-invitations` retire le Pro chaque matin après `fin_le`, sauf si le compte a pris un abonnement entre-temps.
 
 ## Stocké dans le compte (`user_metadata`)
 - `cible` : objectif `{type, date, open, debut}`
@@ -23,4 +25,4 @@
 - Stockage : buckets `avatars` et `exercise-gifs`.
 
 ## Fichiers SQL
-`supabase/lancement.sql`, `supabase/objectif.sql` et `supabase/securite-fonctions.sql` sont déjà appliqués. `supabase/retention.sql` et `supabase/rappels-cron.sql` restent à appliquer (voir lancement). Waner colle le SQL lui-même ; je ne fais que des lectures.
+`supabase/lancement.sql`, `supabase/objectif.sql`, `supabase/securite-fonctions.sql`, `supabase/retention.sql`, `supabase/rappels-cron.sql` et `supabase/invitations.sql` sont déjà appliqués. Waner colle le SQL lui-même ; je ne fais que des lectures.

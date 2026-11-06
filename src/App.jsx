@@ -13,6 +13,16 @@ let confirmationEmail = /type=signup|confirmed=true/.test(URL_AU_CHARGEMENT) ? "
   : /error_code=/.test(URL_AU_CHARGEMENT) && !/type=recovery/.test(URL_AU_CHARGEMENT) ? "erreur"
   : null;
 
+// Lien d'invitation : le code reste sur l'appareil jusqu'à la création du compte
+const CLE_INVITATION = "voltra_invitation";
+function lireInvitation() { try { return localStorage.getItem(CLE_INVITATION); } catch { return null; } }
+function oublierInvitation() { try { localStorage.removeItem(CLE_INVITATION); } catch {} }
+const codeInvitationUrl = new URLSearchParams(window.location.search).get("invitation");
+if (codeInvitationUrl) {
+  try { localStorage.setItem(CLE_INVITATION, codeInvitationUrl); } catch {}
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -2005,7 +2015,8 @@ function WelcomeScreen({ onStart, onLogin }) {
           Un programme créé par l'IA pour ton sport, et un coach qui t'accompagne à chaque séance.
         </p>
 
-        <InstallPrompt variante="accueil" ds={DS} />
+        {/* Le code d'invitation n'existe que dans ce navigateur : le compte d'abord, l'installation ensuite */}
+        {!lireInvitation() && <InstallPrompt variante="accueil" ds={DS} />}
 
         {/* Carte fonctionnalité, qui défile toute seule */}
         <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 24, padding: "18px 20px 20px", boxShadow: DS.shadow.card }}>
@@ -2043,7 +2054,7 @@ function WelcomeScreen({ onStart, onLogin }) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </PrimaryButton>
         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, textAlign: "center", marginTop: 12 }}>
-          2 minutes · 7 jours d'essai gratuit
+          {lireInvitation() ? "🎁 Tu es invité : accès offert, sans carte bancaire" : "2 minutes · 7 jours d'essai gratuit"}
         </p>
         <button onClick={onLogin} style={{ width: "100%", height: 52, marginTop: 16, borderRadius: DS.radius.full, background: "transparent", border: `1.5px solid ${DS.colors.border}`, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
           Se connecter
@@ -3138,7 +3149,12 @@ function OnboardingScreen({ onComplete, onLogin }) {
 // ─────────────────────────────────────────────
 // ECRAN PRICING
 // ─────────────────────────────────────────────
-function PricingScreen({ programme, user, cible, onBack, onLogout }) {
+const MESSAGES_INVITATION = {
+  indisponible: "Ton invitation n'a pas pu être activée pour l'instant. Tu n'as rien à payer : ferme et rouvre Voltra dans quelques minutes.",
+  deja_utilisee: "Ce compte a déjà utilisé une invitation.",
+};
+
+function PricingScreen({ programme, user, cible, invitationErreur, onBack, onLogout }) {
   const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
   const [selected, setSelected] = useState("annual");
   const [loading, setLoading] = useState(false);
@@ -3210,6 +3226,7 @@ function PricingScreen({ programme, user, cible, onBack, onLogout }) {
     <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", background: DS.colors.bg, color: DS.colors.textPrimary, position: "relative", isolation: "isolate", overflowX: "clip", padding: `${hautSur(48)} 22px calc(24px + env(safe-area-inset-bottom, 0px))`, fontFamily: "'Inter',sans-serif" }}>
       <Bloom echelle={0.9} />
       {onBack && <button onClick={onBack} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0 }}>← Retour</button>}
+      {invitationErreur && <p style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 14, background: DS.colors.surface, boxShadow: DS.shadow.card, fontSize: 13, lineHeight: 1.45, color: DS.colors.textPrimary }}>🎁 {MESSAGES_INVITATION[invitationErreur] || "Ce lien d'invitation n'est plus valable. Demande-en un nouveau à la personne qui t'a invité."}</p>}
       <p className="v-in" style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: ac }}>TON PLAN T'ATTEND</p>
       <h1 className="v-in" style={{ "--i": 1, fontWeight: 900, fontSize: 32, lineHeight: 1.02, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "8px 0" }}>
         {aDate ? <>Sois prêt<br />le <span style={{ color: ac }}>{dateLongue(cible.date)}</span></> : <>Lance <span style={{ color: ac }}>ton plan</span></>}
@@ -4008,12 +4025,19 @@ function SubscriptionScreen({ onBack, accent, totalSeances, streak, recordKg, se
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [retraction, setRetraction] = useState(null);
+  const [finOffert, setFinOffert] = useState(null);
   const ecranRef = useRef(null);
   useEffect(() => { ecranRef.current?.scrollTo(0, 0); }, [flow]);
 
   const load = async () => {
     try { setInfo(await callSubscription("info")); setLoadErr(""); }
-    catch (e) { setLoadErr(e.code === "no_subscription" ? "none" : (e.message || "Erreur")); }
+    catch (e) {
+      if (e.code === "no_subscription") {
+        const { data } = await supabase.from("invitations_utilisees").select("fin_le").eq("terminee", false).maybeSingle();
+        setFinOffert(data?.fin_le || null);
+      }
+      setLoadErr(e.code === "no_subscription" ? "none" : (e.message || "Erreur"));
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -4073,8 +4097,8 @@ function SubscriptionScreen({ onBack, accent, totalSeances, streak, recordKg, se
         {!info && !loadErr && <p style={{ ...t, textAlign: "center", marginTop: 40 }}>Chargement...</p>}
         {loadErr === "none" && (
           <div style={card}>
-            <p style={{ ...h, fontSize: 16, marginBottom: 8 }}>Aucun abonnement récurrent</p>
-            <p style={t}>Ton accès Pro n'est lié à aucun abonnement en cours. Une question ? contact.voltra1@gmail.com</p>
+            <p style={{ ...h, fontSize: 16, marginBottom: 8 }}>{finOffert ? "🎁 Accès offert" : "Aucun abonnement récurrent"}</p>
+            <p style={t}>{finOffert ? `Ton accès Voltra Pro est offert jusqu'au ${new Date(finOffert).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}. Aucune carte enregistrée : rien ne te sera prélevé.` : "Ton accès Pro n'est lié à aucun abonnement en cours."} Une question ? contact.voltra1@gmail.com</p>
           </div>
         )}
         {loadErr && loadErr !== "none" && (
@@ -5025,7 +5049,7 @@ function ObjectifScreen({ initial, onboardingData, edition, onDone, onBack }) {
         </div>
       </div>
       <p style={{ fontSize: 12, color: DS.colors.textSec, marginBottom: 14, lineHeight: 1.45 }}>Tes premières séances se créent juste après. Les suivantes se génèrent au fur et à mesure, selon tes résultats.</p>
-      <PrimaryButton onClick={() => onDone({ type, date, open: ouvert, debut: new Date().toISOString() })} style={{ height: 58 }}>{edition ? "Enregistrer mon plan" : "Commencer mes 7 jours gratuits →"}</PrimaryButton>
+      <PrimaryButton onClick={() => onDone({ type, date, open: ouvert, debut: new Date().toISOString() })} style={{ height: 58 }}>{edition ? "Enregistrer mon plan" : lireInvitation() ? "Continuer →" : "Commencer mes 7 jours gratuits →"}</PrimaryButton>
     </div>
   );
 }
@@ -5505,6 +5529,23 @@ function appelerFonction(nom, jeton, corps = {}) {
   });
 }
 
+// Si le serveur ne répond pas, le code reste gardé : on réessaiera à la prochaine ouverture
+async function activerInvitation() {
+  const code = lireInvitation();
+  if (!code) return null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+    const res = await appelerFonction("invitation", session.access_token, { code });
+    if (!res.ok) return { erreur: "indisponible" };
+    const data = await res.json();
+    oublierInvitation();
+    return data;
+  } catch {
+    return { erreur: "indisponible" };
+  }
+}
+
 function lundiCourant() {
   const d = new Date();
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
@@ -5829,6 +5870,13 @@ export default function VoltraApp() {
       .finally(() => { setProgrammeLoading(false); genPromiseRef.current = null; });
     return genPromiseRef.current;
   };
+  const [invitationErreur, setInvitationErreur] = useState(null);
+  const essayerInvitation = async () => {
+    const resultat = await activerInvitation();
+    if (resultat?.ok) { setIsPro(true); setInvitationErreur(null); return true; }
+    if (resultat?.erreur) setInvitationErreur(resultat.erreur);
+    return false;
+  };
   const [paidPlan, setPaidPlan] = useState(null);
   const [paidEssai, setPaidEssai] = useState(true);
   const [cycleComplete, setCycleComplete] = useState(false);
@@ -6062,6 +6110,8 @@ export default function VoltraApp() {
 
   useEffect(() => {
     if (screen !== "app" || !user) return;
+    // Déjà connecté en ouvrant le lien, ou serveur injoignable à la création du compte
+    essayerInvitation();
     supabase
       .from("programmes")
       .select("*")
@@ -6148,6 +6198,7 @@ export default function VoltraApp() {
   if (screen === "auth") return <AuthScreen confirmation={authConfirmation} onboardingData={onboardingData} onBack={onboardingData || authConfirmation ? null : () => setScreen("welcome")} onAuth={async (u) => {
     setUser(u);
     userRef.current = u;
+    const invite = await essayerInvitation();
     let ob = onboardingData;
     const { data: progs } = await supabase.from("programmes").select("id").eq("user_id", u.id).limit(1);
     if (progs?.length) {
@@ -6172,7 +6223,7 @@ export default function VoltraApp() {
     if (ob) {
       // Toujours regenerer apres auth — maintenant on a une session valide
       setPricingRetour(false);
-      setScreen("pricing");
+      setScreen(invite ? "programme-generating" : "pricing");
       startGeneration(ob);
     } else if (progs && !progs.length) {
       setScreen("onboarding");
@@ -6193,7 +6244,7 @@ export default function VoltraApp() {
       supabase.auth.updateUser({ data: { cible: nouvelle } });
       startGeneration(onboardingData);
       setPricingRetour(false);
-      setScreen("pricing");
+      setScreen(isPro ? "programme-generating" : "pricing");
     } else {
       setScreen("auth");
     }
@@ -6203,7 +6254,7 @@ export default function VoltraApp() {
     supabase.auth.updateUser({ data: { cible: nouvelle } });
     setScreen("app");
   }} />;
-if (screen === "pricing") return <PricingScreen key={appTheme} programme={programmeActif} user={user} cible={cible} onLogout={user ? handleLogout : null} onBack={pricingRetour ? () => setScreen("app") : null} />;
+if (screen === "pricing") return <PricingScreen key={appTheme} programme={programmeActif} user={user} cible={cible} invitationErreur={invitationErreur} onLogout={user ? handleLogout : null} onBack={pricingRetour ? () => setScreen("app") : null} />;
 
   return (
     <div key={`${appTheme}-${screen}`} style={{ maxWidth: 430, margin: "0 auto", position: "relative", minHeight: "100dvh" }}>

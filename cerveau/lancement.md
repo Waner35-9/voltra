@@ -8,6 +8,9 @@
 ## Waner : fin de la mise en ligne des fonctions de rétention
 - [ ] Tester le bilan de la semaine à partir du lundi suivant une séance.
 
+## Waner : avant d'envoyer le lien d'invitation
+- [ ] Le tester avec un nouveau compte en navigation privée : jamais testé en réel, ni le passage en Pro ni la fin de l'accès.
+
 ## Waner : avant le lancement
 - [ ] Supprimer `paxeh15844@emailkeep.com` une fois sa coupure vérifiée (après le 11 novembre 2026).
 - [ ] Supprimer les fonctions `exercise-gif`, `quick-processor`, `smart-processor`, `validate-session` dans Supabase. L'app ne les appelle plus, et `exercise-gif` est ouverte à tous.

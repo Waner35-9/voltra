@@ -9,6 +9,9 @@ splash → choix du thème → accueil (`WelcomeScreen`) → questionnaire (`Onb
 - À la connexion, un compte qui a déjà un programme le garde, même s'il a refait le questionnaire. Sans programme ni réponses, il passe par le questionnaire.
 - Non-Pro qui démarre une séance : page d'abonnement.
 
+## Ami invité
+Lien `?invitation=CODE` : le code est gardé dans `voltra_invitation` (localStorage), puis activé à la création du compte par la fonction `invitation`. Pas de page d'abonnement ni de carte. Sur iPhone, le code n'existe que dans Safari : créer le compte avant d'installer l'app, donc pas de bloc d'installation sur l'accueil. À la fin de l'accès, retour à la page d'abonnement, avec l'essai de 7 jours encore disponible.
+
 ## Fonctions réservées au Pro, ajoutées pour la rétention
 - Séance : le bouton de lancement passe par « Forme du jour », puis `launchSeance`. La note d'adaptation s'affiche sur l'animation, à la première série.
 - Tableau de bord : carte « Ta semaine, par Ace » (fonction `bilan-semaine`, fermée jusqu'au lundi suivant), carte « Parle à Ace » (`AceScreen`, fonction `coach-chat`, mode `libre`, conversation gardée dans le navigateur), et après le jour J « Découvre ton bilan » (`BilanMissionScreen`).

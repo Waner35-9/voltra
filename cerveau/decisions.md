@@ -3,6 +3,7 @@
 À ne pas rediscuter sauf si Waner le demande.
 
 - **Pas de plafond de messages** sur le coach pour l'instant.
+- **Le paiement reste sur la page Stripe** pour l'instant (6 novembre 2026). Possible plus tard : le formulaire Stripe intégré à une page de l'app, avec la clé publique `pk_live`.
 - **Pas de case de rétractation** dans le parcours d'achat : à la place, remboursement intégral et arrêt immédiat sur demande pendant 14 jours après la souscription.
 - **Pas de relecture par un juriste** pour le lancement : choix de Waner, le 5 novembre 2026.
 - **Âge minimum 15 ans** (5 novembre 2026), abonnement souscrit par un adulte ou un parent. Pas de notation du physique par photo, à cause des mineurs.
