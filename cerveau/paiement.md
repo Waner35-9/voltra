@@ -22,6 +22,7 @@
 
 ## Vérifié en réel (4 novembre 2026)
 Essai, activation du Pro, prochaine facture à 56,24 €, résiliation.
+Le 6 novembre 2026, compte d'essai : rétractation, abonnement arrêté, `is_pro` à faux, aucun prélèvement.
 
 ## Limites connues
 - Un utilisateur peut reprendre un nouvel essai après avoir résilié (`stripe-checkout` ne vérifie pas l'historique).
