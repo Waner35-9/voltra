@@ -7,7 +7,7 @@
 - [ ] Coller `stripe-portal` dans Supabase, puis tester la rétractation sur un compte d'essai et sur un vrai paiement.
 
 ## Waner : avant le lancement
-- [ ] Après le push du code d'inscription : coller `supabase/email-confirmation-compte.html` dans Supabase (Authentication, Emails, Confirm signup), puis créer un compte depuis l'app installée.
+- [ ] Résilier l'essai de `reloterwan+test5@gmail.com` dans l'app avant le 13 novembre 2026 (supprimer le compte n'arrête pas Stripe), puis supprimer les comptes `reloterwan+test…` dans Supabase.
 - [ ] Retirer le Pro des faux comptes, après le 11 novembre 2026 pour vérifier d'abord la coupure automatique du compte de test.
 - [ ] Supprimer les fonctions `exercise-gif`, `quick-processor`, `smart-processor`, `validate-session` dans Supabase. L'app ne les appelle plus, et `exercise-gif` est ouverte à tous.
 - [ ] Plafond de dépenses chez Anthropic.

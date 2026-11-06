@@ -3,7 +3,7 @@
 Générée automatiquement à chaque commit : ne pas modifier à la main.
 Pour lire un bloc : `sed -n 'début,finp' fichier`.
 
-## src/App.jsx (5879 lignes)
+## src/App.jsx (5892 lignes)
 
 Écrans : app, auth, cycle-complete, objectif, objectif-edit, onboarding, payment-success, pricing, programme-generating, splash, theme-choice, welcome
 Tables : avatars, exercices, logs_performance, matchs, profiles, programmes, seances, tests_performance
@@ -94,69 +94,70 @@ Fonctions SQL : appliquer_deload, calculer_progression, check_deload_needed
 - LegalScreen : 2145-2174
 - CLE_CODE_EMAIL : 2175-2175
 - lireCodeEmail : 2176-2181
-- garderCodeEmail : 2182-2188
-- AuthScreen : 2189-2482
-- POSTES_PAR_SPORT : 2483-2521
-- DOULEURS : 2522-2530
-- EQUIPEMENTS : 2531-2537
-- TOTAL_STEPS : 2538-2539
-- OnboardingScreen : 2540-3125
-  - getStepContent : 2560
-  - goNext : 2572
-  - getReactionMessage : 2589
-  - handleFinish : 2629
-  - retryGeneration : 2640
-  - skipGeneration : 2645
-  - toggleDouleur : 2651
-  - canNext : 2666
-- PricingScreen : 3126-3250
-- MatchsScreen : 3251-3395
-- DashboardScreen : 3396-3639
-- HistoriqueScreen : 3640-3927
-- callSubscription : 3928-3940
-- SubscriptionScreen : 3941-4145
-- MaSalleScreen : 4146-4178
-- ProfilScreen : 4179-4615
-  - handleAvatarUpload : 4200
-  - openEdit : 4284
-  - saveEdit : 4289
-- JOUR_MS : 4616-4616
-- CIBLES : 4617-4622
-- dateLocale : 4623-4623
-- isoDans : 4624-4624
-- joursAvant : 4625-4625
-- dateLongue : 4626-4628
-- phasesObjectif : 4629-4645
-- etatPlan : 4646-4659
-- datesDeMatch : 4660-4666
-- adaptationDuJour : 4667-4680
-- cleExercice : 4681-4682
-- ressentisParExercice : 4683-4702
-- poidsLePlusProche : 4703-4710
-- appliquerRessenti : 4711-4726
-- exerciceDepuisFiche : 4727-4741
-- adapterSeance : 4742-4754
-- Bloom : 4755-4757
-- ObjectifScreen : 4758-4899
-- MissionCard : 4900-4941
-- SemaineCard : 4942-4980
-- TESTS_PERF : 4981-4985
-- virgule : 4986-4986
-- INTERVALLE_TEST : 4987-4988
-- useTests : 4989-4999
-- TestCard : 5000-5015
-- TestScreen : 5016-5088
-- dessinerSlide : 5089-5120
-- CarrouselScreen : 5121-5188
-- BottomNav : 5189-5215
-- VoltraApp : 5216-5879
-  - changerAbsentes : 5249
-  - chargerRessentis : 5254
-  - profilDeCharges : 5266
-  - remplacerExercice : 5278
-  - launchSeance : 5284
-  - startGeneration : 5323
-  - handleLogout : 5548
+- garderCodeEmail : 2182-2189
+- avecDelai : 2190-2195
+- AuthScreen : 2196-2489
+- POSTES_PAR_SPORT : 2490-2528
+- DOULEURS : 2529-2537
+- EQUIPEMENTS : 2538-2544
+- TOTAL_STEPS : 2545-2546
+- OnboardingScreen : 2547-3132
+  - getStepContent : 2567
+  - goNext : 2579
+  - getReactionMessage : 2596
+  - handleFinish : 2636
+  - retryGeneration : 2647
+  - skipGeneration : 2652
+  - toggleDouleur : 2658
+  - canNext : 2673
+- PricingScreen : 3133-3257
+- MatchsScreen : 3258-3402
+- DashboardScreen : 3403-3646
+- HistoriqueScreen : 3647-3934
+- callSubscription : 3935-3947
+- SubscriptionScreen : 3948-4157
+- MaSalleScreen : 4158-4190
+- ProfilScreen : 4191-4628
+  - handleAvatarUpload : 4212
+  - openEdit : 4296
+  - saveEdit : 4301
+- JOUR_MS : 4629-4629
+- CIBLES : 4630-4635
+- dateLocale : 4636-4636
+- isoDans : 4637-4637
+- joursAvant : 4638-4638
+- dateLongue : 4639-4641
+- phasesObjectif : 4642-4658
+- etatPlan : 4659-4672
+- datesDeMatch : 4673-4679
+- adaptationDuJour : 4680-4693
+- cleExercice : 4694-4695
+- ressentisParExercice : 4696-4715
+- poidsLePlusProche : 4716-4723
+- appliquerRessenti : 4724-4739
+- exerciceDepuisFiche : 4740-4754
+- adapterSeance : 4755-4767
+- Bloom : 4768-4770
+- ObjectifScreen : 4771-4912
+- MissionCard : 4913-4954
+- SemaineCard : 4955-4993
+- TESTS_PERF : 4994-4998
+- virgule : 4999-4999
+- INTERVALLE_TEST : 5000-5001
+- useTests : 5002-5012
+- TestCard : 5013-5028
+- TestScreen : 5029-5101
+- dessinerSlide : 5102-5133
+- CarrouselScreen : 5134-5201
+- BottomNav : 5202-5228
+- VoltraApp : 5229-5892
+  - changerAbsentes : 5262
+  - chargerRessentis : 5267
+  - profilDeCharges : 5279
+  - remplacerExercice : 5291
+  - launchSeance : 5297
+  - startGeneration : 5336
+  - handleLogout : 5561
 
 ## src/Auth.jsx (119 lignes)
 

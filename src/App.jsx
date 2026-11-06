@@ -2186,6 +2186,13 @@ function garderCodeEmail(email) {
   } catch {}
 }
 
+// Réseau muet ou coupé : un message clair plutôt qu'un chargement sans fin
+function avecDelai(appel) {
+  const sansReseau = { data: {}, error: { message: "La connexion ne répond pas. Vérifie ton réseau et réessaie." } };
+  const reponse = appel.then(r => r.error?.name === "AuthRetryableFetchError" ? sansReseau : r);
+  return Promise.race([reponse, new Promise(ok => setTimeout(() => ok(sansReseau), 25000))]);
+}
+
 function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
   const [codeEmail, setCodeEmail] = useState(() => confirmation ? null : lireCodeEmail());
   const [code, setCode] = useState("");
@@ -2223,7 +2230,7 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
     setError(""); setSuccess("");
     if (valeur.length < 6) { setError("Entre le code reçu par e-mail."); return; }
     setLoading(true);
-    const { data, error: e } = await supabase.auth.verifyOtp({ email: codeEmail, token: valeur, type: "email" });
+    const { data, error: e } = await avecDelai(supabase.auth.verifyOtp({ email: codeEmail, token: valeur, type: "email" }));
     if (e) {
       setError(e.status === 429 ? "Trop d'essais. Attends quelques minutes avant de réessayer."
         : e.code === "otp_expired" ? "Code incorrect ou expiré. Vérifie-le ou demande-en un nouveau."
@@ -2254,7 +2261,7 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
     setLoading(true);
     if (mode === "signup") {
       // Les réponses de l'onboarding sont gardées avec le compte, pour les retrouver même si l'email est confirmé ailleurs
-      const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { name, ...(onboardingData ? { onboarding: onboardingData } : {}) }, emailRedirectTo: `${window.location.origin}/?confirmed=true` } });
+      const { data, error: e } = await avecDelai(supabase.auth.signUp({ email, password, options: { data: { name, ...(onboardingData ? { onboarding: onboardingData } : {}) }, emailRedirectTo: `${window.location.origin}/?confirmed=true` } }));
       if (e) { setError(e.message === "User already registered" ? "Email déjà utilisé." : e.message); setLoading(false); return; }
       if (data.user && !data.session) {
         // Adresse déjà confirmée : Supabase répond sans identité et n'envoie aucun e-mail
@@ -2265,7 +2272,7 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
       }
       onAuth(data.user);
     } else {
-      const { data, error: e } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error: e } = await avecDelai(supabase.auth.signInWithPassword({ email, password }));
       if (e?.code === "email_not_confirmed") {
         // Compte jamais validé : on renvoie un code plutôt que de le bloquer ici
         await supabase.auth.resend({ type: "signup", email });
@@ -3946,6 +3953,7 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [retraction, setRetraction] = useState(null);
+  const [detailOffre, setDetailOffre] = useState(false);
 
   const load = async () => {
     try { setInfo(await callSubscription("info")); setLoadErr(""); }
@@ -4003,7 +4011,7 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
         <p style={{ ...h, fontSize: 18 }}>Mon abonnement</p>
       </div>
 
-      <div style={{ padding: "20px 16px 80px", maxWidth: 520, margin: "0 auto" }}>
+      <div style={{ padding: "20px 16px calc(80px + env(safe-area-inset-bottom, 0px))", maxWidth: 520, margin: "0 auto" }}>
         {msg && <div style={{ ...card, borderColor: `${accent}60`, background: `${accent}12` }}><p style={{ ...t, color: DS.colors.textPrimary, fontWeight: 600 }}>{msg}</p></div>}
 
         {!info && !loadErr && <p style={{ ...t, textAlign: "center", marginTop: 40 }}>Chargement...</p>}
@@ -4024,15 +4032,19 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
                 <span style={{ fontSize: 20 }}>⭐</span>
                 <p style={{ ...h, fontSize: 18 }}>Voltra Pro</p>
               </div>
-              <p style={{ ...t, color: DS.colors.textPrimary, fontWeight: 600 }}>{planLabel}</p>
+              <p style={{ ...t, color: DS.colors.textPrimary, fontWeight: 600 }}>{isYear ? "Offre annuelle" : "Offre mensuelle"}</p>
               <p style={{ ...t, marginTop: 6 }}>
                 {enEssai && info.cancelAtPeriodEnd ? `Résiliation prévue : ton essai reste actif jusqu'au ${dateFr(info.periodEnd)}. Tu ne seras pas débité.`
-                  : enEssai ? `Essai gratuit jusqu'au ${dateFr(info.periodEnd)}. Premier paiement ce jour-là : ${premierPaiement} €, sauf si tu résilies avant.`
+                  : enEssai ? `Essai gratuit jusqu'au ${dateFr(info.periodEnd)}. Ton abonnement démarre ensuite automatiquement, sauf si tu résilies avant.`
                   : info.cancelAtPeriodEnd ? `Résiliation prévue : ton accès reste actif jusqu'au ${dateFr(info.periodEnd)}.`
                   : info.paused ? `Pause active : ton prochain mois est offert.`
                   : `Prochain renouvellement le ${dateFr(info.periodEnd)}.`}
                 {info.offerUsed && info.hasDiscount && !info.cancelAtPeriodEnd ? " 🎁 Réduction de fidélité appliquée." : ""}
               </p>
+              {/* Le prix reste à un clic, et le rappel par e-mail de l'essai l'indique avant le premier paiement */}
+              {detailOffre
+                ? <p style={{ ...t, marginTop: 8 }}>{planLabel}{enEssai && !info.cancelAtPeriodEnd ? `. Premier paiement : ${premierPaiement} €.` : "."}</p>
+                : <p onClick={() => setDetailOffre(true)} style={{ ...link, textAlign: "left", margin: "8px 0 0" }}>Voir le détail de mon offre</p>}
               {info.cancelAtPeriodEnd && <button onClick={resume} disabled={busy} style={{ ...btnMain, marginTop: 14 }}>{busy ? "..." : "Réactiver mon abonnement"}</button>}
             </div>
 
@@ -4051,16 +4063,16 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
               <button onClick={() => goPortal("portal")} disabled={busy} style={btnGhost}>{busy ? "Ouverture..." : "Moyen de paiement et factures"}</button>
             </div>
 
-            {info.canRetract && (
-              <div style={card}>
-                <p style={{ ...h, fontSize: 14, marginBottom: 6 }}>Droit de rétractation</p>
-                <p style={{ ...t, marginBottom: 12 }}>Tu peux changer d'avis jusqu'au {dateFr(info.retractUntil)}. {info.refundable > 0 ? "Remboursement intégral." : "Aucun paiement prélevé pour l'instant."}</p>
-                <button onClick={() => { setMsg(""); setFlow(4); }} style={btnGhost}>Renoncer au contrat ici</button>
-              </div>
-            )}
-
             {!info.cancelAtPeriodEnd && (
               <p onClick={() => { setMsg(""); setFlow(1); }} style={link}>Résilier mon abonnement</p>
+            )}
+
+            {/* Discret, mais la loi le veut identifiable et accessible tout le délai : ne pas le mettre dans un menu */}
+            {info.canRetract && (
+              <p style={{ ...link, textDecoration: "none", cursor: "default", lineHeight: 1.5 }}>
+                Droit de rétractation jusqu'au {dateFr(info.retractUntil)} :{" "}
+                <button onClick={() => { setMsg(""); setFlow(4); }} style={{ padding: 0, background: "none", border: "none", color: "inherit", font: "inherit", textDecoration: "underline", cursor: "pointer" }}>Renoncer au contrat ici</button>
+              </p>
             )}
           </>
         )}
@@ -4310,6 +4322,9 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
   };
 
   if (showSalle) return <MaSalleScreen absentes={absentes} onChange={onChangeAbsentes} onBack={() => setShowSalle(false)} />;
+  // Hors du bloc du profil : dedans, la barre du bas passerait par-dessus ces écrans
+  if (showSub) return <SubscriptionScreen onBack={() => setShowSub(false)} accent={theme.accent} totalSeances={totalSeancesAllTime} memberDays={memberSinceDays} />;
+  if (showLegal) return <LegalScreen initial={showLegal} onBack={() => setShowLegal(null)} />;
 
   return (
     <div className={stagger} style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", paddingBottom: 130, overflow: "hidden" }}>
@@ -4325,7 +4340,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
       {showEditDrawer && (
         <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
           <div onClick={() => setShowEditDrawer(false)} style={{ position: "absolute", inset: 0, background: DS.colors.surfaceHigh, backdropFilter: "blur(4px)" }} />
-          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "24px 20px 48px", maxHeight: "88vh", overflowY: "auto" }}>
+          <div style={{ position: "relative", background: DS.colors.surface, borderRadius: `${DS.radius.xl}px ${DS.radius.xl}px 0 0`, padding: "24px 20px calc(96px + env(safe-area-inset-bottom, 0px))", maxHeight: "88vh", overflowY: "auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
               <p style={{ ...s.display, fontSize: 20, color: DS.colors.textPrimary }}>Modifier mon profil</p>
               <button onClick={() => setShowEditDrawer(false)} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.full, width: 32, height: 32, color: DS.colors.textSec, cursor: "pointer" }}>✕</button>
@@ -4571,7 +4586,6 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
               <p style={{ flex: 1, color: DS.colors.textPrimary, fontSize: 15, margin: 0, fontFamily: "'Inter',sans-serif", fontWeight: 800 }}>Voltra Pro actif</p>
             </div>
             <p onClick={() => setShowSub(true)} style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, textDecoration: "underline", cursor: "pointer", margin: 0 }}>Gérer mon abonnement</p>
-            {showSub && <SubscriptionScreen onBack={() => setShowSub(false)} accent={theme.accent} totalSeances={totalSeancesAllTime} memberDays={memberSinceDays} />}
           </div>
         )}
 
@@ -4590,7 +4604,6 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             <span style={{ color: DS.colors.textSec }}>›</span>
           </a>
         </div>
-        {showLegal && <LegalScreen initial={showLegal} onBack={() => setShowLegal(null)} />}
 
         {/* Deconnexion */}
         <div onClick={onLogout} style={{ background: "rgba(255,45,85,0.06)", border: "1px solid rgba(255,45,85,0.15)", borderRadius: DS.radius.xl, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
