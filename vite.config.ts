@@ -31,6 +31,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff,woff2}'],
         globIgnores: ['icons.svg'],
         navigateFallback: 'index.html',
+        // Un lien d'invitation charge toujours la dernière version : une ancienne en cache ne saurait pas le lire
+        navigateFallbackDenylist: [/[?&]invitation=/],
         cleanupOutdatedCaches: true,
         // Seules les requêtes GET passent par ces règles. Les autres (POST, PATCH, DELETE) n'ont
         // aucune règle : le service worker ne les touche pas et elles vont droit au réseau.

@@ -16,11 +16,14 @@ let confirmationEmail = /type=signup|confirmed=true/.test(URL_AU_CHARGEMENT) ? "
 // Lien d'invitation : le code reste sur l'appareil jusqu'à la création du compte
 const CLE_INVITATION = "voltra_invitation";
 function lireInvitation() { try { return localStorage.getItem(CLE_INVITATION); } catch { return null; } }
-function oublierInvitation() { try { localStorage.removeItem(CLE_INVITATION); } catch {} }
+function oublierInvitation() {
+  try { localStorage.removeItem(CLE_INVITATION); } catch {}
+  if (new URLSearchParams(window.location.search).has("invitation")) window.history.replaceState({}, document.title, window.location.pathname);
+}
+// L'adresse garde le code jusqu'à l'activation : « Ouvrir dans Safari » depuis WhatsApp ou Instagram doit le transmettre
 const codeInvitationUrl = new URLSearchParams(window.location.search).get("invitation");
 if (codeInvitationUrl) {
   try { localStorage.setItem(CLE_INVITATION, codeInvitationUrl); } catch {}
-  window.history.replaceState({}, document.title, window.location.pathname);
 }
 
 const supabase = createClient(
