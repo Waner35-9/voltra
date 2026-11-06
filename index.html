@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#F5F5F7" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Voltra" />
+    <!-- Bonne couleur de fond dès l'ouverture, pour éviter un flash blanc en thème sombre -->
+    <style>html { background: #F5F5F7; }</style>
+    <script>try { if (localStorage.getItem("voltra_theme") === "dark") document.documentElement.style.background = "#000000"; } catch (e) {}</script>
     <title>Voltra · Ta prépa physique sur mesure</title>
     <meta name="description" content="Un programme de préparation physique créé par l'IA pour ton sport, et un coach qui t'accompagne à chaque séance." />
     <meta property="og:title" content="Voltra · Ta prépa physique sur mesure" />

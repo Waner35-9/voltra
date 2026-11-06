@@ -434,6 +434,9 @@ const fonduBas = () => {
   return `linear-gradient(${c}00, ${c}1A 6%, ${c}59 13%, ${c}A6 20%, ${c}E6 27%, ${c} 34%)`;
 };
 
+// Marge du haut : identique dans Safari, et sous l'encoche dans l'app installée
+const hautSur = (px) => `max(${px}px, calc(env(safe-area-inset-top, 0px) + 12px))`;
+
 // Apparition en cascade seulement à la première visite d'un onglet : on y revient trop souvent pour la rejouer
 const ongletsVus = new Set();
 function useStaggerUneFois(cle) {
@@ -1259,7 +1262,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
       <div style={{ fontFamily: "'Inter',sans-serif", background: "linear-gradient(180deg, #0A2540 0%, #051426 100%)", minHeight: "100dvh", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", color: "white", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: "25%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(10,132,255,0.25), transparent 70%)", pointerEvents: "none" }} />
 
-        <div style={{ padding: "52px 24px 0", display: "flex", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+        <div style={{ padding: `${hautSur(52)} 24px 0`, display: "flex", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontVariantNumeric: "tabular-nums" }}>{formatElapsed(elapsed)}</p>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>EX {exIdx + 1}/{exercices.length}</p>
         </div>
@@ -1307,7 +1310,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
 
       {/* Toast */}
       {toast && (
-        <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: accentColor, color: "#000", padding: "8px 20px", borderRadius: 999, fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 800, zIndex: 200, boxShadow: `0 4px 20px ${accentColor}60`, whiteSpace: "nowrap" }}>
+        <div style={{ position: "fixed", top: `calc(${hautSur(50)} + 30px)`, left: "50%", transform: "translateX(-50%)", background: accentColor, color: "#000", padding: "8px 20px", borderRadius: 999, fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 800, zIndex: 200, boxShadow: `0 4px 20px ${accentColor}60`, whiteSpace: "nowrap" }}>
           {toast}
         </div>
       )}
@@ -1382,7 +1385,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
       <div key={animKey} style={{ position: "relative", height: "34vh", minHeight: 200, overflow: "hidden", flexShrink: 0 }}>
         {/* Démo animée du mouvement (dessinée par l'app, instantanée) */}
         <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 70% 60% at 50% 62%, ${accentColor}26, transparent 70%), linear-gradient(180deg, #0B0D10 0%, #000 100%)` }} />
-        <div key={currentEx?.nom} className="v-pop" style={{ position: "absolute", left: "10%", right: "10%", top: 78, bottom: 30 }}>
+        <div key={currentEx?.nom} className="v-pop" style={{ position: "absolute", left: "10%", right: "10%", top: `calc(${hautSur(50)} + 28px)`, bottom: 30 }}>
           {aUneIllustration(ficheCourante) ? <IllustrationMachine fiche={ficheCourante} accent={accentColor} />
           : ficheCourante && !ficheCourante.animation ? (
             <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 6 }}>
@@ -1393,7 +1396,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
         </div>
 
         {/* Header sur la photo */}
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "50px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: `${hautSur(50)} 20px 0`, display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
           <button onClick={() => setShowExitModal(true)} style={{ width: 36, height: 36, borderRadius: 18, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", color: "white", fontSize: 15, cursor: "pointer" }}>✕</button>
           <div style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", borderRadius: 20, padding: "6px 14px", border: "1px solid rgba(255,255,255,0.15)" }}>
             <p style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{formatElapsed(elapsed)}</p>
@@ -1977,7 +1980,7 @@ function WelcomeScreen({ onStart, onLogin }) {
       <Bloom echelle={0.8} />
       <div style={{ position: "absolute", top: -160, right: -120, width: 380, height: 380, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, pointerEvents: "none" }} />
 
-      <div className="v-stagger" style={{ flex: 1, padding: "56px 24px 0", position: "relative", zIndex: 1 }}>
+      <div className="v-stagger" style={{ flex: 1, padding: `${hautSur(56)} 24px 0`, position: "relative", zIndex: 1 }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
           <LogoVoltra taille={36} />
@@ -2140,7 +2143,7 @@ function LegalScreen({ initial = "cgu", onBack }) {
   const doc = LEGAL_DOCS[tab];
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: DS.colors.bg, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-      <div style={{ position: "sticky", top: 0, background: DS.colors.bg, borderBottom: `1px solid ${DS.colors.border}`, padding: "52px 16px 12px", zIndex: 2 }}>
+      <div style={{ position: "sticky", top: 0, background: DS.colors.bg, borderBottom: `1px solid ${DS.colors.border}`, padding: `${hautSur(52)} 16px 12px`, zIndex: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: 20, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 16, cursor: "pointer" }}>←</button>
           <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 18, color: DS.colors.textPrimary, margin: 0 }}>Informations légales</p>
@@ -2301,7 +2304,7 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
     <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: "0 24px" }}>
       <Bloom echelle={0.8} />
       {onBack && <button onClick={onBack} style={{ position: "absolute", top: "calc(20px + env(safe-area-inset-top, 0px))", left: 24, zIndex: 1, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, fontFamily: "'Inter',sans-serif", cursor: "pointer", padding: 0 }}>← Retour</button>}
-      <div className="v-stagger" style={{ paddingTop: 64, paddingBottom: 32 }}>
+      <div className="v-stagger" style={{ paddingTop: "calc(64px + env(safe-area-inset-top, 0px))", paddingBottom: 32 }}>
         <LogoVoltra taille={52} style={{ marginBottom: 24 }} />
         <h1 key={mode} className="v-up" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 10 }}>
           {mode === "login" ? <>Content de<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>te revoir</span></> : <>Crée ton<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>compte</span></>}
@@ -2724,7 +2727,7 @@ function OnboardingScreen({ onComplete, onLogin }) {
             <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 300px 300px at 50% 30%, ${sportTheme.accent}06, transparent)`, pointerEvents: "none" }} />
 
             {/* Dots navigation */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingTop: 52, marginBottom: 32, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingTop: hautSur(52), marginBottom: 32, position: "relative", zIndex: 2 }}>
               {slides.map((_, i) => (
                 <div key={i} style={{ width: i === slideIndex ? 20 : 6, height: 6, borderRadius: 3, background: i === slideIndex ? sportTheme.accent : DS.colors.surfaceHigh, transition: "width 240ms var(--ease-out), background 240ms ease", boxShadow: i === slideIndex ? `0 0 8px ${sportTheme.accent}` : "none" }} />
               ))}
@@ -2778,7 +2781,7 @@ function OnboardingScreen({ onComplete, onLogin }) {
       })()}
 
       {/* Barre du haut : retour + progression */}
-      <div style={{ paddingTop: 52, paddingBottom: 28, display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ paddingTop: hautSur(52), paddingBottom: 28, display: "flex", alignItems: "center", gap: 14 }}>
         <button onClick={() => step > 0 && setStep(st => st - 1)} aria-label="Retour" style={{ width: 40, height: 40, flexShrink: 0, borderRadius: DS.radius.full, background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, boxShadow: DS.shadow.card, display: "flex", alignItems: "center", justifyContent: "center", cursor: step > 0 ? "pointer" : "default", opacity: step > 0 ? 1 : 0, transition: "opacity 0.2s ease" }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5L8 12L15 19" stroke={DS.colors.textPrimary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
@@ -3049,7 +3052,7 @@ function PricingScreen({ programme, user, cible, onBack, onLogout }) {
   ];
 
   return (
-    <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", background: DS.colors.bg, color: DS.colors.textPrimary, position: "relative", isolation: "isolate", overflowX: "clip", padding: "48px 22px calc(24px + env(safe-area-inset-bottom, 0px))", fontFamily: "'Inter',sans-serif" }}>
+    <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", background: DS.colors.bg, color: DS.colors.textPrimary, position: "relative", isolation: "isolate", overflowX: "clip", padding: `${hautSur(48)} 22px calc(24px + env(safe-area-inset-bottom, 0px))`, fontFamily: "'Inter',sans-serif" }}>
       <Bloom echelle={0.9} />
       {onBack && <button onClick={onBack} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0 }}>← Retour</button>}
       <p className="v-in" style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: ac }}>TON PLAN T'ATTEND</p>
@@ -3179,7 +3182,7 @@ function MatchsScreen({ user, onBack }) {
   return (
     <div style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", paddingBottom: 100 }}>
       <Bloom echelle={0.8} />
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "14px 20px" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: `${hautSur(14)} 20px 14px` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
           <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 26, color: DS.colors.textPrimary, letterSpacing: "0.06em" }}>MES MATCHS</h1>
@@ -3337,7 +3340,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
       )}
 
       {/* Header */}
-      <div className={stagger ? "v-up" : undefined} style={{ padding: "56px 24px 4px", position: "relative", overflow: "hidden" }}>
+      <div className={stagger ? "v-up" : undefined} style={{ padding: `${hautSur(56)} 24px 4px`, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -140, right: -110, width: 320, height: 320, borderRadius: "50%", background: `radial-gradient(circle, ${theme.accent}26, transparent 70%)`, pointerEvents: "none" }} />
         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, marginBottom: 6, fontWeight: 600, position: "relative" }}>
           {today.charAt(0).toUpperCase() + today.slice(1)}
@@ -3648,7 +3651,7 @@ function HistoriqueScreen() {
       )}
 
       {/* Header */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(10px)", borderBottom: `1px solid ${DS.colors.border}`, padding: "20px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: DS.colors.stickyBg, backdropFilter: "blur(10px)", borderBottom: `1px solid ${DS.colors.border}`, padding: `${hautSur(20)} 20px 16px`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 34, color: DS.colors.textPrimary, letterSpacing: "-0.03em" }}>PROGRESSION</h1>
         <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 999, padding: "6px 12px", whiteSpace: "nowrap", fontWeight: 700 }}>CE MOIS</div>
       </div>
@@ -3872,7 +3875,7 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: DS.colors.bg, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-      <div style={{ padding: "52px 16px 12px", display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${DS.colors.border}`, position: "sticky", top: 0, background: DS.colors.bg, zIndex: 2 }}>
+      <div style={{ padding: `${hautSur(52)} 16px 12px`, display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${DS.colors.border}`, position: "sticky", top: 0, background: DS.colors.bg, zIndex: 2 }}>
         <button onClick={flow === 5 ? () => window.location.reload() : flow ? () => setFlow(0) : onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: 20, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 16, cursor: "pointer" }}>←</button>
         <p style={{ ...h, fontSize: 18 }}>Mon abonnement</p>
       </div>
@@ -4251,7 +4254,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
       )}
 
       {/* Header hero */}
-      <div style={{ padding: "60px 24px 32px", position: "relative", zIndex: 1 }}>
+      <div style={{ padding: `${hautSur(60)} 24px 32px`, position: "relative", zIndex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: "none" }} />
           <div onClick={() => fileInputRef.current?.click()} style={{ position: "relative", width: 72, height: 72, flexShrink: 0, cursor: "pointer" }}>
@@ -4649,7 +4652,7 @@ function ObjectifScreen({ initial, onboardingData, edition, onDone, onBack }) {
     return () => clearTimeout(t);
   }, [etape]);
 
-  const cadre = { minHeight: "100dvh", maxWidth: 430, margin: "0 auto", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: `48px 22px calc(24px + env(safe-area-inset-bottom, 0px))`, fontFamily: "'Inter',sans-serif", color: DS.colors.textPrimary };
+  const cadre = { minHeight: "100dvh", maxWidth: 430, margin: "0 auto", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", display: "flex", flexDirection: "column", padding: `${hautSur(48)} 22px calc(24px + env(safe-area-inset-bottom, 0px))`, fontFamily: "'Inter',sans-serif", color: DS.colors.textPrimary };
 
   if (etape === 0) return (
     <div key="objectif" style={cadre}>
@@ -4910,7 +4913,7 @@ function TestScreen({ user, tests, onSaved, onBack, onCarrousel }) {
 
   return (
     <div className="v-plein" style={{ background: DS.colors.bg, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif" }}>
-      <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", position: "relative", isolation: "isolate", overflowX: "clip", padding: "48px 22px calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+      <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", position: "relative", isolation: "isolate", overflowX: "clip", padding: `${hautSur(48)} 22px calc(24px + env(safe-area-inset-bottom, 0px))` }}>
         <Bloom echelle={0.8} />
         <button onClick={onBack} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0 }}>← Retour</button>
         <p className="v-in" style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: ac }}>{dernier ? "TEST DU MOIS" : "TEST DE DÉPART"}</p>
@@ -5027,7 +5030,7 @@ function CarrouselScreen({ tests, onBack }) {
   };
   return (
     <div className="v-plein" style={{ background: DS.colors.bg, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif" }}>
-      <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", overflowX: "clip", padding: "48px 22px calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+      <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", overflowX: "clip", padding: `${hautSur(48)} 22px calc(24px + env(safe-area-inset-bottom, 0px))` }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12, padding: 0 }}>← Retour</button>
         <p className="v-in" style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: ac }}>PARTAGE TA PROGRESSION</p>
         <h1 className="v-in" style={{ "--i": 1, fontWeight: 900, fontSize: 30, lineHeight: 1.02, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "8px 0" }}>Ton carrousel<br /><span style={{ color: ac }}>TikTok</span></h1>
