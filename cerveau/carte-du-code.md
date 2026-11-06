@@ -3,7 +3,7 @@
 Générée automatiquement à chaque commit : ne pas modifier à la main.
 Pour lire un bloc : `sed -n 'début,finp' fichier`.
 
-## src/App.jsx (5892 lignes)
+## src/App.jsx (5938 lignes)
 
 Écrans : app, auth, cycle-complete, objectif, objectif-edit, onboarding, payment-success, pricing, programme-generating, splash, theme-choice, welcome
 Tables : avatars, exercices, logs_performance, matchs, profiles, programmes, seances, tests_performance
@@ -115,49 +115,50 @@ Fonctions SQL : appliquer_deload, calculer_progression, check_deload_needed
 - DashboardScreen : 3403-3646
 - HistoriqueScreen : 3647-3934
 - callSubscription : 3935-3947
-- SubscriptionScreen : 3948-4157
-- MaSalleScreen : 4158-4190
-- ProfilScreen : 4191-4628
-  - handleAvatarUpload : 4212
-  - openEdit : 4296
-  - saveEdit : 4301
-- JOUR_MS : 4629-4629
-- CIBLES : 4630-4635
-- dateLocale : 4636-4636
-- isoDans : 4637-4637
-- joursAvant : 4638-4638
-- dateLongue : 4639-4641
-- phasesObjectif : 4642-4658
-- etatPlan : 4659-4672
-- datesDeMatch : 4673-4679
-- adaptationDuJour : 4680-4693
-- cleExercice : 4694-4695
-- ressentisParExercice : 4696-4715
-- poidsLePlusProche : 4716-4723
-- appliquerRessenti : 4724-4739
-- exerciceDepuisFiche : 4740-4754
-- adapterSeance : 4755-4767
-- Bloom : 4768-4770
-- ObjectifScreen : 4771-4912
-- MissionCard : 4913-4954
-- SemaineCard : 4955-4993
-- TESTS_PERF : 4994-4998
-- virgule : 4999-4999
-- INTERVALLE_TEST : 5000-5001
-- useTests : 5002-5012
-- TestCard : 5013-5028
-- TestScreen : 5029-5101
-- dessinerSlide : 5102-5133
-- CarrouselScreen : 5134-5201
-- BottomNav : 5202-5228
-- VoltraApp : 5229-5892
-  - changerAbsentes : 5262
-  - chargerRessentis : 5267
-  - profilDeCharges : 5279
-  - remplacerExercice : 5291
-  - launchSeance : 5297
-  - startGeneration : 5336
-  - handleLogout : 5561
+- AVANTAGES_PRO : 3948-3954
+- SubscriptionScreen : 3955-4203
+- MaSalleScreen : 4204-4236
+- ProfilScreen : 4237-4674
+  - handleAvatarUpload : 4258
+  - openEdit : 4342
+  - saveEdit : 4347
+- JOUR_MS : 4675-4675
+- CIBLES : 4676-4681
+- dateLocale : 4682-4682
+- isoDans : 4683-4683
+- joursAvant : 4684-4684
+- dateLongue : 4685-4687
+- phasesObjectif : 4688-4704
+- etatPlan : 4705-4718
+- datesDeMatch : 4719-4725
+- adaptationDuJour : 4726-4739
+- cleExercice : 4740-4741
+- ressentisParExercice : 4742-4761
+- poidsLePlusProche : 4762-4769
+- appliquerRessenti : 4770-4785
+- exerciceDepuisFiche : 4786-4800
+- adapterSeance : 4801-4813
+- Bloom : 4814-4816
+- ObjectifScreen : 4817-4958
+- MissionCard : 4959-5000
+- SemaineCard : 5001-5039
+- TESTS_PERF : 5040-5044
+- virgule : 5045-5045
+- INTERVALLE_TEST : 5046-5047
+- useTests : 5048-5058
+- TestCard : 5059-5074
+- TestScreen : 5075-5147
+- dessinerSlide : 5148-5179
+- CarrouselScreen : 5180-5247
+- BottomNav : 5248-5274
+- VoltraApp : 5275-5938
+  - changerAbsentes : 5308
+  - chargerRessentis : 5313
+  - profilDeCharges : 5325
+  - remplacerExercice : 5337
+  - launchSeance : 5343
+  - startGeneration : 5382
+  - handleLogout : 5607
 
 ## src/Auth.jsx (119 lignes)
 

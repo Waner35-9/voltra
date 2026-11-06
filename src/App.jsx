@@ -3945,15 +3945,23 @@ async function callSubscription(action, extra = {}) {
   return data;
 }
 
-function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
+const AVANTAGES_PRO = [
+  ["🧠", "Un programme fait pour ton sport", "Créé par l'IA selon ton niveau, ton matériel et ton objectif, jusqu'à ta date."],
+  ["📈", "Des charges qui suivent tes progrès", "Tu notes ton ressenti et ton poids réel : la séance suivante s'ajuste toute seule."],
+  ["🤖", "Ace, ton coach à chaque séance", "Une question, un doute, une gêne : il te répond pendant que tu t'entraînes."],
+  ["🏆", "Des séances adaptées à tes matchs", "Ta charge s'allège avant un match pour que tu arrives frais."],
+];
+
+function SubscriptionScreen({ onBack, accent, totalSeances, streak, recordKg, semaine, totalSemaines }) {
   const [info, setInfo] = useState(null);
   const [loadErr, setLoadErr] = useState("");
-  const [flow, setFlow] = useState(0); // 0 normal, 1 avant de partir, 2 offre, 3 confirmation, 4 rétractation, 5 rétractation faite
+  const [flow, setFlow] = useState(0); // 0 normal, 1 avant de partir, 2 offre, 3 confirmation, 4 rétractation, 5 rétractation faite, 6 gérer mon offre
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [retraction, setRetraction] = useState(null);
-  const [detailOffre, setDetailOffre] = useState(false);
+  const ecranRef = useRef(null);
+  useEffect(() => { ecranRef.current?.scrollTo(0, 0); }, [flow]);
 
   const load = async () => {
     try { setInfo(await callSubscription("info")); setLoadErr(""); }
@@ -3977,7 +3985,7 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
     setBusy(true); setMsg("");
     try {
       await callSubscription("offer", { type, reason });
-      setFlow(0); await load();
+      setFlow(6); await load();
       setMsg(type === "free_month" ? "✓ Ton prochain mois est offert. Merci de rester avec nous !" : "✓ Ta réduction de 30 % est appliquée. Merci de rester avec nous !");
     } catch (e) { setMsg(e.code === "offer_used" ? "Tu as déjà profité d'une offre de fidélité." : (e.message || "Erreur, réessaie.")); }
     setBusy(false);
@@ -4005,10 +4013,10 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
   const REASONS = ["Trop cher", "Je ne m'en sers pas assez", "Je n'ai pas trouvé ce que je cherchais", "Je fais une pause", "Autre"];
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: DS.colors.bg, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+    <div ref={ecranRef} style={{ position: "fixed", inset: 0, zIndex: 1000, background: DS.colors.bg, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
       <div style={{ padding: `${hautSur(52)} 16px 12px`, display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${DS.colors.border}`, position: "sticky", top: 0, background: DS.colors.bg, zIndex: 2 }}>
-        <button onClick={flow === 5 ? () => window.location.reload() : flow ? () => setFlow(0) : onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: 20, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 16, cursor: "pointer" }}>←</button>
-        <p style={{ ...h, fontSize: 18 }}>Mon abonnement</p>
+        <button onClick={flow === 5 ? () => window.location.reload() : flow === 6 ? () => setFlow(0) : flow ? () => setFlow(6) : onBack} style={{ background: DS.colors.surfaceHigh, border: "none", borderRadius: 20, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 16, cursor: "pointer" }}>←</button>
+        <p style={{ ...h, fontSize: 18 }}>{flow === 0 ? "Mon abonnement" : "Gérer mon offre"}</p>
       </div>
 
       <div style={{ padding: "20px 16px calc(80px + env(safe-area-inset-bottom, 0px))", maxWidth: 520, margin: "0 auto" }}>
@@ -4027,34 +4035,64 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
 
         {info && flow === 0 && (
           <>
-            <div style={{ ...card, borderColor: `${accent}50` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                <span style={{ fontSize: 20 }}>⭐</span>
-                <p style={{ ...h, fontSize: 18 }}>Voltra Pro</p>
+            <div style={{ ...card, borderColor: `${accent}50`, background: `linear-gradient(160deg, ${accent}24, ${DS.colors.surface} 60%)` }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: DS.radius.full, background: `${accent}24`, color: accentLisible(accent), fontFamily: "'Inter',sans-serif", fontSize: 11, fontWeight: 800, marginBottom: 12 }}><span>⭐</span>Voltra Pro actif</span>
+              <p style={{ ...h, fontSize: 24, lineHeight: 1.12, letterSpacing: "-0.02em", marginBottom: 6 }}>{totalSeances > 0 ? "Ta progression est lancée" : "Ta première séance t'attend"}</p>
+              <p style={{ ...t, marginBottom: 16 }}>{totalSeances > 0 ? "Chaque séance rend la suivante plus juste. Ne casse pas ton élan." : "Ton programme est prêt et il s'ajustera à chaque séance."}</p>
+              {semaine && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7 }}>
+                    <p style={{ ...t, fontSize: 12, fontWeight: 700, color: DS.colors.textPrimary }}>Semaine {semaine} sur {totalSemaines}</p>
+                    <p style={{ ...t, fontSize: 12 }}>{Math.min(100, Math.round((semaine / totalSemaines) * 100))} %</p>
+                  </div>
+                  <div style={{ height: 6, borderRadius: DS.radius.full, background: DS.colors.surfaceHigh, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${Math.min(100, (semaine / totalSemaines) * 100)}%`, borderRadius: DS.radius.full, background: accent }} />
+                  </div>
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8 }}>
+                {[[totalSeances || 0, "séances"], [streak || 0, "série"], [recordKg > 0 ? recordKg : "—", "record kg"]].map(([val, label]) => (
+                  <div key={label} style={{ flex: 1, minWidth: 0, background: DS.colors.surfaceHigh, borderRadius: 12, padding: "12px 6px", textAlign: "center" }}>
+                    <p style={{ ...h, fontSize: 20, color: accentLisible(accent), fontVariantNumeric: "tabular-nums" }}>{val}</p>
+                    <p style={{ ...t, fontSize: 11 }}>{label}</p>
+                  </div>
+                ))}
               </div>
-              <p style={{ ...t, color: DS.colors.textPrimary, fontWeight: 600 }}>{isYear ? "Offre annuelle" : "Offre mensuelle"}</p>
+            </div>
+
+            <div style={card}>
+              <p style={{ ...h, fontSize: 16, marginBottom: 14 }}>Ce que Pro fait pour toi</p>
+              {AVANTAGES_PRO.map(([icone, titre, detail], i) => (
+                <div key={titre} style={{ display: "flex", gap: 12, paddingTop: i ? 14 : 0, marginTop: i ? 14 : 0, borderTop: i ? `1px solid ${DS.colors.border}` : "none" }}>
+                  <span style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 11, background: DS.colors.surfaceHigh, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>{icone}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ ...h, fontSize: 14, marginBottom: 3 }}>{titre}</p>
+                    <p style={t}>{detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button onClick={() => { setMsg(""); setFlow(6); }} style={btnGhost}>Gérer mon offre et mes paiements</button>
+            {/* Le mot « résilier » reste écrit ici : la loi demande un accès direct et sans ambiguïté */}
+            <p onClick={() => { setMsg(""); setFlow(6); }} style={{ ...link, textDecoration: "none" }}>Prix, factures, résilier ou renoncer au contrat</p>
+          </>
+        )}
+
+        {info && flow === 6 && (
+          <>
+            <div style={{ ...card, borderColor: `${accent}50` }}>
+              <p style={{ ...h, fontSize: 18, marginBottom: 6 }}>Mon offre</p>
+              <p style={{ ...t, color: DS.colors.textPrimary, fontWeight: 600 }}>{planLabel}</p>
               <p style={{ ...t, marginTop: 6 }}>
                 {enEssai && info.cancelAtPeriodEnd ? `Résiliation prévue : ton essai reste actif jusqu'au ${dateFr(info.periodEnd)}. Tu ne seras pas débité.`
-                  : enEssai ? `Essai gratuit jusqu'au ${dateFr(info.periodEnd)}. Ton abonnement démarre ensuite automatiquement, sauf si tu résilies avant.`
+                  : enEssai ? `Essai gratuit jusqu'au ${dateFr(info.periodEnd)}. Premier paiement ce jour-là : ${premierPaiement} €, sauf si tu résilies avant.`
                   : info.cancelAtPeriodEnd ? `Résiliation prévue : ton accès reste actif jusqu'au ${dateFr(info.periodEnd)}.`
                   : info.paused ? `Pause active : ton prochain mois est offert.`
                   : `Prochain renouvellement le ${dateFr(info.periodEnd)}.`}
                 {info.offerUsed && info.hasDiscount && !info.cancelAtPeriodEnd ? " 🎁 Réduction de fidélité appliquée." : ""}
               </p>
-              {/* Le prix reste à un clic, et le rappel par e-mail de l'essai l'indique avant le premier paiement */}
-              {detailOffre
-                ? <p style={{ ...t, marginTop: 8 }}>{planLabel}{enEssai && !info.cancelAtPeriodEnd ? `. Premier paiement : ${premierPaiement} €.` : "."}</p>
-                : <p onClick={() => setDetailOffre(true)} style={{ ...link, textAlign: "left", margin: "8px 0 0" }}>Voir le détail de mon offre</p>}
               {info.cancelAtPeriodEnd && <button onClick={resume} disabled={busy} style={{ ...btnMain, marginTop: 14 }}>{busy ? "..." : "Réactiver mon abonnement"}</button>}
-            </div>
-
-            <div style={card}>
-              <p style={{ ...h, fontSize: 14, marginBottom: 12 }}>Ce que Voltra Pro t'apporte</p>
-              <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-                <div style={{ flex: 1, background: DS.colors.surfaceHigh, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}><p style={{ ...h, fontSize: 22, color: accent }}>{totalSeances || 0}</p><p style={{ ...t, fontSize: 11 }}>séances</p></div>
-                <div style={{ flex: 1, background: DS.colors.surfaceHigh, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}><p style={{ ...h, fontSize: 22, color: accent }}>{memberDays || 0}</p><p style={{ ...t, fontSize: 11 }}>jours actifs</p></div>
-              </div>
-              <p style={t}>✓ Programme IA personnalisé et cycles évolutifs{"\n"}✓ Coach Ace illimité pendant tes séances{"\n"}✓ Séances et progression sans limite</p>
             </div>
 
             <div style={card}>
@@ -4063,11 +4101,19 @@ function SubscriptionScreen({ onBack, accent, totalSeances, memberDays }) {
               <button onClick={() => goPortal("portal")} disabled={busy} style={btnGhost}>{busy ? "Ouverture..." : "Moyen de paiement et factures"}</button>
             </div>
 
+            <div style={card}>
+              <p style={{ ...h, fontSize: 14, marginBottom: 6 }}>Ce que Voltra Pro te garde</p>
+              <p style={{ ...t, marginBottom: 12 }}>Sans Pro, tu ne peux plus lancer de séance.{totalSeances > 0 ? ` Tes ${totalSeances} séance${totalSeances > 1 ? "s" : ""} et ton historique restent sur ton compte, mais ton programme s'arrête là.` : ""}</p>
+              {AVANTAGES_PRO.map(([icone, titre]) => (
+                <p key={titre} style={{ ...t, color: DS.colors.textPrimary, fontWeight: 600, marginTop: 6 }}>{icone} {titre}</p>
+              ))}
+            </div>
+
             {!info.cancelAtPeriodEnd && (
               <p onClick={() => { setMsg(""); setFlow(1); }} style={link}>Résilier mon abonnement</p>
             )}
 
-            {/* Discret, mais la loi le veut identifiable et accessible tout le délai : ne pas le mettre dans un menu */}
+            {/* Discret, mais la loi le veut identifiable et accessible tout le délai */}
             {info.canRetract && (
               <p style={{ ...link, textDecoration: "none", cursor: "default", lineHeight: 1.5 }}>
                 Droit de rétractation jusqu'au {dateFr(info.retractUntil)} :{" "}
@@ -4323,7 +4369,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
 
   if (showSalle) return <MaSalleScreen absentes={absentes} onChange={onChangeAbsentes} onBack={() => setShowSalle(false)} />;
   // Hors du bloc du profil : dedans, la barre du bas passerait par-dessus ces écrans
-  if (showSub) return <SubscriptionScreen onBack={() => setShowSub(false)} accent={theme.accent} totalSeances={totalSeancesAllTime} memberDays={memberSinceDays} />;
+  if (showSub) return <SubscriptionScreen onBack={() => setShowSub(false)} accent={theme.accent} totalSeances={totalSeancesAllTime} streak={streak} recordKg={recordKg} semaine={programme ? semaineCourante : null} totalSemaines={totalSemaines} />;
   if (showLegal) return <LegalScreen initial={showLegal} onBack={() => setShowLegal(null)} />;
 
   return (

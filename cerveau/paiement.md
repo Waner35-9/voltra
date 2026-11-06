@@ -17,8 +17,8 @@
 - **Une résiliation arrive de Stripe avec `cancel_at`, et `cancel_at_period_end` reste faux** : tester les deux champs (`stripe-portal`). Réactiver : vider `cancel_at`.
 - Pas de rappel de fin d'essai si l'abonnement est déjà résilié (`stripe-webhook`).
 - Pendant l'essai, la résiliation saute l'offre de rétention.
-- Rétractation (`stripe-portal`, action `retract`), 14 jours après `sub.created` : rembourse d'abord les paiements, puis supprime l'abonnement et envoie l'accusé par e-mail. Le bouton s'appelle « Renoncer au contrat ici », à la demande de la loi (art. D221-5 du Code de la consommation). Choix de Waner : discret, un lien en bas de « Mon abonnement », sans argument pour partir. Il doit rester visible sans menu pendant les 14 jours.
-- « Mon abonnement » (choix de Waner) : pas de montant affiché d'emblée, le prix est derrière « Voir le détail de mon offre ». On garde la date et le démarrage automatique après l'essai, et le rappel par e-mail donne le montant avant le premier paiement. Le prix complet reste sur le paywall et à l'achat.
+- Rétractation (`stripe-portal`, action `retract`), 14 jours après `sub.created` : rembourse d'abord les paiements, puis supprime l'abonnement et envoie l'accusé par e-mail. Le bouton s'appelle « Renoncer au contrat ici », à la demande de la loi (art. D221-5 du Code de la consommation). Choix de Waner : discret, un lien en bas de « Gérer mon offre », sans argument pour partir. Il doit rester disponible pendant les 14 jours.
+- « Mon abonnement » (choix de Waner) : uniquement la valeur de Pro. Prix, dates, résiliation et rétractation sont sur « Gérer mon offre », à un clic. Le bouton et sa légende doivent garder les mots « résilier » et « renoncer au contrat » (art. D215-1 : accès direct et sans ambiguïté). Le rappel par e-mail donne le montant avant le premier paiement.
 
 ## Vérifié en réel (4 novembre 2026)
 Essai, activation du Pro, prochaine facture à 56,24 €, résiliation.
