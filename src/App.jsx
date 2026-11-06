@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { ficheExercice, alternativesDisponibles, machinesParCategorie } from "./catalogueEquipements";
 import { IllustrationMachine, aUneIllustration } from "./illustrationsMachines";
 import { LogoVoltra } from "./Logo";
+import { InstallPrompt } from "./InstallPrompt";
+import { marquerSeanceTerminee } from "./pwa";
 
 // Lien de confirmation d'email : on lit l'URL tout de suite, avant que Supabase ne la nettoie
 const URL_AU_CHARGEMENT = window.location.hash + window.location.search;
@@ -1995,6 +1997,8 @@ function WelcomeScreen({ onStart, onLogin }) {
           Un programme créé par l'IA pour ton sport, et un coach qui t'accompagne à chaque séance.
         </p>
 
+        <InstallPrompt variante="accueil" ds={DS} />
+
         {/* Carte fonctionnalité, qui défile toute seule */}
         <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: 24, padding: "18px 20px 20px", boxShadow: DS.shadow.card }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
@@ -3373,6 +3377,7 @@ function DashboardScreen({ user, programme, programmeLoading, matchs, derniereSe
 
         <MissionCard cible={cible} onEdit={onEditCible} />
         <SemaineCard jours={progData?.jours || DEFAULT_JOURS[Math.min(programme?.frequence || 3, 5)]} matchs={matchs} cible={cible} onAjouterMatch={onOpenMatchs} />
+        {!pausedSession && !programmeLoading && <InstallPrompt variante="tableau" ds={DS} />}
 
         {/* Séance du jour — card sombre */}
         {!seance ? (
@@ -5667,6 +5672,7 @@ if (screen === "pricing") return <PricingScreen key={appTheme} programme={progra
             } catch (err) {
               console.error("onFinish error:", err);
             } finally {
+              marquerSeanceTerminee();
               setSeancesCount(prev => prev + 1);
               setSeanceActive(null);
               setActiveTab("dashboard");
