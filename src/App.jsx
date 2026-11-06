@@ -3,6 +3,7 @@ import { Fragment, useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ficheExercice, alternativesDisponibles, machinesParCategorie } from "./catalogueEquipements";
 import { IllustrationMachine, aUneIllustration } from "./illustrationsMachines";
+import { LogoVoltra } from "./Logo";
 
 // Lien de confirmation d'email : on lit l'URL tout de suite, avant que Supabase ne la nettoie
 const URL_AU_CHARGEMENT = window.location.hash + window.location.search;
@@ -1886,7 +1887,7 @@ function ThemeChoiceScreen({ onChoose }) {
 
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <div style={{ width: 64, height: 64, borderRadius: 18, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 16px", boxShadow: "0 0 40px rgba(155,232,79,0.4)" }}>⚡</div>
+          <LogoVoltra taille={64} style={{ margin: "0 auto 16px", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 40px rgba(155,232,79,0.25)" }} />
           <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 32, color: "white", letterSpacing: "0.06em", marginBottom: 8 }}>VOLTRA</div>
           <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em" }}>CHOISIS TON STYLE</div>
         </div>
@@ -1900,7 +1901,7 @@ function ThemeChoiceScreen({ onChoose }) {
               <div style={{ background: theme.bg, padding: "16px 12px", height: 200 }}>
                 {/* Mini header */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 8, background: "#9BE84F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>⚡</div>
+                  <LogoVoltra taille={24} />
                   <div style={{ flex: 1 }}>
                     <div style={{ height: 5, background: theme.text, borderRadius: 3, opacity: 0.7, marginBottom: 3, width: "60%" }} />
                     <div style={{ height: 3, background: theme.textSec, borderRadius: 3, opacity: 0.5, width: "40%" }} />
@@ -1979,7 +1980,7 @@ function WelcomeScreen({ onStart, onLogin }) {
       <div className="v-stagger" style={{ flex: 1, padding: "56px 24px 0", position: "relative", zIndex: 1 }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 11, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: DS.shadow.primary }}>⚡</div>
+          <LogoVoltra taille={36} />
           <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 18, letterSpacing: "0.04em", color: DS.colors.textPrimary }}>VOLTRA</span>
         </div>
 
@@ -2056,10 +2057,9 @@ function SplashScreen({ onDone }) {
       <div style={{ position: "absolute", width: 420, height: 420, borderRadius: "50%", background: `radial-gradient(circle, ${DS.colors.primaryGlow}, transparent 70%)`, opacity: phase >= 1 ? 1 : 0, transform: phase >= 1 ? "scale(1)" : "scale(0.8)", transition: "opacity 800ms var(--ease-out), transform 800ms var(--ease-out)", pointerEvents: "none" }} />
 
       {phase >= 1 && (
-        <div className="v-pop v-glow" style={{ width: 92, height: 92, borderRadius: 28, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, position: "relative", zIndex: 1, marginBottom: 26 }}>
+        <LogoVoltra taille={92} className="v-pop v-glow" style={{ position: "relative", zIndex: 1, marginBottom: 26 }}>
           <span className="v-shine" style={{ position: "absolute", inset: 0, borderRadius: 28 }} />
-          ⚡
-        </div>
+        </LogoVoltra>
       )}
 
       <div style={{ display: "flex", position: "relative", zIndex: 1 }}>
@@ -2302,7 +2302,7 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
       <Bloom echelle={0.8} />
       {onBack && <button onClick={onBack} style={{ position: "absolute", top: "calc(20px + env(safe-area-inset-top, 0px))", left: 24, zIndex: 1, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, fontFamily: "'Inter',sans-serif", cursor: "pointer", padding: 0 }}>← Retour</button>}
       <div className="v-stagger" style={{ paddingTop: 64, paddingBottom: 32 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 16, background: DS.colors.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 24 }}>⚡</div>
+        <LogoVoltra taille={52} style={{ marginBottom: 24 }} />
         <h1 key={mode} className="v-up" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 36, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: DS.colors.textPrimary, marginBottom: 10 }}>
           {mode === "login" ? <>Content de<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>te revoir</span></> : <>Crée ton<br /><span style={{ color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark }}>compte</span></>}
         </h1>

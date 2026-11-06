@@ -11,4 +11,5 @@
 - **Le plan va jusqu'à la date de l'objectif**, pas un nombre fixe de semaines.
 - **Viralité (saut filmé, carte d'athlète, défi d'équipe) : mise de côté** jusqu'après le lancement. Pistes dans l'historique.
 - **Le carrousel TikTok sert aux publicités de Waner**, pas aux utilisateurs.
+- **Logo** (5 novembre 2026) : le V-éclair vert sur tuile noire. La forme est dans `src/logoForme.js` ; `npm run icones` régénère le favicon et les icônes. L'emoji ⚡ reste pour les contenus, pas comme logo.
 - **Un fichier principal** `src/App.jsx` : le découper n'est pas prévu avant le lancement.
