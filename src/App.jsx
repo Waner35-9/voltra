@@ -3543,8 +3543,237 @@ function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, der
   );
 }
 // ─────────────────────────────────────────────
-function HistoriqueScreen() {
+// ── Progression : avant / maintenant, à partir des tests mensuels ──
+const ecartTest = (t, a, b) => {
+  const d = Number(b[t.k]) - Number(a[t.k]);
+  const arrondi = Number(d.toFixed(t.dec));
+  return { d: arrondi, mieux: arrondi * t.mieux > 0, egal: arrondi === 0, texte: `${arrondi > 0 ? "+" : arrondi < 0 ? "−" : ""}${virgule(Math.abs(arrondi), t.dec)}${t.u ? ` ${t.u}` : ""}` };
+};
+const valeurTest = (t, v) => `${virgule(v, t.dec)}${t.u ? ` ${t.u}` : ""}`;
+const semainesEntre = (a, b) => Math.max(1, Math.round((new Date(b.date_test) - new Date(a.date_test)) / (7 * JOUR_MS)));
+
+// Image 1080 × 1920 à partager en story
+async function dessinerProgression(a, b) {
+  await document.fonts?.ready;
+  const c = document.createElement("canvas");
+  c.width = 1080; c.height = 1920;
+  const x = c.getContext("2d");
+  const g = x.createRadialGradient(540, 300, 50, 540, 300, 1100);
+  g.addColorStop(0, "#22341A"); g.addColorStop(1, "#0B0B0C");
+  x.fillStyle = g; x.fillRect(0, 0, 1080, 1920);
+  x.fillStyle = "#fff"; x.textAlign = "right"; x.font = "900 40px Inter, sans-serif"; x.fillText("VOLTRA", 1020, 110);
+  x.textAlign = "left";
+  x.fillStyle = "#9BE84F"; x.font = "800 46px Inter, sans-serif"; x.fillText("MA PROGRESSION", 60, 470);
+  const sem = semainesEntre(a, b);
+  x.fillStyle = "#fff"; x.font = "900 110px Inter, sans-serif"; x.fillText(`EN ${sem} SEMAINE${sem > 1 ? "S" : ""}`, 60, 590);
+  TESTS_PERF.forEach((t, i) => {
+    const y = 790 + i * 270, e = ecartTest(t, a, b);
+    x.fillStyle = "rgba(255,255,255,0.08)"; x.beginPath(); x.roundRect(60, y - 70, 960, 230, 40); x.fill();
+    x.textAlign = "left"; x.fillStyle = "#A1A1AA"; x.font = "700 40px Inter, sans-serif"; x.fillText(t.t, 110, y);
+    x.fillStyle = "#fff"; x.font = "800 64px Inter, sans-serif"; x.fillText(`${valeurTest(t, a[t.k])} → ${valeurTest(t, b[t.k])}`, 110, y + 100);
+    x.textAlign = "right"; x.fillStyle = e.mieux ? "#9BE84F" : "#A1A1AA"; x.font = "900 76px Inter, sans-serif"; x.fillText(e.texte, 970, y + 100);
+  });
+  x.textAlign = "center"; x.fillStyle = "#fff"; x.font = "800 50px Inter, sans-serif";
+  x.fillText("Ma prépa physique : Voltra", 540, 1700); x.fillStyle = "#9BE84F"; x.fillText("voltra-app.fr", 540, 1772);
+  return new Promise(ok => c.toBlob(ok, "image/png"));
+}
+
+function AvantMaintenant({ tests, onTest }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const [message, setMessage] = useState("");
+  const carte = { background: DS.colors.surface, borderRadius: 22, boxShadow: DS.shadow.card, padding: "18px 16px", marginBottom: 16 };
+  const sur = { fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: ac, margin: 0 };
+  if (!tests) return null;
+  if (tests.length === 0) return (
+    <button onClick={onTest} style={{ ...carte, width: "100%", textAlign: "left", border: `2px solid ${DS.colors.primary}`, cursor: "pointer", display: "block", fontFamily: "'Inter',sans-serif", color: DS.colors.textPrimary }}>
+      <p style={sur}>AVANT → MAINTENANT</p>
+      <b style={{ display: "block", fontSize: 20, fontWeight: 900, margin: "6px 0 4px" }}>Fais ton test de départ</b>
+      <span style={{ fontSize: 14, color: DS.colors.textSec, lineHeight: 1.45 }}>Détente, sprint et pompes. Refais-le chaque mois : tes vrais progrès s'afficheront ici. ›</span>
+    </button>
+  );
+  const a = tests[0], b = tests[tests.length - 1];
+  const prochain = new Date(new Date(`${b.date_test}T12:00:00`).getTime() + INTERVALLE_TEST * JOUR_MS);
+  if (tests.length === 1) return (
+    <div style={carte}>
+      <p style={sur}>AVANT → MAINTENANT</p>
+      <b style={{ display: "block", fontSize: 20, fontWeight: 900, margin: "6px 0 12px" }}>Ton point de départ</b>
+      {TESTS_PERF.map(t => (
+        <div key={t.k} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderTop: `1px solid ${DS.colors.border}`, fontSize: 14 }}>
+          <span style={{ color: DS.colors.textSec, fontWeight: 600 }}>{t.t}</span><b style={{ fontVariantNumeric: "tabular-nums" }}>{valeurTest(t, a[t.k])}</b>
+        </div>
+      ))}
+      <p style={{ fontSize: 13, color: DS.colors.textSec, marginTop: 10, lineHeight: 1.45 }}>Refais le test {prochain <= new Date() ? "dès maintenant" : `le ${prochain.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`} pour voir ta progression.</p>
+      {prochain <= new Date() && <PrimaryButton onClick={onTest} style={{ height: 52, marginTop: 12 }}>Faire mon test du mois</PrimaryButton>}
+    </div>
+  );
+  const sem = semainesEntre(a, b);
+  const partager = async () => {
+    setMessage("Préparation de l'image...");
+    try {
+      const f = new File([await dessinerProgression(a, b)], "voltra-progression.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [f] })) await navigator.share({ files: [f] });
+      else { const l = document.createElement("a"); l.href = URL.createObjectURL(f); l.download = f.name; l.click(); }
+      setMessage("");
+    } catch (e) {
+      setMessage(e?.name === "AbortError" ? "" : "Impossible de créer l'image. Réessaie.");
+    }
+  };
+  return (
+    <div style={carte}>
+      <p style={sur}>AVANT → MAINTENANT</p>
+      <b style={{ display: "block", fontSize: 26, fontWeight: 900, letterSpacing: "-0.02em", margin: "4px 0 12px", textTransform: "uppercase" }}>En {sem} semaine{sem > 1 ? "s" : ""}</b>
+      {TESTS_PERF.map((t, i) => {
+        const e = ecartTest(t, a, b);
+        return (
+          <div key={t.k} className="v-in" style={{ "--i": i + 1, display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: `1px solid ${DS.colors.border}` }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 13, color: DS.colors.textSec, fontWeight: 600 }}>{t.t}</span>
+              <span style={{ display: "block", fontSize: 16, fontWeight: 800, fontVariantNumeric: "tabular-nums", marginTop: 2 }}>{valeurTest(t, a[t.k])} → {valeurTest(t, b[t.k])}</span>
+            </span>
+            <span className="v-pop" style={{ flexShrink: 0, padding: "7px 11px", borderRadius: 12, fontSize: 17, fontWeight: 900, fontVariantNumeric: "tabular-nums", background: e.mieux ? DS.colors.primarySoft : DS.colors.surfaceHigh, color: e.mieux ? ac : DS.colors.textSec }}>{e.egal ? "=" : e.texte}</span>
+          </div>
+        );
+      })}
+      <PrimaryButton onClick={partager} style={{ height: 52, marginTop: 14 }}>Partager ma progression</PrimaryButton>
+      {message && <p style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center", marginTop: 8 }}>{message}</p>}
+      <p onClick={onTest} style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center", marginTop: 12, textDecoration: "underline", cursor: "pointer" }}>{prochain <= new Date() ? "C'est l'heure de ton test du mois" : `Prochain test le ${prochain.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`}</p>
+    </div>
+  );
+}
+
+// ── Carte du corps : les muscles travaillés sur 30 jours, d'après les séances faites ──
+const ZONES_CORPS = [
+  { id: "epaules", n: "épaules", mots: ["deltoid", "epaule", "coiffe", "rotat"] },
+  { id: "pectoraux", n: "pectoraux", mots: ["pector", "pec "] },
+  { id: "bras", n: "bras", mots: ["biceps", "triceps", "avant-bras", "prehension", "prise", "grip"] },
+  { id: "abdos", n: "abdos", mots: ["abdo", "core", "gainage", "oblique", "transverse", "psoas", "hip flexor", "flechisseur"] },
+  { id: "dos", n: "dos", mots: ["dorsa", "rhombo", "trapez", "dentel"] },
+  { id: "lombaires", n: "lombaires", mots: ["lombaire", "erecteur", "bas du dos"] },
+  { id: "fessiers", n: "fessiers", mots: ["fessier", "glute", "hanche"] },
+  { id: "quadriceps", n: "quadriceps", mots: ["quadri"] },
+  { id: "ischios", n: "ischios", mots: ["ischio"] },
+  { id: "mollets", n: "mollets", mots: ["mollet", "gastrocn", "soleaire", "tibial", "cheville"] },
+];
+const sansAccents = (t) => (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+// Le premier muscle cité compte en entier, les suivants à moitié
+function zonesDepuisMuscles(muscles) {
+  const texte = sansAccents(muscles);
+  if (texte.includes("corps entier")) return Object.fromEntries(ZONES_CORPS.map(z => [z.id, 0.5]));
+  // Les zones sont classées dans l'ordre où le texte les cite, avec ou sans virgules (« Quadriceps Fessiers »)
+  const trouvees = ZONES_CORPS
+    .map(z => ({ id: z.id, i: Math.min(...z.mots.map(k => { const p = `${texte} `.indexOf(k); return p < 0 ? Infinity : p; })) }))
+    .filter(z => z.i < Infinity)
+    .sort((a, b) => a.i - b.i);
+  return Object.fromEntries(trouvees.map((z, n) => [z.id, n === 0 ? 1 : 0.5]));
+}
+
+// Du plus clair (peu travaillé) au plus foncé (le plus travaillé)
+const COULEURS_NIVEAU = ["#FFE0B0", "#FFB37A", "#F2775F", "#CF4152", "#8A1E3C"];
+function rgbNiveau(t) {
+  const x = Math.min(1, Math.max(0, t)) * (COULEURS_NIVEAU.length - 1);
+  const i = Math.min(COULEURS_NIVEAU.length - 2, Math.floor(x)), f = x - i;
+  const rgb = (h) => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16));
+  const a = rgb(COULEURS_NIVEAU[i]), b = rgb(COULEURS_NIVEAU[i + 1]);
+  return a.map((v, k) => Math.round(v + (b[k] - v) * f));
+}
+
+// Couleurs unies de la carte des muscles /corps-zones.jpg, alignée sur /corps-anatomie.jpg
+const ZONES_CARTE = {
+  epaules: [255, 0, 0], pectoraux: [0, 255, 0], bras: [0, 0, 255], abdos: [255, 255, 0], dos: [255, 0, 255],
+  lombaires: [0, 255, 255], fessiers: [255, 128, 0], quadriceps: [128, 0, 255], ischios: [0, 255, 128], mollets: [255, 0, 128],
+};
+
+// Chaque pixel de la carte est rangé dans la zone dont la couleur est la plus proche, puis peint à son niveau
+function CorpsIllustre({ niveaux }) {
+  const ref = useRef(null);
+  const cle = JSON.stringify(niveaux);
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      const c = ref.current;
+      if (!c) return;
+      c.width = img.width; c.height = img.height;
+      const x = c.getContext("2d", { willReadFrequently: true });
+      x.drawImage(img, 0, 0);
+      const donnees = x.getImageData(0, 0, c.width, c.height), p = donnees.data;
+      const zones = Object.entries(ZONES_CARTE).map(([z, rgb]) => ({ z, rgb }));
+      const peinture = Object.fromEntries(Object.keys(ZONES_CARTE).map(z => [z, niveaux[z] ? rgbNiveau(niveaux[z]) : null]));
+      const w = c.width, h = c.height;
+      for (let i = 0; i < p.length; i += 4) {
+        const r = p[i], g = p[i + 1], b = p[i + 2];
+        p[i + 3] = 0;
+        if (Math.max(r, g, b) - Math.min(r, g, b) < 90) continue;
+        let meilleure = null, distance = Infinity;
+        for (const z of zones) {
+          const d = (r - z.rgb[0]) ** 2 + (g - z.rgb[1]) ** 2 + (b - z.rgb[2]) ** 2;
+          if (d < distance) { distance = d; meilleure = z; }
+        }
+        if (distance > 22000) continue;
+        // Erreurs de la carte générée, vue de face (moitié gauche) : intérieur des cuisses et haut des trapèzes
+        const face = (i / 4) % w < w / 2, y = Math.floor(i / 4 / w) / h;
+        let zone = meilleure.z;
+        if (face && zone === "ischios") zone = "quadriceps";
+        if (face && zone === "epaules" && y < 0.162) zone = "dos";
+        if (!peinture[zone]) continue;
+        [p[i], p[i + 1], p[i + 2]] = peinture[zone];
+        p[i + 3] = 225;
+      }
+      x.putImageData(donnees, 0, 0);
+    };
+    img.src = "/corps-zones.jpg";
+  }, [cle]);
+  return (
+    <div style={{ position: "relative", borderRadius: 18, overflow: "hidden", background: "#FFFFFF", marginTop: 14 }}>
+      <img src="/corps-anatomie.jpg" alt="Muscles travaillés, de face et de dos" style={{ width: "100%", display: "block" }} />
+      <canvas ref={ref} className="v-pop" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", mixBlendMode: "multiply" }} />
+    </div>
+  );
+}
+
+function CarteDuCorps({ user }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const [series, setSeries] = useState(null);
+  useEffect(() => {
+    if (!user?.id) return;
+    const depuis = new Date(Date.now() - 30 * JOUR_MS).toISOString();
+    supabase.from("logs_performance").select("reps_par_set, exercices(muscles)").eq("user_id", user.id).gte("logged_at", depuis)
+      .then(({ data }) => {
+        const total = {};
+        (data || []).forEach(l => {
+          const nb = Array.isArray(l.reps_par_set) ? l.reps_par_set.length : 1;
+          Object.entries(zonesDepuisMuscles(l.exercices?.muscles)).forEach(([z, p]) => { total[z] = (total[z] || 0) + nb * p; });
+        });
+        setSeries(total);
+      });
+  }, [user?.id]);
+  if (!series) return null;
+  const max = Math.max(0, ...Object.values(series));
+  const niveaux = Object.fromEntries(Object.entries(series).map(([z, v]) => [z, max ? v / max : 0]));
+  const tries = ZONES_CORPS.map(z => ({ ...z, v: series[z.id] || 0 })).sort((p, q) => q.v - p.v);
+  const oubliees = tries.filter(z => z.v < max * 0.15);
+  const phrase = !max ? "Fais ta première séance : les muscles travaillés s'allumeront ici."
+    : oubliees.length ? `Le plus travaillé : ${tries[0].n}. Presque rien sur ${oubliees.slice(0, 2).map(z => z.n).join(" et ")} ce mois-ci.`
+    : `Le plus travaillé : ${tries[0].n}. Tout ton corps a bossé ce mois-ci.`;
+  return (
+    <div style={{ background: DS.colors.surface, borderRadius: 22, boxShadow: DS.shadow.card, padding: "18px 16px", marginBottom: 16 }}>
+      <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: ac, margin: 0 }}>TON CORPS CE MOIS-CI</p>
+      <CorpsIllustre niveaux={niveaux} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 11, color: DS.colors.textSec, fontWeight: 600 }}>
+        <span>Peu</span>
+        <span style={{ flex: 1, height: 6, borderRadius: 3, background: `linear-gradient(90deg, ${COULEURS_NIVEAU.join(", ")})` }} />
+        <span>Beaucoup</span>
+      </div>
+      <p style={{ fontSize: 14, lineHeight: 1.45, marginTop: 12, fontWeight: 600 }}>{phrase}</p>
+      <p style={{ fontSize: 11, color: DS.colors.textDim, marginTop: 6 }}>D'après les séries faites ces 30 derniers jours.</p>
+    </div>
+  );
+}
+
+function HistoriqueScreen({ user }) {
   const stagger = useStaggerUneFois("historique");
+  const { tests, charger: chargerTests } = useTests(user);
+  const [vueTest, setVueTest] = useState(null);
   const [seancesReelles, setSeancesReelles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalSeances, setTotalSeances] = useState(0);
@@ -3575,8 +3804,6 @@ function HistoriqueScreen() {
   }, []);
 
   // Stats
-  const dureeTotal = seancesReelles.reduce((acc, s) => acc + (s.duree_min || 0), 0);
-  const dureeAvg = totalSeances > 0 ? Math.round(dureeTotal / totalSeances) : 0;
   const streak = (() => {
     let count = 0;
     const today = new Date();
@@ -3628,6 +3855,9 @@ function HistoriqueScreen() {
   const feedbackEmoji = (f) => f === "easy" ? "😤" : f === "good" ? "💪" : "🔥";
 
   const accentColor = "#FF2D55";
+
+  if (vueTest === "test") return <TestScreen user={user} tests={tests} onSaved={async () => { await chargerTests(); }} onBack={() => setVueTest(null)} onCarrousel={() => setVueTest("carrousel")} />;
+  if (vueTest === "carrousel") return <CarrouselScreen tests={tests} onBack={() => setVueTest("test")} />;
 
   return (
     <div className={stagger} style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", paddingBottom: 130 }}>
@@ -3693,32 +3923,8 @@ function HistoriqueScreen() {
       ) : (
         <div style={{ padding: "20px 20px 0" }}>
 
-          {/* Hero stat */}
-          <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, boxShadow: DS.shadow.card, padding: "24px 20px", marginBottom: 16, position: "relative", overflow: "hidden" }}>
-            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: accentColor, letterSpacing: "0.06em", marginBottom: 8 }}>VOLUME TOTAL</div>
-            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 72, color: DS.colors.textPrimary, lineHeight: 0.9, letterSpacing: "-0.02em" }}>{totalSeances}</div>
-            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", marginTop: 8 }}>SEANCES COMPLETEES</div>
-            {streak > 0 && (
-              <div style={{ position: "absolute", top: 20, right: 20, background: DS.colors.primarySoft, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: 8, padding: "6px 12px", fontFamily: "'Inter',sans-serif", fontSize: 11, color: accentLisible("#9BE84F"), fontWeight: 700 }}>
-                🔥 {streak} JOURS
-              </div>
-            )}
-          </div>
-
-          {/* 4 stats grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-            {[
-              { val: streak, label: "STREAK ACTUEL", color: accentColor },
-              { val: `${dureeAvg}m`, label: "DUREE MOY.", color: accentLisible("#9BE84F") },
-              { val: topRecords[0] ? `${topRecords[0][1]}kg` : "—", label: `RECORD ${(topRecords[0]?.[0] || "").split(" ")[0].toUpperCase()}`, color: "#FFE500" },
-              { val: seancesReelles.filter(s => s.feedback === "good" || s.feedback === "easy").length, label: "SEANCES REUSSIES", color: "#00C8FF" },
-            ].map((stat, i) => (
-              <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 16, padding: "16px 14px", position: "relative", overflow: "hidden" }}>
-                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 36, color: DS.colors.textPrimary, lineHeight: 1, marginBottom: 6 }}>{stat.val}</div>
-                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em" }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
+          <AvantMaintenant tests={tests} onTest={() => setVueTest("test")} />
+          <CarteDuCorps user={user} />
 
           {/* Graphique séances par semaine — cliquable */}
           <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16 }}>
@@ -5826,7 +6032,7 @@ export default function VoltraApp() {
       .v-range::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #9BE84F; border: 4px solid var(--bord); }
       .v-route { stroke-dasharray: 1; stroke-dashoffset: 1; animation: vTrace 2100ms var(--ease-out) 150ms forwards; }
       @keyframes vTrace { to { stroke-dashoffset: 0; } }
-      .v-plan-grille { display: grid; gap: 6px; width: 100%; animation: vPlanImpact 500ms var(--ease-out) var(--impact) both; }
+            .v-plan-grille { display: grid; gap: 6px; width: 100%; animation: vPlanImpact 500ms var(--ease-out) var(--impact) both; }
       @keyframes vPlanImpact { 0%, 100% { transform: scale(1); } 35% { transform: scale(1.035); } }
       .v-plan-case { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; }
       .v-plan-case i { position: absolute; inset: 0; border-radius: inherit; opacity: 0; animation: vPlanCase 340ms var(--ease-spring) forwards; }
@@ -6326,7 +6532,7 @@ if (screen === "pricing") return <PricingScreen key={appTheme} programme={progra
               }}
             />
           )}
-          {activeTab === "historique" && <HistoriqueScreen />}
+          {activeTab === "historique" && <HistoriqueScreen user={user} />}
           {activeTab === "profil" && <ProfilScreen isPro={isPro} user={user} programme={programmeActif} sportActif={sportActif} appTheme={appTheme} onThemeChange={setAppTheme} onLogout={handleLogout} absentes={machinesAbsentes} onChangeAbsentes={changerAbsentes} onRegenerateProgram={async (data, shouldRegen = true) => {
             try {
               if (shouldRegen) {

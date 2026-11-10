@@ -3,7 +3,7 @@
 Générée automatiquement à chaque commit : ne pas modifier à la main.
 Pour lire un bloc : `sed -n 'début,finp' fichier`.
 
-## src/App.jsx (6350 lignes)
+## src/App.jsx (6556 lignes)
 
 Écrans : app, auth, cycle-complete, objectif, objectif-edit, onboarding, payment-success, pricing, programme-generating, splash, welcome
 Tables : avatars, exercices, invitations_utilisees, logs_performance, matchs, profiles, programmes, rappels, seances, tests_performance
@@ -113,75 +113,88 @@ Fonctions SQL : appliquer_deload, calculer_progression, check_deload_needed
 - MESSAGES_INVITATION : 2990-2994
 - PricingScreen : 2995-3144
 - MatchsScreen : 3145-3289
-- DashboardScreen : 3290-3545
-- HistoriqueScreen : 3546-3833
-- callSubscription : 3834-3846
-- AVANTAGES_PRO : 3847-3857
-- SubscriptionScreen : 3858-4113
-- MaSalleScreen : 4114-4146
-- ProfilScreen : 4147-4586
-  - handleAvatarUpload : 4168
-  - openEdit : 4252
-  - saveEdit : 4257
-- JOUR_MS : 4587-4587
-- CIBLES : 4588-4593
-- dateLocale : 4594-4594
-- isoDans : 4595-4595
-- joursAvant : 4596-4596
-- dateLongue : 4597-4599
-- phasesObjectif : 4600-4616
-- etatPlan : 4617-4630
-- datesDeMatch : 4631-4637
-- adaptationDuJour : 4638-4651
-- cleExercice : 4652-4653
-- ressentisParExercice : 4654-4673
-- poidsLePlusProche : 4674-4681
-- appliquerRessenti : 4682-4697
-- exerciceDepuisFiche : 4698-4712
-- adapterSeance : 4713-4727
-- FORMES : 4728-4735
-- adaptationAvecForme : 4736-4742
-- seanceCourte : 4743-4750
-- Bloom : 4751-4754
-- PLAN_DEBUT : 4755-4757
-- ConstructionPlan : 4758-4820
-- ObjectifScreen : 4821-4947
-- MissionCard : 4948-4989
-- SemaineCard : 4990-5028
-- TESTS_PERF : 5029-5033
-- virgule : 5034-5034
-- INTERVALLE_TEST : 5035-5036
-- useTests : 5037-5047
-- TestCard : 5048-5063
-- TestScreen : 5064-5136
-- dessinerSlide : 5137-5168
-- CarrouselScreen : 5169-5236
-- BottomNav : 5237-5266
-- FormeDuJour : 5267-5296
-- Interrupteur : 5297-5308
-- progresExercices : 5309-5320
-- virguleKg : 5321-5321
-- RESULTATS_MISSION : 5322-5327
-- BilanMissionScreen : 5328-5413
-- appelerFonction : 5414-5422
-- activerInvitation : 5423-5438
-- lundiCourant : 5439-5444
-- BilanSemaineCard : 5445-5488
-- QUESTIONS_ACE : 5489-5489
-- ACCUEIL_ACE : 5490-5491
-- AceScreen : 5492-5586
-- RappelsCard : 5587-5621
-- JETON_STOP_RAPPELS : 5622-5623
-- RappelsStopScreen : 5624-5643
-- VoltraApp : 5644-6350
-  - changerAbsentes : 5679
-  - chargerRessentis : 5684
-  - profilDeCharges : 5696
-  - remplacerExercice : 5708
-  - launchSeance : 5714
-  - startGeneration : 5754
-  - essayerInvitation : 5764
-  - handleLogout : 6008
+- DashboardScreen : 3290-3546
+- ecartTest : 3547-3551
+- valeurTest : 3552-3552
+- semainesEntre : 3553-3555
+- dessinerProgression : 3556-3580
+- AvantMaintenant : 3581-3644
+- ZONES_CORPS : 3645-3656
+- sansAccents : 3657-3659
+- zonesDepuisMuscles : 3660-3671
+- COULEURS_NIVEAU : 3672-3672
+- rgbNiveau : 3673-3681
+- ZONES_CARTE : 3682-3687
+- CorpsIllustre : 3688-3733
+- CarteDuCorps : 3734-3772
+- HistoriqueScreen : 3773-4039
+- callSubscription : 4040-4052
+- AVANTAGES_PRO : 4053-4063
+- SubscriptionScreen : 4064-4319
+- MaSalleScreen : 4320-4352
+- ProfilScreen : 4353-4792
+  - handleAvatarUpload : 4374
+  - openEdit : 4458
+  - saveEdit : 4463
+- JOUR_MS : 4793-4793
+- CIBLES : 4794-4799
+- dateLocale : 4800-4800
+- isoDans : 4801-4801
+- joursAvant : 4802-4802
+- dateLongue : 4803-4805
+- phasesObjectif : 4806-4822
+- etatPlan : 4823-4836
+- datesDeMatch : 4837-4843
+- adaptationDuJour : 4844-4857
+- cleExercice : 4858-4859
+- ressentisParExercice : 4860-4879
+- poidsLePlusProche : 4880-4887
+- appliquerRessenti : 4888-4903
+- exerciceDepuisFiche : 4904-4918
+- adapterSeance : 4919-4933
+- FORMES : 4934-4941
+- adaptationAvecForme : 4942-4948
+- seanceCourte : 4949-4956
+- Bloom : 4957-4960
+- PLAN_DEBUT : 4961-4963
+- ConstructionPlan : 4964-5026
+- ObjectifScreen : 5027-5153
+- MissionCard : 5154-5195
+- SemaineCard : 5196-5234
+- TESTS_PERF : 5235-5239
+- virgule : 5240-5240
+- INTERVALLE_TEST : 5241-5242
+- useTests : 5243-5253
+- TestCard : 5254-5269
+- TestScreen : 5270-5342
+- dessinerSlide : 5343-5374
+- CarrouselScreen : 5375-5442
+- BottomNav : 5443-5472
+- FormeDuJour : 5473-5502
+- Interrupteur : 5503-5514
+- progresExercices : 5515-5526
+- virguleKg : 5527-5527
+- RESULTATS_MISSION : 5528-5533
+- BilanMissionScreen : 5534-5619
+- appelerFonction : 5620-5628
+- activerInvitation : 5629-5644
+- lundiCourant : 5645-5650
+- BilanSemaineCard : 5651-5694
+- QUESTIONS_ACE : 5695-5695
+- ACCUEIL_ACE : 5696-5697
+- AceScreen : 5698-5792
+- RappelsCard : 5793-5827
+- JETON_STOP_RAPPELS : 5828-5829
+- RappelsStopScreen : 5830-5849
+- VoltraApp : 5850-6556
+  - changerAbsentes : 5885
+  - chargerRessentis : 5890
+  - profilDeCharges : 5902
+  - remplacerExercice : 5914
+  - launchSeance : 5920
+  - startGeneration : 5960
+  - essayerInvitation : 5970
+  - handleLogout : 6214
 
 ## src/Auth.jsx (119 lignes)
 
