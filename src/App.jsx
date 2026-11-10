@@ -198,37 +198,6 @@ function StepTitle({ title, sub }) {
   );
 }
 
-// Roue de sélection (style iOS) : on fait défiler, la valeur au centre est choisie
-const WHEEL_ITEM = 48;
-function WheelPicker({ values, value, onChange, format = v => v }) {
-  const ref = useRef(null);
-  const [live, setLive] = useState(Math.max(0, values.indexOf(value)));
-  useEffect(() => { if (ref.current) ref.current.scrollTop = live * WHEEL_ITEM; }, []);
-  const onScroll = () => {
-    const i = Math.min(values.length - 1, Math.max(0, Math.round(ref.current.scrollTop / WHEEL_ITEM)));
-    if (i !== live) { setLive(i); onChange(values[i]); }
-  };
-  const H = WHEEL_ITEM * 5;
-  const mask = "linear-gradient(transparent, #000 35%, #000 65%, transparent)";
-  return (
-    <div style={{ position: "relative", height: H, width: "100%", maxWidth: 240, margin: "0 auto" }}>
-      <div style={{ position: "absolute", left: 0, right: 0, top: (H - WHEEL_ITEM) / 2, height: WHEEL_ITEM, borderRadius: 16, background: DS.colors.surface, border: `1.5px solid ${DS.colors.borderAccent}`, boxShadow: DS.shadow.card }} />
-      <div ref={ref} onScroll={onScroll} style={{ position: "relative", height: H, overflowY: "scroll", scrollSnapType: "y mandatory", scrollbarWidth: "none", WebkitMaskImage: mask, maskImage: mask }}>
-        <div style={{ height: (H - WHEEL_ITEM) / 2 }} />
-        {values.map((v, i) => {
-          const d = Math.abs(i - live);
-          return (
-            <div key={v} onClick={() => ref.current.scrollTo({ top: i * WHEEL_ITEM, behavior: "smooth" })} style={{ height: WHEEL_ITEM, scrollSnapAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontVariantNumeric: "tabular-nums", fontSize: d === 0 ? 26 : 20, fontWeight: d === 0 ? 800 : 500, color: d === 0 ? DS.colors.textPrimary : DS.colors.textSec, transition: "font-size 0.15s ease, color 0.15s ease" }}>
-              {format(v)}
-            </div>
-          );
-        })}
-        <div style={{ height: (H - WHEEL_ITEM) / 2 }} />
-      </div>
-    </div>
-  );
-}
-
 // Règle graduée : on fait glisser, la graduation au centre est choisie (verticale = plus grand en haut)
 const RULER_TICK = 12;
 function RulerPicker({ min, max, value, onChange, vertical = false }) {
@@ -1859,125 +1828,6 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
   );
 }
 
-// ─────────────────────────────────────────────
-// THEME CHOICE SCREEN
-// ─────────────────────────────────────────────
-function ThemeChoiceScreen({ onChoose }) {
-  const [selected, setSelected] = useState(null);
-  const [animIn, setAnimIn] = useState(false);
-
-  useEffect(() => {
-    setTimeout(() => setAnimIn(true), 100);
-  }, []);
-
-  const themes = [
-    {
-      id: "light",
-      name: "LUMINEUX",
-      desc: "Épuré, moderne, premium",
-      bg: "#F4F5F6",
-      surface: "#FFFFFF",
-      text: "#16181A",
-      textSec: "#8A8F94",
-      accent: "#9BE84F",
-      preview: [
-        { type: "card", bg: "#FFFFFF", shadow: true },
-        { type: "bar", color: "#9BE84F" },
-        { type: "btn", bg: "#9BE84F", text: "#16181A" },
-      ],
-    },
-    {
-      id: "dark",
-      name: "SOMBRE",
-      desc: "Intense, immersif, athlétique",
-      bg: "#06060E",
-      surface: "#0D0D18",
-      text: "#FFFFFF",
-      textSec: "#6B6B8A",
-      accent: "#9BE84F",
-      preview: [
-        { type: "card", bg: "#0D0D18", border: "rgba(255,255,255,0.06)" },
-        { type: "bar", color: "#9BE84F" },
-        { type: "btn", bg: "#9BE84F", text: "#000" },
-      ],
-    },
-  ];
-
-  return (
-    <div style={{ minHeight: "100dvh", background: "linear-gradient(180deg, #1B1E1C 0%, #0E100F 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", position: "relative", overflow: "hidden" }}>
-
-      {/* Background glow */}
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 400px 400px at 50% 40%, rgba(155,232,79,0.06), transparent)", pointerEvents: "none" }} />
-
-      <div style={{ width: "100%", maxWidth: 390, position: "relative", zIndex: 1, opacity: animIn ? 1 : 0, transform: animIn ? "translateY(0)" : "translateY(16px)", transition: "opacity 400ms var(--ease-out), transform 400ms var(--ease-out)" }}>
-
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <LogoVoltra taille={64} style={{ margin: "0 auto 16px", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 40px rgba(155,232,79,0.25)" }} />
-          <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 32, color: "white", letterSpacing: "0.06em", marginBottom: 8 }}>VOLTRA</div>
-          <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em" }}>CHOISIS TON STYLE</div>
-        </div>
-
-        {/* Theme cards */}
-        <div style={{ display: "flex", gap: 14, marginBottom: 32 }}>
-          {themes.map(theme => (
-            <div key={theme.id} onClick={() => setSelected(theme.id)} style={{ flex: 1, borderRadius: 24, overflow: "hidden", border: `2px solid ${selected === theme.id ? "#9BE84F" : "rgba(255,255,255,0.1)"}`, cursor: "pointer", transition: "var(--t-choix), transform 160ms var(--ease-out)", transform: selected === theme.id ? "scale(1.02)" : "scale(1)", boxShadow: selected === theme.id ? "0 0 30px rgba(155,232,79,0.3)" : "none" }}>
-
-              {/* Preview mini app */}
-              <div style={{ background: theme.bg, padding: "16px 12px", height: 200 }}>
-                {/* Mini header */}
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                  <LogoVoltra taille={24} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ height: 5, background: theme.text, borderRadius: 3, opacity: 0.7, marginBottom: 3, width: "60%" }} />
-                    <div style={{ height: 3, background: theme.textSec, borderRadius: 3, opacity: 0.5, width: "40%" }} />
-                  </div>
-                </div>
-                {/* Mini card */}
-                <div style={{ background: theme.surface, borderRadius: 12, padding: "10px 10px", marginBottom: 8, boxShadow: theme.id === "light" ? "0 2px 12px rgba(0,0,0,0.08)" : "none", border: theme.id === "dark" ? `1px solid ${theme.preview[0].border}` : "none" }}>
-                  <div style={{ height: 4, background: theme.accent, borderRadius: 99, marginBottom: 6, width: "70%" }} />
-                  <div style={{ height: 3, background: theme.textSec, borderRadius: 3, opacity: 0.4, marginBottom: 4, width: "90%" }} />
-                  <div style={{ height: 3, background: theme.textSec, borderRadius: 3, opacity: 0.3, width: "60%" }} />
-                </div>
-                {/* Mini progress */}
-                <div style={{ height: 4, background: theme.id === "light" ? "#ECEEF0" : "#1A1A28", borderRadius: 99, marginBottom: 8, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: "65%", background: theme.accent, borderRadius: 99 }} />
-                </div>
-                {/* Mini button */}
-                <div style={{ height: 28, background: theme.accent, borderRadius: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{ height: 3, width: "50%", background: theme.id === "light" ? "#16181A" : "#16181A", borderRadius: 3, opacity: 0.8 }} />
-                </div>
-              </div>
-
-              {/* Theme label */}
-              <div style={{ background: selected === theme.id ? "#9BE84F" : "rgba(255,255,255,0.06)", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 15, color: selected === theme.id ? "#16181A" : "white", letterSpacing: "0.08em" }}>{theme.name}</p>
-                  <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: selected === theme.id ? "#16181A" : "rgba(255,255,255,0.4)", letterSpacing: "0.06em", marginTop: 2 }}>{theme.desc}</p>
-                </div>
-                <div style={{ width: 22, height: 22, borderRadius: 9999, border: `2px solid ${selected === theme.id ? "#16181A" : "rgba(255,255,255,0.3)"}`, background: selected === theme.id ? "#16181A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {selected === theme.id && <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round"/></svg>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Note */}
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.5)", textAlign: "center", letterSpacing: "0.06em", marginBottom: 24 }}>TU POURRAS CHANGER CA DANS TON PROFIL</p>
-
-        {/* CTA */}
-        <button onClick={() => selected && onChoose(selected)} disabled={!selected} style={{ width: "100%", height: 56, background: selected ? "#9BE84F" : "rgba(255,255,255,0.1)", border: "none", borderRadius: 9999, color: selected ? "#16181A" : "rgba(255,255,255,0.3)", fontFamily: "'Inter',sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: "0.06em", cursor: selected ? "pointer" : "not-allowed", transition: "var(--t-choix)", boxShadow: selected ? "0 8px 32px rgba(155,232,79,0.4)" : "none" }}>
-          {selected ? `CONTINUER EN MODE ${themes.find(t => t.id === selected)?.name} →` : "SÉLECTIONNE UN THÈME"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// WELCOME SCREEN
-// ─────────────────────────────────────────────
 function WelcomeScreen({ onStart, onLogin }) {
   const [featureIdx, setFeatureIdx] = useState(0);
   const accentTexte = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
@@ -2582,21 +2432,21 @@ function OnboardingScreen({ onComplete, onLogin }) {
   const [showCoachDemo, setShowCoachDemo] = useState(false);
 
   const hasPoste = data.sport && data.sport !== "natation";
-  const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau", "Âge", "Taille", "Poids"];
+  const stepLabels = ["Sport", "Objectif", ...(hasPoste ? ["Poste"] : []), "Douleurs", "Equipement", "Niveau", "Profil"];
   const totalSteps = stepLabels.length;
 
   // Step mapping selon si poste existe
   const getStepContent = () => {
     const steps = [0, 1]; // sport, objectif
     if (hasPoste) steps.push(2); // poste
-    steps.push(3, 4, 5, 6, 7, 8); // douleurs, equipement, niveau, âge, taille, poids
+    steps.push(3, 4, 5, 6); // douleurs, equipement, niveau, profil (âge, taille, poids)
     return steps[step];
   };
   const contentStep = getStepContent();
 
-  // Âge, taille, poids : facultatifs. « Continuer » garde la valeur affichée, « Passer » n'enregistre rien.
-  const PROFIL_DEFAUTS = { 6: ["age", 20], 7: ["taille", 175], 8: ["poids", 70] };
-  const champProfil = PROFIL_DEFAUTS[contentStep];
+  // Âge, taille, poids : facultatifs, sur un seul écran. « Continuer » garde les valeurs affichées, « Passer » n'enregistre rien.
+  const PROFIL_DEFAUTS = { age: 20, taille: 175, poids: 70 };
+  const etapeProfil = contentStep === 6;
 
   const goNext = () => {
     // Génère un message de réaction personnalisé selon l'étape
@@ -3084,42 +2934,27 @@ function OnboardingScreen({ onComplete, onLogin }) {
           </div>
         )}
 
-        {/* ETAPE 7 - Âge */}
+        {/* ETAPE 7 - Âge, taille, poids */}
         {contentStep === 6 && (
           <div>
-            <StepTitle title="Quel âge as-tu ?" sub="Ton âge nous aide à doser les charges et la récupération." />
-            <WheelPicker values={Array.from({ length: 56 }, (_, i) => i + 15)} value={data.age ?? 20} onChange={v => setData(d => ({ ...d, age: v }))} format={v => `${v} ans`} />
-          </div>
-        )}
-
-        {/* ETAPE 8 - Taille */}
-        {contentStep === 7 && (
-          <div>
-            <StepTitle title="Quelle est ta taille ?" sub="Fais glisser la règle pour choisir ta taille." />
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, paddingLeft: 8 }}>
-              <div>
-                <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 64, letterSpacing: "-0.03em", color: DS.colors.textPrimary, fontVariantNumeric: "tabular-nums" }}>{data.taille ?? 175}</span>
-                <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 20, color: DS.colors.textSec, marginLeft: 6 }}>cm</span>
+            <StepTitle title="Ton profil" sub="Pour doser tes charges et ta récupération." />
+            {[["age", "Âge", "ans", 15, 70], ["taille", "Taille", "cm", 130, 220], ["poids", "Poids", "kg", 35, 160]].map(([k, label, unite, min, max]) => (
+              <div key={k} style={{ marginBottom: 2 }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "0 4px" }}>
+                  <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 15, color: DS.colors.textSec }}>{label}</span>
+                  <span>
+                    <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 34, letterSpacing: "-0.03em", color: DS.colors.textPrimary, fontVariantNumeric: "tabular-nums" }}>{data[k] ?? PROFIL_DEFAUTS[k]}</span>
+                    <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 15, color: DS.colors.textSec, marginLeft: 5 }}>{unite}</span>
+                  </span>
+                </div>
+                <RulerPicker min={min} max={max} value={data[k] ?? PROFIL_DEFAUTS[k]} onChange={v => setData(d => ({ ...d, [k]: v }))} />
               </div>
-              <RulerPicker vertical min={130} max={220} value={data.taille ?? 175} onChange={v => setData(d => ({ ...d, taille: v }))} />
-            </div>
-          </div>
-        )}
-
-        {/* ETAPE 9 - Poids */}
-        {contentStep === 8 && (
-          <div>
-            <StepTitle title="Combien pèses-tu ?" sub="Pour proposer des charges vraiment adaptées à toi." />
-            <div style={{ textAlign: "center", margin: "24px 0 28px" }}>
-              <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 64, letterSpacing: "-0.03em", color: DS.colors.textPrimary, fontVariantNumeric: "tabular-nums" }}>{data.poids ?? 70}</span>
-              <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 20, color: DS.colors.textSec, marginLeft: 6 }}>kg</span>
-            </div>
-            <RulerPicker min={35} max={160} value={data.poids ?? 70} onChange={v => setData(d => ({ ...d, poids: v }))} />
+            ))}
           </div>
         )}
       </div>
 
-      {[3, 6, 7, 8].includes(contentStep) && (
+      {[3, 6].includes(contentStep) && (
         <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, lineHeight: 1.45, color: DS.colors.textSec, marginTop: 14 }}>
           🔒 Donnée de santé facultative. En la renseignant, tu acceptes qu'elle serve uniquement à adapter ton programme. Tu peux retirer ton accord à tout moment.
         </p>
@@ -3128,14 +2963,14 @@ function OnboardingScreen({ onComplete, onLogin }) {
       {/* Bouton principal, toujours visible en bas */}
       <div style={{ position: "sticky", bottom: 0, paddingTop: 20, paddingBottom: "calc(32px + env(safe-area-inset-bottom, 0px))", background: fonduBas() }}>
         <PrimaryButton disabled={!canNext} onClick={() => {
-          if (champProfil && data[champProfil[0]] == null) setData(d => ({ ...d, [champProfil[0]]: champProfil[1] }));
+          if (etapeProfil) setData(d => ({ ...d, age: d.age ?? PROFIL_DEFAUTS.age, taille: d.taille ?? PROFIL_DEFAUTS.taille, poids: d.poids ?? PROFIL_DEFAUTS.poids }));
           isLastStep ? setShowCoachDemo(true) : goNext();
         }}>
           {isLastStep ? "Générer mon programme" : "Continuer"}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 5L16 12L9 19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </PrimaryButton>
-        {champProfil && (
-          <button onClick={() => { setData(d => ({ ...d, [champProfil[0]]: null })); isLastStep ? setShowCoachDemo(true) : goNext(); }} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontWeight: 500 }}>
+        {etapeProfil && (
+          <button onClick={() => { setData(d => ({ ...d, age: null, taille: null, poids: null })); isLastStep ? setShowCoachDemo(true) : goNext(); }} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontWeight: 500 }}>
             Passer cette étape
           </button>
         )}
@@ -6136,7 +5971,14 @@ export default function VoltraApp() {
         return;
       }
       if (!themeOk) {
-        setScreen("theme-choice");
+        // Premier lancement : le thème suit celui du téléphone, modifiable ensuite dans le profil
+        const theme = window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        DS.colors = THEMES[theme];
+        DS.shadow = THEMES[theme].shadow;
+        setAppTheme(theme);
+        setThemeChosen(true);
+        try { localStorage.setItem("voltra_theme", theme); } catch {}
+        setScreen(userRef.current ? "app" : "welcome");
       } else if (userRef.current) {
         setScreen("app");
       } else if (isConfirmed || hasToken) {
@@ -6227,14 +6069,6 @@ export default function VoltraApp() {
       .then(({ count }) => { if (count) setSeancesCount(count); });
   }, [screen, user]);
 
-  if (screen === "theme-choice") return <ThemeChoiceScreen key={appTheme} onChoose={(theme) => {
-    DS.colors = THEMES[theme];
-    DS.shadow = THEMES[theme].shadow;
-    setAppTheme(theme);
-    setThemeChosen(true);
-    localStorage.setItem("voltra_theme", theme);
-    setScreen("welcome");
-  }} />;
   if (screen === "welcome") return <div key={appTheme}><WelcomeScreen onStart={() => setScreen("onboarding")} onLogin={() => setScreen("auth")} /></div>;
   if (screen === "splash") return <SplashScreen onDone={() => setSplashDone(true)} />;
   if (screen === "payment-success") return <PaymentSuccessScreen

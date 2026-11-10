@@ -1,7 +1,8 @@
 # Parcours et écrans
 
 ## Nouveau visiteur
-splash → choix du thème → accueil (`WelcomeScreen`) → questionnaire (`OnboardingScreen`) → objectif (`ObjectifScreen`) → compte (`AuthScreen`) → page d'abonnement (`PricingScreen`) → Stripe → `payment-success` → tableau de bord.
+splash → accueil (`WelcomeScreen`) → questionnaire (`OnboardingScreen`) → objectif (`ObjectifScreen`) → compte (`AuthScreen`) → page d'abonnement (`PricingScreen`) → Stripe → `payment-success` → tableau de bord.
+Le thème suit le réglage du téléphone au premier lancement (plus d'écran de choix), modifiable dans le profil. Âge, taille et poids sont sur un seul écran « Ton profil ».
 
 ## Utilisateur existant
 - Session enregistrée : tableau de bord directement.
