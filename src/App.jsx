@@ -3552,33 +3552,7 @@ const ecartTest = (t, a, b) => {
 const valeurTest = (t, v) => `${virgule(v, t.dec)}${t.u ? ` ${t.u}` : ""}`;
 const semainesEntre = (a, b) => Math.max(1, Math.round((new Date(b.date_test) - new Date(a.date_test)) / (7 * JOUR_MS)));
 
-// Image 1080 × 1920 à partager en story
-async function dessinerProgression(a, b) {
-  await document.fonts?.ready;
-  const c = document.createElement("canvas");
-  c.width = 1080; c.height = 1920;
-  const x = c.getContext("2d");
-  const g = x.createRadialGradient(540, 300, 50, 540, 300, 1100);
-  g.addColorStop(0, "#22341A"); g.addColorStop(1, "#0B0B0C");
-  x.fillStyle = g; x.fillRect(0, 0, 1080, 1920);
-  x.fillStyle = "#fff"; x.textAlign = "right"; x.font = "900 40px Inter, sans-serif"; x.fillText("VOLTRA", 1020, 110);
-  x.textAlign = "left";
-  x.fillStyle = "#9BE84F"; x.font = "800 46px Inter, sans-serif"; x.fillText("MA PROGRESSION", 60, 470);
-  const sem = semainesEntre(a, b);
-  x.fillStyle = "#fff"; x.font = "900 110px Inter, sans-serif"; x.fillText(`EN ${sem} SEMAINE${sem > 1 ? "S" : ""}`, 60, 590);
-  TESTS_PERF.forEach((t, i) => {
-    const y = 790 + i * 270, e = ecartTest(t, a, b);
-    x.fillStyle = "rgba(255,255,255,0.08)"; x.beginPath(); x.roundRect(60, y - 70, 960, 230, 40); x.fill();
-    x.textAlign = "left"; x.fillStyle = "#A1A1AA"; x.font = "700 40px Inter, sans-serif"; x.fillText(t.t, 110, y);
-    x.fillStyle = "#fff"; x.font = "800 64px Inter, sans-serif"; x.fillText(`${valeurTest(t, a[t.k])} → ${valeurTest(t, b[t.k])}`, 110, y + 100);
-    x.textAlign = "right"; x.fillStyle = e.mieux ? "#9BE84F" : "#A1A1AA"; x.font = "900 76px Inter, sans-serif"; x.fillText(e.texte, 970, y + 100);
-  });
-  x.textAlign = "center"; x.fillStyle = "#fff"; x.font = "800 50px Inter, sans-serif";
-  x.fillText("Ma prépa physique : Voltra", 540, 1700); x.fillStyle = "#9BE84F"; x.fillText("voltra-app.fr", 540, 1772);
-  return new Promise(ok => c.toBlob(ok, "image/png"));
-}
-
-function AvantMaintenant({ tests, onTest }) {
+function AvantMaintenant({ tests, onTest, onPartager }) {
   const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
   const [message, setMessage] = useState("");
   const carte = { background: DS.colors.surface, borderRadius: 22, boxShadow: DS.shadow.card, padding: "18px 16px", marginBottom: 16 };
@@ -3607,17 +3581,6 @@ function AvantMaintenant({ tests, onTest }) {
     </div>
   );
   const sem = semainesEntre(a, b);
-  const partager = async () => {
-    setMessage("Préparation de l'image...");
-    try {
-      const f = new File([await dessinerProgression(a, b)], "voltra-progression.png", { type: "image/png" });
-      if (navigator.canShare?.({ files: [f] })) await navigator.share({ files: [f] });
-      else { const l = document.createElement("a"); l.href = URL.createObjectURL(f); l.download = f.name; l.click(); }
-      setMessage("");
-    } catch (e) {
-      setMessage(e?.name === "AbortError" ? "" : "Impossible de créer l'image. Réessaie.");
-    }
-  };
   return (
     <div style={{ marginBottom: 22 }}>
       <p style={{ ...sur, marginBottom: 10 }}>AVANT → MAINTENANT · {sem} SEMAINE{sem > 1 ? "S" : ""}</p>
@@ -3633,7 +3596,7 @@ function AvantMaintenant({ tests, onTest }) {
           );
         })}
       </div>
-      <PrimaryButton onClick={partager} style={{ height: 52, marginTop: 14 }}>Partager ma progression</PrimaryButton>
+      <PrimaryButton onClick={onPartager} style={{ height: 52, marginTop: 14 }}>Partager ma progression</PrimaryButton>
       {message && <p style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center", marginTop: 8 }}>{message}</p>}
       <p onClick={onTest} style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center", marginTop: 12, textDecoration: "underline", cursor: "pointer" }}>{prochain <= new Date() ? "C'est l'heure de ton test du mois" : `Prochain test le ${prochain.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`}</p>
     </div>
@@ -3687,65 +3650,76 @@ const chargerImage = (src) => new Promise((ok, ko) => { const i = new Image(); i
 
 // L'illustration est détourée (le blanc qui touche les bords devient transparent),
 // puis chaque pixel de la carte est rangé dans la zone dont la couleur est la plus proche et teinté à son niveau
+// Corps détouré et teinté selon les niveaux, dans un canvas hors écran
+let imagesCorps = null;
+async function peindreCorps(niveaux) {
+  imagesCorps = imagesCorps || Promise.all([chargerImage("/corps-anatomie.jpg"), chargerImage("/corps-zones.jpg")]);
+  const [corps, carte] = await imagesCorps;
+  const c = document.createElement("canvas");
+  const w = corps.width, h = corps.height;
+  c.width = w; c.height = h;
+  const x = c.getContext("2d", { willReadFrequently: true });
+  x.drawImage(carte, 0, 0, w, h);
+  const z = x.getImageData(0, 0, w, h).data;
+  x.clearRect(0, 0, w, h);
+  x.drawImage(corps, 0, 0);
+  const donnees = x.getImageData(0, 0, w, h), p = donnees.data;
+  // Détourage : on part des bords et on avance tant que le pixel est presque blanc
+  const fond = new Uint8Array(w * h), pile = [];
+  const clair = (k) => Math.min(p[k * 4], p[k * 4 + 1], p[k * 4 + 2]) > 236;
+  for (let i = 0; i < w; i++) pile.push(i, (h - 1) * w + i);
+  for (let j = 0; j < h; j++) pile.push(j * w, j * w + w - 1);
+  while (pile.length) {
+    const k = pile.pop();
+    if (fond[k] || !clair(k)) continue;
+    fond[k] = 1;
+    const i = k % w;
+    if (i > 0) pile.push(k - 1);
+    if (i < w - 1) pile.push(k + 1);
+    if (k >= w) pile.push(k - w);
+    if (k < w * (h - 1)) pile.push(k + w);
+  }
+  const zones = Object.entries(ZONES_CARTE).map(([nom, rgb]) => ({ nom, rgb }));
+  const peinture = Object.fromEntries(Object.keys(ZONES_CARTE).map(n => [n, niveaux[n] ? rgbNiveau(niveaux[n]) : null]));
+  for (let k = 0; k < w * h; k++) {
+    const i = k * 4;
+    const col = k % w, lig = (k - col) / w;
+    if (fond[k] || col < 4 || col > w - 5 || lig < 4 || lig > h - 5) { p[i + 3] = 0; continue; }
+    // Bord du corps : fondu doux pour éviter un liseré blanc
+    const voisinFond = fond[k - 1] || fond[k + 1] || fond[k - w] || fond[k + w];
+    if (voisinFond) p[i + 3] = Math.min(255, Math.max(0, (255 - Math.min(p[i], p[i + 1], p[i + 2])) * 6));
+    const r = z[i], g = z[i + 1], b = z[i + 2];
+    if (Math.max(r, g, b) - Math.min(r, g, b) < 90) continue;
+    let meilleure = null, distance = Infinity;
+    for (const zo of zones) {
+      const d = (r - zo.rgb[0]) ** 2 + (g - zo.rgb[1]) ** 2 + (b - zo.rgb[2]) ** 2;
+      if (d < distance) { distance = d; meilleure = zo; }
+    }
+    if (distance > 22000) continue;
+    // Erreurs de la carte générée, vue de face (moitié gauche) : intérieur des cuisses et haut des trapèzes
+    const face = k % w < w / 2, y = Math.floor(k / w) / h;
+    let zone = meilleure.nom;
+    if (face && zone === "ischios") zone = "quadriceps";
+    if (face && zone === "epaules" && y < 0.162) zone = "dos";
+    const couleur = peinture[zone];
+    if (!couleur) continue;
+    // Effet « multiplier » : la couleur garde les fibres de l'illustration
+    for (let n = 0; n < 3; n++) p[i + n] = Math.round(p[i + n] * (0.12 + 0.88 * couleur[n] / 255));
+  }
+  x.putImageData(donnees, 0, 0);
+  return c;
+}
+
 function CorpsIllustre({ niveaux, vue = "deux" }) {
   const ref = useRef(null);
   const cle = JSON.stringify(niveaux);
   useEffect(() => {
     let annule = false;
-    Promise.all([chargerImage("/corps-anatomie.jpg"), chargerImage("/corps-zones.jpg")]).then(([corps, carte]) => {
+    peindreCorps(niveaux).then(peint => {
       const c = ref.current;
       if (annule || !c) return;
-      const w = corps.width, h = corps.height;
-      c.width = w; c.height = h;
-      const x = c.getContext("2d", { willReadFrequently: true });
-      x.drawImage(carte, 0, 0, w, h);
-      const z = x.getImageData(0, 0, w, h).data;
-      x.clearRect(0, 0, w, h);
-      x.drawImage(corps, 0, 0);
-      const donnees = x.getImageData(0, 0, w, h), p = donnees.data;
-      // Détourage : on part des bords et on avance tant que le pixel est presque blanc
-      const fond = new Uint8Array(w * h), pile = [];
-      const clair = (k) => Math.min(p[k * 4], p[k * 4 + 1], p[k * 4 + 2]) > 236;
-      for (let i = 0; i < w; i++) pile.push(i, (h - 1) * w + i);
-      for (let j = 0; j < h; j++) pile.push(j * w, j * w + w - 1);
-      while (pile.length) {
-        const k = pile.pop();
-        if (fond[k] || !clair(k)) continue;
-        fond[k] = 1;
-        const i = k % w;
-        if (i > 0) pile.push(k - 1);
-        if (i < w - 1) pile.push(k + 1);
-        if (k >= w) pile.push(k - w);
-        if (k < w * (h - 1)) pile.push(k + w);
-      }
-      const zones = Object.entries(ZONES_CARTE).map(([nom, rgb]) => ({ nom, rgb }));
-      const peinture = Object.fromEntries(Object.keys(ZONES_CARTE).map(n => [n, niveaux[n] ? rgbNiveau(niveaux[n]) : null]));
-      for (let k = 0; k < w * h; k++) {
-        const i = k * 4;
-        const col = k % w, lig = (k - col) / w;
-        if (fond[k] || col < 4 || col > w - 5 || lig < 4 || lig > h - 5) { p[i + 3] = 0; continue; }
-        // Bord du corps : fondu doux pour éviter un liseré blanc
-        const voisinFond = fond[k - 1] || fond[k + 1] || fond[k - w] || fond[k + w];
-        if (voisinFond) p[i + 3] = Math.min(255, Math.max(0, (255 - Math.min(p[i], p[i + 1], p[i + 2])) * 6));
-        const r = z[i], g = z[i + 1], b = z[i + 2];
-        if (Math.max(r, g, b) - Math.min(r, g, b) < 90) continue;
-        let meilleure = null, distance = Infinity;
-        for (const zo of zones) {
-          const d = (r - zo.rgb[0]) ** 2 + (g - zo.rgb[1]) ** 2 + (b - zo.rgb[2]) ** 2;
-          if (d < distance) { distance = d; meilleure = zo; }
-        }
-        if (distance > 22000) continue;
-        // Erreurs de la carte générée, vue de face (moitié gauche) : intérieur des cuisses et haut des trapèzes
-        const face = k % w < w / 2, y = Math.floor(k / w) / h;
-        let zone = meilleure.nom;
-        if (face && zone === "ischios") zone = "quadriceps";
-        if (face && zone === "epaules" && y < 0.162) zone = "dos";
-        const couleur = peinture[zone];
-        if (!couleur) continue;
-        // Effet « multiplier » : la couleur garde les fibres de l'illustration
-        for (let n = 0; n < 3; n++) p[i + n] = Math.round(p[i + n] * (0.12 + 0.88 * couleur[n] / 255));
-      }
-      x.putImageData(donnees, 0, 0);
+      c.width = peint.width; c.height = peint.height;
+      c.getContext("2d").drawImage(peint, 0, 0);
     });
     return () => { annule = true; };
   }, [cle]);
@@ -3763,7 +3737,7 @@ const ANCRES_ZONES = {
   dos: [75, 24], lombaires: [75, 40], fessiers: [75, 50], ischios: [75, 63], mollets: [75, 80],
 };
 
-function CarteDuCorps({ user }) {
+function useSeriesCorps(user) {
   const [series, setSeries] = useState(null);
   useEffect(() => {
     if (!user?.id) return;
@@ -3778,6 +3752,18 @@ function CarteDuCorps({ user }) {
         setSeries(total);
       });
   }, [user?.id]);
+  return series;
+}
+
+// Niveau de chaque zone (de 0 à 1, par rapport à la plus travaillée) et zone la plus travaillée
+function lireSeries(series) {
+  const max = Math.max(0, ...Object.values(series || {}));
+  const niveaux = Object.fromEntries(Object.entries(series || {}).map(([z, v]) => [z, max ? v / max : 0]));
+  const tries = ZONES_CORPS.map(z => ({ ...z, v: (series || {})[z.id] || 0 })).sort((p, q) => q.v - p.v);
+  return { max, niveaux, tries, plus: max ? tries[0] : null };
+}
+
+function CarteDuCorps({ series, onPartager }) {
   if (!series) return null;
   const max = Math.max(0, ...Object.values(series));
   const niveaux = Object.fromEntries(Object.entries(series).map(([z, v]) => [z, max ? v / max : 0]));
@@ -3802,6 +3788,157 @@ function CarteDuCorps({ user }) {
         <span style={{ flex: 1, height: 6, borderRadius: 3, background: `linear-gradient(90deg, ${COULEURS_NIVEAU.join(", ")})` }} />
         <span>Beaucoup</span>
       </div>
+      {max > 0 && onPartager && <p onClick={onPartager} style={{ fontSize: 13, fontWeight: 800, color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark, textAlign: "right", marginTop: 10, cursor: "pointer" }}>Partager en vidéo ↗</p>}
+    </div>
+  );
+}
+
+// ── Carte animée à partager (story 1080 × 1920, vidéo ou image) ──
+const PARTAGE_DUREE = 6.5;
+const lisse = (t) => t <= 0 ? 0 : t >= 1 ? 1 : 1 - Math.pow(1 - t, 3);
+const entre = (t, a, b) => lisse((t - a) / (b - a));
+
+function dessinerCartePartage(x, t, { neutre, colore, tests, plus }) {
+  x.save();
+  x.clearRect(0, 0, 1080, 1920);
+  const fondu = x.createRadialGradient(540, 360, 60, 540, 360, 1300);
+  fondu.addColorStop(0, "#22341A"); fondu.addColorStop(0.55, "#0E100C"); fondu.addColorStop(1, "#0B0B0C");
+  x.fillStyle = fondu; x.fillRect(0, 0, 1080, 1920);
+  x.fillStyle = "#fff"; x.textAlign = "right"; x.font = "900 38px Inter, sans-serif"; x.fillText("VOLTRA", 1020, 100);
+  // Titre
+  const a = entre(t, 0, 0.6);
+  x.globalAlpha = a; x.textAlign = "left";
+  x.fillStyle = "#9BE84F"; x.font = "800 40px Inter, sans-serif"; x.fillText("MA PROGRESSION", 60, 200 - (1 - a) * 30);
+  x.fillStyle = "#fff"; x.font = "900 76px Inter, sans-serif"; x.fillText("CES 30 DERNIERS JOURS", 60, 282 - (1 - a) * 30);
+  x.globalAlpha = 1;
+  // Corps : apparaît, puis une ligne de scan remonte et révèle les couleurs
+  const L = 760, H = Math.round(L * neutre.height / neutre.width), X = 160, Y = 330;
+  x.globalAlpha = entre(t, 0.2, 0.9);
+  x.drawImage(neutre, X, Y, L, H);
+  x.globalAlpha = 1;
+  const scan = entre(t, 0.9, 2.7), ligne = Y + H - scan * H;
+  if (scan > 0) {
+    x.save(); x.beginPath(); x.rect(0, ligne, 1080, Y + H - ligne); x.clip();
+    x.drawImage(colore, X, Y, L, H); x.restore();
+    if (scan < 1) {
+      const g = x.createLinearGradient(0, ligne - 40, 0, ligne + 40);
+      g.addColorStop(0, "rgba(155,232,79,0)"); g.addColorStop(0.5, "rgba(155,232,79,0.9)"); g.addColorStop(1, "rgba(155,232,79,0)");
+      x.fillStyle = g; x.fillRect(X - 20, ligne - 40, L + 40, 80);
+    }
+  }
+  // Étiquette du muscle le plus travaillé
+  if (plus) {
+    const p = entre(t, 2.8, 3.2), [ax, ay] = ANCRES_ZONES[plus.id];
+    if (p > 0) {
+      const texte = `🔥 ${plus.n.charAt(0).toUpperCase()}${plus.n.slice(1)}`;
+      x.font = "800 40px Inter, sans-serif";
+      const lw = x.measureText(texte).width + 56, cx = X + (ax / 100) * L, cy = Y + (ay / 100) * H, k = 0.6 + 0.4 * p;
+      x.save(); x.globalAlpha = p; x.translate(cx, cy); x.scale(k, k);
+      x.fillStyle = "#1C1C1E"; x.beginPath(); x.roundRect(-lw / 2, -38, lw, 76, 38); x.fill();
+      x.fillStyle = "#fff"; x.textAlign = "center"; x.fillText(texte, 0, 14); x.restore();
+    }
+  }
+  // Progrès des tests, qui défilent jusqu'à leur valeur
+  const bas = Y + H + 40;
+  if (tests?.length >= 2) {
+    const ta = tests[0], tb = tests[tests.length - 1];
+    TESTS_PERF.forEach((te, i) => {
+      const p = entre(t, 3.2 + i * 0.25, 4.4 + i * 0.25);
+      if (p <= 0) return;
+      const e = ecartTest(te, ta, tb), cx = 60 + i * 330, cy = bas + (1 - p) * 40;
+      x.globalAlpha = p;
+      x.fillStyle = "rgba(255,255,255,0.08)"; x.beginPath(); x.roundRect(cx, cy, 300, 200, 32); x.fill();
+      const v = Math.abs(e.d) * p, signe = e.d > 0 ? "+" : e.d < 0 ? "−" : "";
+      x.textAlign = "left"; x.fillStyle = e.mieux ? "#9BE84F" : "#A1A1AA"; x.font = "900 66px Inter, sans-serif";
+      x.fillText(`${signe}${virgule(v, te.dec)}${te.u ? ` ${te.u}` : ""}`, cx + 28, cy + 92);
+      x.fillStyle = "#A1A1AA"; x.font = "700 30px Inter, sans-serif";
+      x.fillText(te.t.replace(" en 1 minute", "").replace(" verticale", ""), cx + 28, cy + 150);
+      x.globalAlpha = 1;
+    });
+  }
+  // Fin
+  const f = entre(t, 4.8, 5.4);
+  x.globalAlpha = f; x.textAlign = "center"; x.fillStyle = "#fff"; x.font = "800 44px Inter, sans-serif";
+  x.fillText("Ma prépa physique : Voltra", 540, 1800); x.fillStyle = "#9BE84F"; x.fillText("voltra-app.fr", 540, 1862);
+  x.restore();
+}
+
+function PartageProgression({ niveaux, tests, plus, onBack }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const ref = useRef(null);
+  const images = useRef(null);
+  const [pret, setPret] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    let fin = false, id;
+    Promise.all([peindreCorps({}), peindreCorps(niveaux), document.fonts?.ready]).then(([neutre, colore]) => {
+      if (fin) return;
+      images.current = { neutre, colore, tests, plus };
+      setPret(true);
+      const debut = performance.now();
+      const boucle = (m) => {
+        const c = ref.current;
+        if (c && !enregistrement.current) dessinerCartePartage(c.getContext("2d"), ((m - debut) / 1000) % (PARTAGE_DUREE + 1), images.current);
+        id = requestAnimationFrame(boucle);
+      };
+      id = requestAnimationFrame(boucle);
+    });
+    return () => { fin = true; cancelAnimationFrame(id); };
+  }, []);
+  const enregistrement = useRef(false);
+  const envoyer = async (blob, nom) => {
+    const f = new File([blob], nom, { type: blob.type });
+    if (navigator.canShare?.({ files: [f] })) await navigator.share({ files: [f] });
+    else { const l = document.createElement("a"); l.href = URL.createObjectURL(f); l.download = nom; l.click(); }
+  };
+  const image = async () => {
+    setMessage("");
+    try {
+      const c = document.createElement("canvas"); c.width = 1080; c.height = 1920;
+      dessinerCartePartage(c.getContext("2d"), PARTAGE_DUREE, images.current);
+      await envoyer(await new Promise(ok => c.toBlob(ok, "image/png")), "voltra-progression.png");
+    } catch (e) { if (e?.name !== "AbortError") setMessage("Impossible de créer l'image. Réessaie."); }
+  };
+  const video = async () => {
+    const type = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find(t => window.MediaRecorder?.isTypeSupported?.(t));
+    if (!type || !HTMLCanvasElement.prototype.captureStream) { setMessage("Ton navigateur ne sait pas créer de vidéo : enregistre l'image."); return; }
+    setMessage("Création de la vidéo… (6 secondes)");
+    enregistrement.current = true;
+    try {
+      const c = ref.current, x = c.getContext("2d");
+      const flux = c.captureStream(30), morceaux = [];
+      const rec = new MediaRecorder(flux, { mimeType: type, videoBitsPerSecond: 8000000 });
+      rec.ondataavailable = (e) => e.data.size && morceaux.push(e.data);
+      const fini = new Promise(ok => { rec.onstop = ok; });
+      rec.start();
+      const debut = performance.now();
+      // Une horloge simple (30 images par seconde) plutôt que l'affichage, qui peut se mettre en pause
+      await new Promise(ok => {
+        const pas = () => {
+          const t = (performance.now() - debut) / 1000;
+          dessinerCartePartage(x, Math.min(t, PARTAGE_DUREE), images.current);
+          if (t < PARTAGE_DUREE + 0.5) setTimeout(pas, 1000 / 30); else ok();
+        };
+        pas();
+      });
+      rec.stop(); await fini;
+      const blob = new Blob(morceaux, { type: type.split(";")[0] });
+      setMessage("");
+      await envoyer(blob, `voltra-progression.${type.includes("mp4") ? "mp4" : "webm"}`);
+    } catch (e) { if (e?.name !== "AbortError") setMessage("Impossible de créer la vidéo. Enregistre l'image."); }
+    enregistrement.current = false;
+  };
+  return (
+    <div className="v-plein" style={{ background: DS.colors.bg, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ minHeight: "100dvh", maxWidth: 430, margin: "0 auto", padding: `${hautSur(20)} 22px calc(24px + env(safe-area-inset-bottom, 0px))` }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10, padding: 0 }}>← Retour</button>
+        <p style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.08em", color: ac, margin: "0 0 10px" }}>PARTAGE TA PROGRESSION</p>
+        <canvas ref={ref} width="1080" height="1920" style={{ width: "100%", maxHeight: "62dvh", objectFit: "contain", display: "block", borderRadius: 20, background: "#0B0B0C", boxShadow: DS.shadow.card }} />
+        {!pret && <p style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center", marginTop: 10 }}>Préparation…</p>}
+        <PrimaryButton onClick={video} disabled={!pret} style={{ height: 54, marginTop: 16 }}>Enregistrer la vidéo</PrimaryButton>
+        <button onClick={image} disabled={!pret} style={{ width: "100%", height: 48, marginTop: 10, borderRadius: 99, border: `1px solid ${DS.colors.border}`, background: DS.colors.surface, color: DS.colors.textPrimary, fontWeight: 800, fontSize: 14, cursor: "pointer" }}>Enregistrer l'image</button>
+        {message && <p style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center", marginTop: 10 }}>{message}</p>}
+      </div>
     </div>
   );
 }
@@ -3810,6 +3947,7 @@ function HistoriqueScreen({ user }) {
   const stagger = useStaggerUneFois("historique");
   const { tests, charger: chargerTests } = useTests(user);
   const [vueTest, setVueTest] = useState(null);
+  const series = useSeriesCorps(user);
   const [seancesReelles, setSeancesReelles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalSeances, setTotalSeances] = useState(0);
@@ -3892,6 +4030,7 @@ function HistoriqueScreen({ user }) {
 
   const accentColor = "#FF2D55";
 
+  if (vueTest === "partage") { const l = lireSeries(series); return <PartageProgression niveaux={l.niveaux} tests={tests} plus={l.plus} onBack={() => setVueTest(null)} />; }
   if (vueTest === "test") return <TestScreen user={user} tests={tests} onSaved={async () => { await chargerTests(); }} onBack={() => setVueTest(null)} onCarrousel={() => setVueTest("carrousel")} />;
   if (vueTest === "carrousel") return <CarrouselScreen tests={tests} onBack={() => setVueTest("test")} />;
 
@@ -3959,8 +4098,8 @@ function HistoriqueScreen({ user }) {
       ) : (
         <div style={{ padding: "20px 20px 0" }}>
 
-          <CarteDuCorps user={user} />
-          <AvantMaintenant tests={tests} onTest={() => setVueTest("test")} />
+          <CarteDuCorps series={series} onPartager={() => setVueTest("partage")} />
+          <AvantMaintenant tests={tests} onTest={() => setVueTest("test")} onPartager={() => setVueTest("partage")} />
 
           {/* Graphique séances par semaine — cliquable */}
           <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16 }}>
