@@ -22,6 +22,7 @@ Lien `?invitation=CODE` : le code est gardé dans `voltra_invitation` (localStor
 ## Progression
 - « Avant → Maintenant » (`AvantMaintenant`) compare le premier et le dernier test mensuel. « Partager ma progression » crée une image 1080 × 1920 (`dessinerProgression`).
 - « Ton corps ce mois-ci » (`CarteDuCorps`) colore l'illustration anatomique `public/corps-anatomie.jpg` (générée avec AlexyaAI le 10 novembre 2026, sans photo de personne) muscle par muscle grâce à la carte de couleurs unies `public/corps-zones.jpg` (même cadrage, une couleur par zone, voir `ZONES_CARTE`). Les deux images vont ensemble : si l'une change, régénérer l'autre. Deux erreurs de la carte sont corrigées dans `CorpsIllustre` (intérieur des cuisses et haut des trapèzes, vue de face). selon les séries des 30 derniers jours, du clair (sable, peu travaillé) au foncé (bordeaux, la zone la plus travaillée). Le calcul est relatif à la zone la plus travaillée, pas un objectif fixe. Les muscles sont du texte libre écrit par l'IA, regroupés en 10 zones par mots-clés (`ZONES_CORPS`) : ajouter un mot-clé si une nouvelle formulation n'est pas reconnue.
+- Mise en page « corps en grand » : le corps détouré (canvas, fond transparent) en haut, avec les étiquettes 🔥 le plus et 💤 le moins travaillé (`ANCRES_ZONES`), puis 3 tuiles Avant → Maintenant et « Partager ».
 - Retirés : volume total, durée moyenne, « séances réussies ».
 
 ## Effet de construction du plan

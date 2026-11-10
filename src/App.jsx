@@ -3619,21 +3619,20 @@ function AvantMaintenant({ tests, onTest }) {
     }
   };
   return (
-    <div style={carte}>
-      <p style={sur}>AVANT → MAINTENANT</p>
-      <b style={{ display: "block", fontSize: 26, fontWeight: 900, letterSpacing: "-0.02em", margin: "4px 0 12px", textTransform: "uppercase" }}>En {sem} semaine{sem > 1 ? "s" : ""}</b>
-      {TESTS_PERF.map((t, i) => {
-        const e = ecartTest(t, a, b);
-        return (
-          <div key={t.k} className="v-in" style={{ "--i": i + 1, display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: `1px solid ${DS.colors.border}` }}>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 13, color: DS.colors.textSec, fontWeight: 600 }}>{t.t}</span>
-              <span style={{ display: "block", fontSize: 16, fontWeight: 800, fontVariantNumeric: "tabular-nums", marginTop: 2 }}>{valeurTest(t, a[t.k])} → {valeurTest(t, b[t.k])}</span>
-            </span>
-            <span className="v-pop" style={{ flexShrink: 0, padding: "7px 11px", borderRadius: 12, fontSize: 17, fontWeight: 900, fontVariantNumeric: "tabular-nums", background: e.mieux ? DS.colors.primarySoft : DS.colors.surfaceHigh, color: e.mieux ? ac : DS.colors.textSec }}>{e.egal ? "=" : e.texte}</span>
-          </div>
-        );
-      })}
+    <div style={{ marginBottom: 22 }}>
+      <p style={{ ...sur, marginBottom: 10 }}>AVANT → MAINTENANT · {sem} SEMAINE{sem > 1 ? "S" : ""}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+        {TESTS_PERF.map((t, i) => {
+          const e = ecartTest(t, a, b);
+          return (
+            <div key={t.k} className="v-in" style={{ "--i": i + 1, background: DS.colors.surface, borderRadius: 18, padding: "14px 10px", boxShadow: DS.shadow.card }}>
+              <b style={{ display: "block", fontSize: 22, fontWeight: 900, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums", color: e.mieux ? ac : DS.colors.textSec }}>{e.egal ? "=" : e.texte}</b>
+              <span style={{ display: "block", fontSize: 11, color: DS.colors.textSec, fontWeight: 600, marginTop: 2 }}>{t.t.replace(" en 1 minute", "")}</span>
+              <span style={{ display: "block", fontSize: 11, color: DS.colors.textDim, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{valeurTest(t, a[t.k])} → {valeurTest(t, b[t.k])}</span>
+            </div>
+          );
+        })}
+      </div>
       <PrimaryButton onClick={partager} style={{ height: 52, marginTop: 14 }}>Partager ma progression</PrimaryButton>
       {message && <p style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center", marginTop: 8 }}>{message}</p>}
       <p onClick={onTest} style={{ fontSize: 13, color: DS.colors.textSec, textAlign: "center", marginTop: 12, textDecoration: "underline", cursor: "pointer" }}>{prochain <= new Date() ? "C'est l'heure de ton test du mois" : `Prochain test le ${prochain.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`}</p>
@@ -3684,55 +3683,87 @@ const ZONES_CARTE = {
   lombaires: [0, 255, 255], fessiers: [255, 128, 0], quadriceps: [128, 0, 255], ischios: [0, 255, 128], mollets: [255, 0, 128],
 };
 
-// Chaque pixel de la carte est rangé dans la zone dont la couleur est la plus proche, puis peint à son niveau
-function CorpsIllustre({ niveaux }) {
+const chargerImage = (src) => new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; });
+
+// L'illustration est détourée (le blanc qui touche les bords devient transparent),
+// puis chaque pixel de la carte est rangé dans la zone dont la couleur est la plus proche et teinté à son niveau
+function CorpsIllustre({ niveaux, vue = "deux" }) {
   const ref = useRef(null);
   const cle = JSON.stringify(niveaux);
   useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
+    let annule = false;
+    Promise.all([chargerImage("/corps-anatomie.jpg"), chargerImage("/corps-zones.jpg")]).then(([corps, carte]) => {
       const c = ref.current;
-      if (!c) return;
-      c.width = img.width; c.height = img.height;
+      if (annule || !c) return;
+      const w = corps.width, h = corps.height;
+      c.width = w; c.height = h;
       const x = c.getContext("2d", { willReadFrequently: true });
-      x.drawImage(img, 0, 0);
-      const donnees = x.getImageData(0, 0, c.width, c.height), p = donnees.data;
-      const zones = Object.entries(ZONES_CARTE).map(([z, rgb]) => ({ z, rgb }));
-      const peinture = Object.fromEntries(Object.keys(ZONES_CARTE).map(z => [z, niveaux[z] ? rgbNiveau(niveaux[z]) : null]));
-      const w = c.width, h = c.height;
-      for (let i = 0; i < p.length; i += 4) {
-        const r = p[i], g = p[i + 1], b = p[i + 2];
-        p[i + 3] = 0;
+      x.drawImage(carte, 0, 0, w, h);
+      const z = x.getImageData(0, 0, w, h).data;
+      x.clearRect(0, 0, w, h);
+      x.drawImage(corps, 0, 0);
+      const donnees = x.getImageData(0, 0, w, h), p = donnees.data;
+      // Détourage : on part des bords et on avance tant que le pixel est presque blanc
+      const fond = new Uint8Array(w * h), pile = [];
+      const clair = (k) => Math.min(p[k * 4], p[k * 4 + 1], p[k * 4 + 2]) > 236;
+      for (let i = 0; i < w; i++) pile.push(i, (h - 1) * w + i);
+      for (let j = 0; j < h; j++) pile.push(j * w, j * w + w - 1);
+      while (pile.length) {
+        const k = pile.pop();
+        if (fond[k] || !clair(k)) continue;
+        fond[k] = 1;
+        const i = k % w;
+        if (i > 0) pile.push(k - 1);
+        if (i < w - 1) pile.push(k + 1);
+        if (k >= w) pile.push(k - w);
+        if (k < w * (h - 1)) pile.push(k + w);
+      }
+      const zones = Object.entries(ZONES_CARTE).map(([nom, rgb]) => ({ nom, rgb }));
+      const peinture = Object.fromEntries(Object.keys(ZONES_CARTE).map(n => [n, niveaux[n] ? rgbNiveau(niveaux[n]) : null]));
+      for (let k = 0; k < w * h; k++) {
+        const i = k * 4;
+        const col = k % w, lig = (k - col) / w;
+        if (fond[k] || col < 4 || col > w - 5 || lig < 4 || lig > h - 5) { p[i + 3] = 0; continue; }
+        // Bord du corps : fondu doux pour éviter un liseré blanc
+        const voisinFond = fond[k - 1] || fond[k + 1] || fond[k - w] || fond[k + w];
+        if (voisinFond) p[i + 3] = Math.min(255, Math.max(0, (255 - Math.min(p[i], p[i + 1], p[i + 2])) * 6));
+        const r = z[i], g = z[i + 1], b = z[i + 2];
         if (Math.max(r, g, b) - Math.min(r, g, b) < 90) continue;
         let meilleure = null, distance = Infinity;
-        for (const z of zones) {
-          const d = (r - z.rgb[0]) ** 2 + (g - z.rgb[1]) ** 2 + (b - z.rgb[2]) ** 2;
-          if (d < distance) { distance = d; meilleure = z; }
+        for (const zo of zones) {
+          const d = (r - zo.rgb[0]) ** 2 + (g - zo.rgb[1]) ** 2 + (b - zo.rgb[2]) ** 2;
+          if (d < distance) { distance = d; meilleure = zo; }
         }
         if (distance > 22000) continue;
         // Erreurs de la carte générée, vue de face (moitié gauche) : intérieur des cuisses et haut des trapèzes
-        const face = (i / 4) % w < w / 2, y = Math.floor(i / 4 / w) / h;
-        let zone = meilleure.z;
+        const face = k % w < w / 2, y = Math.floor(k / w) / h;
+        let zone = meilleure.nom;
         if (face && zone === "ischios") zone = "quadriceps";
         if (face && zone === "epaules" && y < 0.162) zone = "dos";
-        if (!peinture[zone]) continue;
-        [p[i], p[i + 1], p[i + 2]] = peinture[zone];
-        p[i + 3] = 225;
+        const couleur = peinture[zone];
+        if (!couleur) continue;
+        // Effet « multiplier » : la couleur garde les fibres de l'illustration
+        for (let n = 0; n < 3; n++) p[i + n] = Math.round(p[i + n] * (0.12 + 0.88 * couleur[n] / 255));
       }
       x.putImageData(donnees, 0, 0);
-    };
-    img.src = "/corps-zones.jpg";
+    });
+    return () => { annule = true; };
   }, [cle]);
+  const seule = vue !== "deux";
   return (
-    <div style={{ position: "relative", borderRadius: 18, overflow: "hidden", background: "#FFFFFF", marginTop: 14 }}>
-      <img src="/corps-anatomie.jpg" alt="Muscles travaillés, de face et de dos" style={{ width: "100%", display: "block" }} />
-      <canvas ref={ref} className="v-pop" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", mixBlendMode: "multiply" }} />
+    <div style={{ position: "relative", overflow: "hidden" }}>
+      <canvas ref={ref} role="img" aria-label="Muscles travaillés" className="v-pop" style={{ display: "block", width: seule ? "200%" : "100%", marginLeft: vue === "dos" ? "-100%" : 0, filter: DS.colors.isDark ? "none" : "drop-shadow(0 6px 14px rgba(0,0,0,0.12))" }} />
     </div>
   );
 }
 
+// Où poser l'étiquette d'une zone sur l'illustration (en % de largeur et de hauteur, face à gauche, dos à droite)
+const ANCRES_ZONES = {
+  quadriceps: [18, 58], pectoraux: [25, 22], epaules: [9, 20], bras: [8, 36], abdos: [25, 36],
+  dos: [75, 24], lombaires: [75, 40], fessiers: [75, 50], ischios: [75, 63], mollets: [75, 80],
+};
+
 function CarteDuCorps({ user }) {
-  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
   const [series, setSeries] = useState(null);
   useEffect(() => {
     if (!user?.id) return;
@@ -3752,20 +3783,25 @@ function CarteDuCorps({ user }) {
   const niveaux = Object.fromEntries(Object.entries(series).map(([z, v]) => [z, max ? v / max : 0]));
   const tries = ZONES_CORPS.map(z => ({ ...z, v: series[z.id] || 0 })).sort((p, q) => q.v - p.v);
   const oubliees = tries.filter(z => z.v < max * 0.15);
-  const phrase = !max ? "Fais ta première séance : les muscles travaillés s'allumeront ici."
-    : oubliees.length ? `Le plus travaillé : ${tries[0].n}. Presque rien sur ${oubliees.slice(0, 2).map(z => z.n).join(" et ")} ce mois-ci.`
-    : `Le plus travaillé : ${tries[0].n}. Tout ton corps a bossé ce mois-ci.`;
+  const plus = max ? tries[0] : null;
+  const moins = max && tries[tries.length - 1].v < max * 0.15 ? tries[tries.length - 1] : null;
+  const etiquette = (z, ic) => {
+    const [x, y] = ANCRES_ZONES[z.id];
+    return <span className="v-pop" style={{ position: "absolute", left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)", whiteSpace: "nowrap", background: DS.colors.surface, color: DS.colors.textPrimary, boxShadow: DS.shadow.card, borderRadius: 99, padding: "7px 11px", fontSize: 12, fontWeight: 800, textTransform: "capitalize" }}>{ic} {z.n}</span>;
+  };
   return (
-    <div style={{ background: DS.colors.surface, borderRadius: 22, boxShadow: DS.shadow.card, padding: "18px 16px", marginBottom: 16 }}>
-      <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: ac, margin: 0 }}>TON CORPS CE MOIS-CI</p>
-      <CorpsIllustre niveaux={niveaux} />
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 11, color: DS.colors.textSec, fontWeight: 600 }}>
+    <div style={{ marginBottom: 22 }}>
+      <p style={{ color: DS.colors.textSec, fontSize: 14, margin: "0 0 10px" }}>{max ? "Ton corps ces 30 derniers jours" : "Fais ta première séance : les muscles travaillés s'allumeront ici."}</p>
+      <div style={{ position: "relative", margin: "0 -6px" }}>
+        <CorpsIllustre niveaux={niveaux} />
+        {plus && etiquette(plus, "🔥")}
+        {moins && etiquette(moins, "💤")}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 11, color: DS.colors.textSec, fontWeight: 600 }}>
         <span>Peu</span>
         <span style={{ flex: 1, height: 6, borderRadius: 3, background: `linear-gradient(90deg, ${COULEURS_NIVEAU.join(", ")})` }} />
         <span>Beaucoup</span>
       </div>
-      <p style={{ fontSize: 14, lineHeight: 1.45, marginTop: 12, fontWeight: 600 }}>{phrase}</p>
-      <p style={{ fontSize: 11, color: DS.colors.textDim, marginTop: 6 }}>D'après les séries faites ces 30 derniers jours.</p>
     </div>
   );
 }
@@ -3923,8 +3959,8 @@ function HistoriqueScreen({ user }) {
       ) : (
         <div style={{ padding: "20px 20px 0" }}>
 
-          <AvantMaintenant tests={tests} onTest={() => setVueTest("test")} />
           <CarteDuCorps user={user} />
+          <AvantMaintenant tests={tests} onTest={() => setVueTest("test")} />
 
           {/* Graphique séances par semaine — cliquable */}
           <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16 }}>
