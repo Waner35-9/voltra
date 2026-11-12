@@ -8,7 +8,7 @@
 - `logs_performance` : exercice_id, seance_id, user_id, reps_par_set, charge_kg (**le poids réellement soulevé**), rpe, feedback, statut, logged_at
 - `exercice_state` : état par exercice calculé par `calculer_progression`, **jamais relu par l'app**
 - `matchs`, `tests_performance`, `coach_usage`, `exercise_gifs` (ancien cache d'images)
-- `tests_performance.mesures` (jsonb, `supabase/tests-sport.sql`) : tests propres au sport (`TESTS_PAR_SPORT`). Détente, sprint 20 m et pompes gardent aussi leur colonne. Les tests d'un ancien sport restent affichés.
+- `tests_performance.mesures` (jsonb, `supabase/tests-sport.sql`) : tests propres au sport (`TESTS_PAR_SPORT`, et `TESTS_PAR_DISCIPLINE` pour chaque sport de combat). Détente, sprint 20 m et pompes gardent aussi leur colonne. Les tests d'un ancien sport restent affichés.
 - `bilans_semaine` : user_id, semaine (lundi de la semaine résumée), seances, prevues, gains, texte. Une ligne par semaine : c'est ce qui limite le coût IA.
 - `rappels` : user_id, seance_matin (non par défaut), relance (oui par défaut), derniere_relance, nb_relances. Pas de ligne = valeurs par défaut.
 - `invitations` : code, nom, places, utilisees, duree_jours, valable_jusquau. Lisible seulement dans le dashboard. Pour arrêter un lien : `valable_jusquau` à une date passée, ne pas supprimer la ligne.

@@ -64,10 +64,29 @@ const DAY_OPTIONS = [{ i: 1, l: "Lun" }, { i: 2, l: "Mar" }, { i: 3, l: "Mer" },
 const DAY_NAMES = { 0: "dimanche", 1: "lundi", 2: "mardi", 3: "mercredi", 4: "jeudi", 5: "vendredi", 6: "samedi" };
 const DEFAULT_JOURS = { 1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
 
+// Le mot de la compétition selon le sport : un boxeur fait des combats, un nageur des courses
+const COMPETITIONS = {
+  combat: { nom: "combat", pl: "combats", f: false },
+  natation: { nom: "course", pl: "courses", f: true },
+  sprint: { nom: "course", pl: "courses", f: true },
+};
+// Le dernier sport connu est gardé sur le téléphone : pas de « match » affiché le temps que le profil charge
+let SPORT_COURANT = (() => { try { return localStorage.getItem("voltra_sport") || "default"; } catch { return "default"; } })();
+const definirSport = (sport) => {
+  if (!sport || sport === SPORT_COURANT) return;
+  SPORT_COURANT = sport;
+  try { localStorage.setItem("voltra_sport", sport); } catch {}
+};
+function motsSport(sport = SPORT_COURANT) {
+  const c = COMPETITIONS[sport] || { nom: "match", pl: "matchs", f: false };
+  const maj = (t) => t[0].toUpperCase() + t.slice(1);
+  return { ...c, Nom: maj(c.nom), Pl: maj(c.pl), un: `${c.f ? "une" : "un"} ${c.nom}`, Un: `${c.f ? "Une" : "Un"} ${c.nom}`, le: `${c.f ? "la" : "le"} ${c.nom}`, du: c.f ? `de la ${c.nom}` : `du ${c.nom}`, ton: `${c.f ? "ta" : "ton"} ${c.nom}`, prochain: `${c.f ? "ta prochaine" : "ton prochain"} ${c.nom}`, e: c.f ? "e" : "" };
+}
+
 // Rythme du club : jours d'entraînement, jour de match habituel, période de la saison
 const SAISONS = [
   { id: "pre", l: "Pré-saison", s: "On construit la forme", ic: "🏗️" },
-  { id: "saison", l: "En saison", s: "Des matchs chaque semaine", ic: "🏆" },
+  { id: "saison", l: "En saison", get s() { return `En pleine période de ${motsSport().pl}`; }, ic: "🏆" },
   { id: "treve", l: "Trêve", s: "Pause entre deux saisons", ic: "🌴" },
 ];
 const RYTHME_DEFAUT = { club: [], match: null, saison: "saison" };
@@ -215,7 +234,8 @@ async function attachJours(prog, jours) {
 }
 
 // Selecteur de jours (max = nombre de seances par semaine). Le jour du match n'est pas proposé.
-function DayPicker({ jours, max, onChange, accent, rythme }) {
+function DayPicker({ jours, max, onChange, accent, rythme, sport }) {
+  const m = motsSport(sport);
   const toggle = (i) => {
     if (i === rythme?.match) return;
     if (jours.includes(i)) onChange(jours.filter(d => d !== i));
@@ -228,7 +248,7 @@ function DayPicker({ jours, max, onChange, accent, rythme }) {
         {DAY_OPTIONS.map(d => {
           const on = jours.includes(d.i);
           const match = d.i === rythme?.match;
-          const tag = match ? "Match" : rythme?.club?.includes(d.i) ? "Club" : "";
+          const tag = match ? m.Nom : rythme?.club?.includes(d.i) ? "Club" : "";
           return (
             <div key={d.i} onClick={() => toggle(d.i)} style={{ flex: 1, padding: tag ? "8px 0 6px" : "12px 0", textAlign: "center", borderRadius: 12, cursor: match ? "not-allowed" : "pointer", opacity: match ? 0.55 : 1, background: on ? accent : DS.colors.surfaceHigh, color: on ? "#000" : DS.colors.textSec, border: `1px solid ${on ? accent : DS.colors.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, transition: "var(--t-choix)" }}>
               {d.l}
@@ -245,7 +265,8 @@ function DayPicker({ jours, max, onChange, accent, rythme }) {
 }
 
 // Saison, jours de club et jour de match (inscription et profil)
-function RythmeClub({ rythme, onChange, accent }) {
+function RythmeClub({ rythme, onChange, accent, sport }) {
+  const m = motsSport(sport);
   const r = { ...RYTHME_DEFAUT, ...(rythme || {}) };
   const police = { fontFamily: "'Inter',sans-serif" };
   const titre = { ...police, color: DS.colors.textSec, fontSize: 13, fontWeight: 700, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.06em" };
@@ -260,7 +281,7 @@ function RythmeClub({ rythme, onChange, accent }) {
             <button key={sa.id} onClick={() => onChange({ ...r, saison: sa.id })} style={{ ...police, flex: 1, padding: "12px 6px", borderRadius: 16, cursor: "pointer", textAlign: "center", background: on ? DS.colors.primarySoft : DS.colors.surface, border: `1px solid ${on ? accent : DS.colors.border}`, color: DS.colors.textPrimary, transition: "var(--t-choix)" }}>
               <span style={{ display: "block", fontSize: 20 }}>{sa.ic}</span>
               <b style={{ display: "block", fontSize: 13, fontWeight: 800, marginTop: 4 }}>{sa.l}</b>
-              <span style={{ display: "block", fontSize: 11, color: DS.colors.textSec, marginTop: 2, lineHeight: 1.3 }}>{sa.s}</span>
+              <span style={{ display: "block", fontSize: 11, color: DS.colors.textSec, marginTop: 2, lineHeight: 1.3 }}>{sa.id === "saison" ? `En pleine période de ${m.pl}` : sa.s}</span>
             </button>
           );
         })}
@@ -273,14 +294,14 @@ function RythmeClub({ rythme, onChange, accent }) {
         })}
       </div>
       <p style={{ ...police, fontSize: 12, color: DS.colors.textSec, margin: "8px 0 28px" }}>{r.club.length ? `${r.club.length} entraînement${r.club.length > 1 ? "s" : ""} par semaine` : "Pas de club ? Laisse vide."}</p>
-      <p style={titre}>Jour de match habituel</p>
+      <p style={titre}>Jour de {m.nom} habituel</p>
       <div style={{ display: "flex", gap: 6 }}>
         {DAY_OPTIONS.map(d => {
           const on = r.match === d.i;
           return <button key={d.i} onClick={() => onChange({ ...r, match: on ? null : d.i })} style={jour(on)}>{d.l}</button>;
         })}
       </div>
-      <button onClick={() => onChange({ ...r, match: null })} style={{ ...police, width: "100%", marginTop: 10, padding: 10, borderRadius: 12, cursor: "pointer", background: r.match === null ? DS.colors.primarySoft : "none", border: `1px solid ${r.match === null ? accent : DS.colors.border}`, color: DS.colors.textPrimary, fontSize: 13, fontWeight: 700 }}>Pas de match régulier</button>
+      <button onClick={() => onChange({ ...r, match: null })} style={{ ...police, width: "100%", marginTop: 10, padding: 10, borderRadius: 12, cursor: "pointer", background: r.match === null ? DS.colors.primarySoft : "none", border: `1px solid ${r.match === null ? accent : DS.colors.border}`, color: DS.colors.textPrimary, fontSize: 13, fontWeight: 700 }}>Pas de {m.nom} régulier{m.e}</button>
     </div>
   );
 }
@@ -1657,7 +1678,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
             {coachBlocked && (
               <div style={{ margin: "8px 16px", background: "rgba(155,232,79,0.08)", border: "1px solid rgba(155,232,79,0.2)", borderRadius: DS.radius.lg, padding: "12px 14px", textAlign: "center" }}>
                 <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: accentColor, fontWeight: 600, marginBottom: 4 }}>⚡ Limite gratuite atteinte</p>
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, marginBottom: 8 }}>Démarre ton essai de 7 jours pour un coach illimité.</p>
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: DS.colors.textSec, marginBottom: 8 }}>Tu as utilisé tes 2 messages gratuits. Passe à l'offre payante pour parler à Ace autant que tu veux.</p>
                 <button onClick={() => setShowUpsell(true)} style={{ background: accentColor, border: "none", borderRadius: DS.radius.full, padding: "6px 16px", color: "#000", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Débloquer le coach →</button>
               </div>
             )}
@@ -1675,7 +1696,7 @@ function SeanceScreen({ seance, onFinish, onBack, sport, isPro, resumeState, abs
             </div>
             {/* Input */}
             <div style={{ padding: "8px 16px 4px", display: "flex", gap: 8 }}>
-              <input enterKeyHint="send" value={coachInput} onChange={e => !coachBlocked && setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder={coachBlocked ? "Limite atteinte — Passe en Pro" : "Parle à Ace..."} style={{ flex: 1, height: 44, padding: "0 16px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 14, outline: "none", fontFamily: "'Inter',sans-serif" }} />
+              <input enterKeyHint="send" value={coachInput} onChange={e => !coachBlocked && setCoachInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendCoachMessage()} placeholder={coachBlocked ? "Passe à l'offre payante pour continuer" : "Parle à Ace..."} style={{ flex: 1, height: 44, padding: "0 16px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 14, outline: "none", fontFamily: "'Inter',sans-serif" }} />
               <button onClick={sendCoachMessage} disabled={!coachInput.trim() || coachLoading} style={{ width: 44, height: 44, borderRadius: DS.radius.full, background: coachInput.trim() ? accentColor : "rgba(255,255,255,0.08)", border: "none", color: coachInput.trim() ? "#000" : "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 18, flexShrink: 0, fontWeight: 700 }}>→</button>
             </div>
           </div>
@@ -1880,10 +1901,18 @@ function ProgrammeGeneratingScreen({ sport, onDone, programmeActif, programmeLoa
   );
 }
 // ─────────────────────────────────────────────
-function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
+function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue, onTests }) {
   const theme = getSportTheme(sport);
   const cycle = (programme?.data_json?.cycle || 1);
   const [showContinue, setShowContinue] = useState(false);
+  // Bilan réel du cycle : séances faites sur les 4 dernières semaines
+  const [faites, setFaites] = useState(null);
+  useEffect(() => {
+    if (!programme?.user_id) return;
+    supabase.from("seances").select("id", { count: "exact", head: true }).eq("user_id", programme.user_id).eq("statut", "faite")
+      .gte("date_realisee", new Date(Date.now() - 28 * JOUR_MS).toISOString())
+      .then(({ count }) => setFaites(count ?? null));
+  }, [programme?.user_id]);
 
   useEffect(() => {
     if (!cycleLoading) {
@@ -1931,8 +1960,8 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
         <div style={{ display: "flex", gap: 10, marginBottom: 40, justifyContent: "center" }}>
           {[
             { val: cycle, label: "CYCLES", color: accentLisible(theme.accent) },
-            { val: `${(programme?.semaine_courante || 8)}`, label: "SEMAINES", color: accentLisible("#9BE84F") },
-            { val: "↑↑↑", label: "NIVEAU", color: "#FF8C00" },
+            { val: 4, label: "SEMAINES", color: accentLisible("#9BE84F") },
+            { val: faites ?? "…", label: "SÉANCES", color: "#FF8C00" },
           ].map((stat, i) => (
             <div key={i} style={{ background: DS.colors.surfaceHigh, border: `1px solid ${stat.color}20`, borderRadius: DS.radius.lg, padding: "14px 16px", textAlign: "center", position: "relative", overflow: "hidden", minWidth: 80 }}>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: stat.color }} />
@@ -1965,6 +1994,12 @@ function CycleCompleteScreen({ programme, sport, cycleLoading, onContinue }) {
             ATTAQUER LE CYCLE {cycle + 1} →
           </button>
         )}
+        {showContinue && onTests && (
+          <button onClick={onTests} style={{ width: "100%", marginTop: 10, padding: 14, background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+            📊 Faire mes tests de fin de cycle
+          </button>
+        )}
+        {showContinue && onTests && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginTop: 8, lineHeight: 1.45 }}>Refais les tests de ton sport pour voir ce que ces 4 semaines t'ont fait gagner.</p>}
       </div>
     </div>
   );
@@ -2566,6 +2601,7 @@ function OnboardingScreen({ onComplete, onLogin }) {
     niveau: null, frequence: 3, jours: [1, 3, 5], rythme: RYTHME_DEFAUT,
     poids: null, age: null, taille: null,
   });
+  definirSport(data.sport);
   const [loading, setLoading] = useState(false);
   const [genError, setGenError] = useState(false);
   const [animIn, setAnimIn] = useState(true);
@@ -3056,8 +3092,8 @@ function OnboardingScreen({ onComplete, onLogin }) {
         {/* ETAPE - Club : saison, entraînements, match */}
         {contentStep === 7 && (
           <div>
-            <StepTitle title="Ton club" sub="Voltra organise ta semaine autour de tes entraînements et de tes matchs." />
-            <RythmeClub rythme={data.rythme} accent={DS.colors.primary} onChange={(r) => setData(d => ({ ...d, rythme: r }))} />
+            <StepTitle title="Ton club" sub={`Voltra organise ta semaine autour de tes entraînements et de tes ${motsSport(data.sport).pl}.`} />
+            <RythmeClub sport={data.sport} rythme={data.rythme} accent={DS.colors.primary} onChange={(r) => setData(d => ({ ...d, rythme: r }))} />
           </div>
         )}
 
@@ -3086,15 +3122,15 @@ function OnboardingScreen({ onComplete, onLogin }) {
               </div>
               {data.frequence > frequenceConseillee(data.rythme) && (
                 <p style={{ color: DS.colors.textPrimary, fontSize: 13, lineHeight: 1.45, background: "rgba(255,140,0,0.12)", border: "1px solid rgba(255,140,0,0.35)", borderRadius: 14, padding: "10px 12px", marginTop: 12, ...s.body }}>
-                  ⚠️ Avec {data.rythme.club.length} entraînement{data.rythme.club.length > 1 ? "s" : ""}{data.rythme.match != null ? " et un match" : ""}, on te conseille {frequenceConseillee(data.rythme)} séances : au-delà, la fatigue augmente le risque de blessure.{" "}
+                  ⚠️ Avec {data.rythme.club.length} entraînement{data.rythme.club.length > 1 ? "s" : ""}{data.rythme.match != null ? ` et ${motsSport(data.sport).un}` : ""}, on te conseille {frequenceConseillee(data.rythme)} séances : au-delà, la fatigue augmente le risque de blessure.{" "}
                   <span onClick={() => { const n = frequenceConseillee(data.rythme); setData(d => ({ ...d, frequence: n, jours: joursConseilles(n, d.rythme) })); }} style={{ fontWeight: 800, textDecoration: "underline", cursor: "pointer" }}>Passer à {frequenceConseillee(data.rythme)}</span>
                 </p>
               )}
             </div>
             <div style={{ marginTop: 28 }}>
               <p style={{ color: DS.colors.textSec, fontSize: 13, ...s.heading, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Tes jours Voltra</p>
-              <DayPicker jours={data.jours || []} max={data.frequence} accent={DS.colors.primary} rythme={data.rythme} onChange={(j) => setData(d => ({ ...d, jours: j }))} />
-              {(data.rythme?.club?.length > 0 || data.rythme?.match != null) && <p style={{ color: DS.colors.textSec, fontSize: 12, textAlign: "center", marginTop: 6, ...s.body }}>Choisis loin du match si possible : on a déjà placé les meilleurs jours.</p>}
+              <DayPicker sport={data.sport} jours={data.jours || []} max={data.frequence} accent={DS.colors.primary} rythme={data.rythme} onChange={(j) => setData(d => ({ ...d, jours: j }))} />
+              {(data.rythme?.club?.length > 0 || data.rythme?.match != null) && <p style={{ color: DS.colors.textSec, fontSize: 12, textAlign: "center", marginTop: 6, ...s.body }}>Choisis loin {motsSport(data.sport).du} si possible : on a déjà placé les meilleurs jours.</p>}
             </div>
           </div>
         )}
@@ -3220,7 +3256,7 @@ function PricingScreen({ programme, user, cible, invitationErreur, onBack, onLog
 
   const avantages = [
     ["🗓️", "Ton plan complet, semaine par semaine"],
-    ["🏆", "Séances adaptées à tes matchs"],
+    ["🏆", `Séances adaptées à tes ${motsSport().pl}`],
     ["📈", "Test de performance chaque mois"],
     ["🤖", "Coach IA illimité pendant tes séances"],
   ];
@@ -3366,7 +3402,7 @@ function MatchsScreen({ user, onBack }) {
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(10,10,15,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${DS.colors.border}`, padding: `${hautSur(14)} 20px 14px` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={onBack} style={{ background: DS.colors.surfaceUp, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textSec, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
-          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 26, color: DS.colors.textPrimary, letterSpacing: "0.06em" }}>MES MATCHS</h1>
+          <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 26, color: DS.colors.textPrimary, letterSpacing: "0.06em" }}>MES {motsSport().Pl.toUpperCase()}</h1>
           <button onClick={() => setShowForm(v => !v)} style={{ background: DS.colors.primary, border: "none", borderRadius: DS.radius.full, width: 36, height: 36, color: DS.colors.textPrimary, fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: DS.shadow.primary }}>+</button>
         </div>
       </div>
@@ -3375,10 +3411,10 @@ function MatchsScreen({ user, onBack }) {
 
         {showForm && (
           <div style={{ background: DS.colors.surface, border: `1px solid ${DS.colors.borderAccent}`, borderRadius: DS.radius.xl, padding: 20, marginBottom: 24 }}>
-            <p style={{ color: DS.colors.primary, fontSize: 14, ...s.heading, marginBottom: 16 }}>Nouveau match</p>
+            <p style={{ color: DS.colors.primary, fontSize: 14, ...s.heading, marginBottom: 16 }}>{motsSport().f ? "Nouvelle" : "Nouveau"} {motsSport().nom}</p>
             <div style={{ marginBottom: 12 }}>
               <label style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Titre *</label>
-              <input value={form.titre} onChange={e => setForm(f => ({ ...f, titre: e.target.value }))} placeholder="Match de championnat" style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", ...s.body }} />
+              <input value={form.titre} onChange={e => setForm(f => ({ ...f, titre: e.target.value }))} placeholder="Championnat, tournoi…" style={{ width: "100%", height: 44, padding: "0 14px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, outline: "none", ...s.body }} />
             </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ color: DS.colors.textSec, fontSize: 11, ...s.heading, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Date *</label>
@@ -3395,7 +3431,7 @@ function MatchsScreen({ user, onBack }) {
               </div>
             </div>
             <button onClick={saveMatch} disabled={saving || !form.titre || !form.date_match} style={{ width: "100%", height: 48, background: `linear-gradient(135deg, ${DS.colors.primary}, #5A52E0)`, border: "none", borderRadius: DS.radius.md, color: DS.colors.textPrimary, fontSize: 15, cursor: "pointer", ...s.heading, boxShadow: DS.shadow.primary }}>
-              {saving ? "Enregistrement..." : "Ajouter le match"}
+              {saving ? "Enregistrement..." : `Ajouter ${motsSport().le}`}
             </button>
           </div>
         )}
@@ -3407,8 +3443,8 @@ function MatchsScreen({ user, onBack }) {
         ) : matchs.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 20px" }}>
             <p style={{ fontSize: 48, marginBottom: 16 }}>📅</p>
-            <p style={{ color: DS.colors.textPrimary, fontSize: 18, ...s.heading, marginBottom: 8 }}>Aucun match programme</p>
-            <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, lineHeight: 1.6 }}>Ajoute tes matchs pour que Voltra adapte automatiquement tes seances.</p>
+            <p style={{ color: DS.colors.textPrimary, fontSize: 18, ...s.heading, marginBottom: 8 }}>Aucun{motsSport().e} {motsSport().nom} programmé{motsSport().e}</p>
+            <p style={{ color: DS.colors.textSec, fontSize: 14, ...s.body, lineHeight: 1.6 }}>Ajoute tes {motsSport().pl} pour que Voltra adapte automatiquement tes séances.</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -3432,9 +3468,9 @@ function MatchsScreen({ user, onBack }) {
                   <div style={{ background: DS.colors.surfaceHigh, borderRadius: DS.radius.md, padding: "10px 14px" }}>
                     <p style={{ color: DS.colors.textSec, fontSize: 12, ...s.body }}>
                       {days <= 1 ? "⚡ Seance tres legere aujourd'hui - preserve ton energie" :
-                       days <= 3 ? "⚠️ Charges reduites - approche du match" :
-                       days <= 5 ? "💪 Programme normal - fin de cycle avant match" :
-                       "✅ Programme complet - match encore loin"}
+                       days <= 3 ? `⚠️ Charges réduites : approche ${motsSport().du}` :
+                       days <= 5 ? `💪 Programme normal : fin de cycle avant ${motsSport().le}` :
+                       `✅ Programme complet : ${motsSport().nom} encore loin`}
                     </p>
                   </div>
                   <p style={{ color: DS.colors.textDim, fontSize: 11, ...s.mono, marginTop: 8 }}>
@@ -3452,11 +3488,14 @@ function MatchsScreen({ user, onBack }) {
 
 // ─────────────────────────────────────────────
 // DASHBOARD
-function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs, onResumeSession, cible, onEditCible, onMissionSuivante, onAbonnement }) {
+function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, derniereSeance, sport: sportProp, onStartSession, onOpenMatchs, onResumeSession, cible, onEditCible, onMissionSuivante, onAbonnement, ouvrirTests, onTestsOuverts }) {
   const stagger = useStaggerUneFois("dashboard");
   const sport = sportProp || "default";
+  const [depannage, setDepannage] = useState(false);
+  const ouvrirDepannage = () => isPro ? setDepannage(true) : onAbonnement?.();
   const { tests, charger: chargerTests, liste } = useTests(user, sport);
-  const [vueTest, setVueTest] = useState(null);
+  const [vueTest, setVueTest] = useState(ouvrirTests ? "test" : null);
+  useEffect(() => { if (ouvrirTests) onTestsOuverts?.(); }, []);
   // Séance en pause récupérable (< 2h)
   const [pausedSession] = useState(() => {
     try {
@@ -3506,10 +3545,10 @@ function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, der
   const currentCycle = programme?.data_json?.cycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
   const startCycle = programme?.data_json?.startCycle || getNiveauCycle(programme?.data_json?.niveau) || 1;
 
-  if (vueTest === "carrousel") return <CarrouselScreen tests={tests} onBack={() => setVueTest("test")} />;
+  if (vueTest === "carrousel") return <CarrouselScreen tests={tests} liste={liste} onBack={() => setVueTest("test")} />;
   if (vueTest === "test") return <TestScreen user={user} tests={tests} liste={liste} onSaved={async () => { await chargerTests(); }} onBack={() => setVueTest(null)} onCarrousel={() => setVueTest("carrousel")} />;
   if (vueTest === "mission") return <BilanMissionScreen user={user} cible={cible} tests={tests} liste={liste} onBack={() => setVueTest(null)} onSuivante={onMissionSuivante} />;
-  if (vueTest === "ace") return <AceScreen user={user} sport={sport} cible={cible} matchs={matchs} programme={programme} onBack={() => setVueTest(null)} />;
+  if (vueTest === "ace") return <AceScreen user={user} isPro={isPro} onAbonnement={onAbonnement} sport={sport} cible={cible} matchs={matchs} programme={programme} onBack={() => setVueTest(null)} />;
 
   return (
     <div style={{ minHeight: "100dvh", background: DS.colors.bg, paddingBottom: 130 }}>
@@ -3538,7 +3577,7 @@ function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, der
         </div>
       </div>
 
-      <div className={stagger} style={{ padding: "20px 16px 0" }}>
+      <div className={stagger} style={{ padding: "20px 16px 0", display: "flex", flexDirection: "column", gap: 6 }}>
 
         {/* Bannière reprise séance en pause */}
         {pausedSession && (
@@ -3556,7 +3595,17 @@ function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, der
 
         <MissionCard cible={cible} onEdit={onEditCible} onBilan={isPro ? () => setVueTest("mission") : null} />
         <BilanSemaineCard user={user} isPro={isPro} />
-        <SemaineCard jours={progData?.jours || DEFAULT_JOURS[Math.min(programme?.frequence || 3, 5)]} matchs={matchs} cible={cible} onAjouterMatch={onOpenMatchs} rythme={progData?.rythme} seances={seancesSemaine} />
+        <ApresCompetCard rythme={progData?.rythme} cible={cible} sport={sport} />
+        <SemaineCard jours={progData?.jours || DEFAULT_JOURS[Math.min(programme?.frequence || 3, 5)]} matchs={matchs} cible={cible} onAjouterMatch={onOpenMatchs} rythme={progData?.rythme} seances={seancesSemaine} onDepannage={ouvrirDepannage} />
+        {programme && <button onClick={ouvrirDepannage} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", marginBottom: 16, padding: 14, borderRadius: 20, background: DS.colors.surface, boxShadow: DS.shadow.card, border: "none", cursor: "pointer", textAlign: "left", fontFamily: "'Inter',sans-serif", color: DS.colors.textPrimary }}>
+          <span style={{ fontSize: 22 }}>🧰</span>
+          <span style={{ flex: 1 }}>
+            <b style={{ display: "block", fontSize: 14 }}>Séance de dépannage</b>
+            <span style={{ fontSize: 12, color: DS.colors.textSec }}>Club annulé ou peu de matériel</span>
+          </span>
+          <span style={{ color: DS.colors.textSec }}>›</span>
+        </button>}
+        {depannage && <DepannageSheet sport={sport} progData={progData} user={user} onClose={() => setDepannage(false)} onSeance={(se) => { setDepannage(false); onStartSession(se); }} />}
         {!pausedSession && !programmeLoading && <InstallPrompt variante="tableau" ds={DS} />}
 
         {/* Séance du jour — card sombre */}
@@ -3579,7 +3628,7 @@ function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, der
                   <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 24, color: DS.colors.textPrimary, margin: 0, letterSpacing: "-0.01em" }}>
                     {seance.titre || "Séance"}
                   </h2>
-                  {seance.objectif && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, margin: "6px 0 0", lineHeight: 1.4 }}>{seance.objectif}</p>}
+                  {seance.objectif && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec, margin: "6px 0 0", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{seance.objectif}</p>}
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 28, fontWeight: 800, color: DS.colors.textPrimary, margin: 0, lineHeight: 1 }}>{seance.dureeMin || 45}</p>
@@ -3600,7 +3649,7 @@ function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, der
                   <span>🔥 Échauffement</span><span>{seance.echauffement.length} exercices</span>
                 </div>
               )}
-              {exercices.slice(0, 4).map((ex, i) => (
+              {exercices.slice(0, 3).map((ex, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderTop: `1px solid ${DS.colors.border}` }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: theme.accent, opacity: 0.7 }} />
@@ -3609,8 +3658,8 @@ function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, der
                   <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec }}>{dosage(ex)}</span>
                 </div>
               ))}
-              {exercices.length > 4 && (
-                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginTop: 8, marginBottom: 0 }}>+{exercices.length - 4} exercices</p>
+              {exercices.length > 3 && (
+                <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, marginTop: 8, marginBottom: 0 }}>+{exercices.length - 3} exercices</p>
               )}
               {seance.retourCalme?.length > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", marginTop: 4, borderTop: `1px solid ${DS.colors.border}`, fontFamily: "'Inter',sans-serif", fontSize: 13, color: DS.colors.textSec }}>
@@ -3633,7 +3682,7 @@ function DashboardScreen({ user, isPro, programme, programmeLoading, matchs, der
           <AceAvatar size={32} />
           <span style={{ flex: 1, minWidth: 0 }}>
             <b style={{ display: "block", fontSize: 14 }}>Parle à Ace</b>
-            <span style={{ fontSize: 12, color: DS.colors.textSec }}>Une question sur ton entraînement ? Il connaît ton objectif.</span>
+            <span style={{ fontSize: 12, color: DS.colors.textSec }}>Pose-lui une question</span>
           </span>
           <span style={{ color: DS.colors.textSec }}>›</span>
         </button>
@@ -4210,7 +4259,7 @@ function HistoriqueScreen({ user, sport }) {
 
   if (vueTest === "partage") { const l = lireSeries(series); return <PartageProgression niveaux={l.niveaux} tests={tests} liste={liste} plus={l.plus} onBack={() => setVueTest(null)} />; }
   if (vueTest === "test") return <TestScreen user={user} tests={tests} liste={liste} onSaved={async () => { await chargerTests(); }} onBack={() => setVueTest(null)} onCarrousel={() => setVueTest("carrousel")} />;
-  if (vueTest === "carrousel") return <CarrouselScreen tests={tests} onBack={() => setVueTest("test")} />;
+  if (vueTest === "carrousel") return <CarrouselScreen tests={tests} liste={liste} onBack={() => setVueTest("test")} />;
 
   return (
     <div className={stagger} style={{ minHeight: "100dvh", background: DS.colors.bg, position: "relative", isolation: "isolate", overflowX: "clip", paddingBottom: 130 }}>
@@ -4408,7 +4457,7 @@ const AVANTAGES_PRO = [
   ["📈", "Des charges qui suivent tes progrès", "Tu notes ton ressenti et ton poids réel : la séance suivante s'ajuste toute seule."],
   ["🔋", "Une séance adaptée à ta forme du jour", "Fatigue, gêne ou peu de temps : tu le dis en 5 secondes et la séance s'ajuste."],
   ["🤖", "Ace, ton coach quand tu veux", "En séance ou depuis ton tableau de bord, il connaît ton objectif et te répond."],
-  ["🏆", "Des séances adaptées à tes matchs", "Ta charge s'allège avant un match pour que tu arrives frais."],
+  ["🏆", "Des séances adaptées à tes compétitions", "Ta charge s'allège avant une compétition pour que tu arrives frais."],
   ["📊", "Un bilan chaque semaine", "Tes séances, tes progrès et le conseil d'Ace pour la semaine qui suit."],
   ["🏁", "Un bilan à chaque objectif", "Ce que tu as gagné pendant ta mission, puis la suivante."],
   ["⏰", "Des rappels pour garder le rythme", "Un e-mail le matin de tes séances et une relance si tu décroches, si tu le souhaites."],
@@ -4892,7 +4941,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
               </>
             )}
             <div style={{ marginBottom: 28 }}>
-              <RythmeClub rythme={editData.rythme} accent={theme.accent} onChange={(r) => setEditData(d => ({ ...d, rythme: r, jours: joursConseilles(d.frequence, r) }))} />
+              <RythmeClub sport={editData.sport} rythme={editData.rythme} accent={theme.accent} onChange={(r) => setEditData(d => ({ ...d, rythme: r, jours: joursConseilles(d.frequence, r) }))} />
             </div>
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>Séances Voltra / semaine{editData.frequence > frequenceConseillee(editData.rythme) ? ` · ${frequenceConseillee(editData.rythme)} conseillées` : ""}</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
@@ -4902,7 +4951,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             </div>
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>Mes jours d'entraînement</p>
             <div style={{ marginBottom: 28 }}>
-              <DayPicker jours={editData.jours || []} max={editData.frequence} accent={theme.accent} rythme={editData.rythme} onChange={(j) => setEditData(d => ({ ...d, jours: j }))} />
+              <DayPicker sport={editData.sport} jours={editData.jours || []} max={editData.frequence} accent={theme.accent} rythme={editData.rythme} onChange={(j) => setEditData(d => ({ ...d, jours: j }))} />
             </div>
             {regenere && (
               <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,140,0,0.2)", borderRadius: DS.radius.md, padding: "10px 14px", marginBottom: 16 }}>
@@ -5155,7 +5204,7 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
 // ─────────────────────────────────────────────
 const JOUR_MS = 86400000;
 const CIBLES = {
-  match: { ic: "🏆", t: "Un match important", s: "Championnat, tournoi, finale", fin: "ton match" },
+  match: { ic: "🏆", get t() { return `${motsSport().Un} important${motsSport().e}`; }, s: "Championnat, tournoi, finale", get fin() { return motsSport().ton; } },
   test: { ic: "🎯", t: "Une détection ou un test", s: "Sélection, centre de formation", fin: "ta détection" },
   saison: { ic: "📅", t: "La reprise de saison", s: "Arriver prêt dès le premier jour", fin: "ta reprise" },
   perso: { ic: "🚀", t: "Un cap personnel", s: "Sauter plus haut, courir plus vite", fin: "ton objectif" },
@@ -5207,10 +5256,10 @@ function datesDeMatch(matchs, cible) {
 function adaptationDuJour(matchs, cible, decalage = 0) {
   const ecarts = datesDeMatch(matchs, cible).map(d => joursAvant(d) - decalage);
   const avant = ecarts.filter(e => e >= 0).sort((a, b) => a - b)[0];
-  if (avant === 0) return { charge: 0.5, sets: 2, label: "Activation", ic: "⚡", note: "Jour de match : activation légère seulement, garde tes forces." };
-  if (avant === 1) return { charge: 0.5, sets: 2, label: "Repos", ic: "😴", note: "Match demain : idéalement repos. Si tu t'entraînes, séance très légère." };
-  if (ecarts.includes(-1)) return { charge: 0.6, setsMoins: 1, label: "Récup", ic: "🧘", note: "Lendemain de match : séance allégée pour bien récupérer." };
-  if (avant === 2 || avant === 3) return { charge: 0.7, setsMoins: 1, label: "−30 %", ic: "💪", note: `Match dans ${avant} jours : charges réduites de 30 % pour arriver frais.` };
+  if (avant === 0) return { charge: 0.5, sets: 2, label: "Activation", ic: "⚡", note: `Jour de ${motsSport().nom} : activation légère seulement, garde tes forces.` };
+  if (avant === 1) return { charge: 0.5, sets: 2, label: "Repos", ic: "😴", note: `${motsSport().Nom} demain : idéalement repos. Si tu t'entraînes, séance très légère.` };
+  if (ecarts.includes(-1)) return { charge: 0.6, setsMoins: 1, label: "Récup", ic: "🧘", note: `Lendemain ${motsSport().du} : séance allégée pour bien récupérer.` };
+  if (avant === 2 || avant === 3) return { charge: 0.7, setsMoins: 1, label: "−30 %", ic: "💪", note: `${motsSport().Nom} dans ${avant} jours : charges réduites de 30 % pour arriver frais.` };
   if (cible?.date && !cible.open && joursAvant(cible.date) - decalage >= 0 && joursAvant(cible.date) - decalage <= 7) return { charge: 0.8, setsMoins: 1, label: "Affûtage", ic: "💪", note: "Dernière ligne droite : volume réduit pour arriver frais." };
   return null;
 }
@@ -5519,7 +5568,7 @@ function MissionCard({ cible, onEdit, onBilan }) {
     <button onClick={onEdit} className="v-mission" style={{ width: "100%", textAlign: "left", border: "none", cursor: "pointer" }}>
       <span className="v-mission-lab">🎯 TON OBJECTIF</span>
       <span style={{ display: "block", fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", marginTop: 8, color: "#fff" }}>Fixe ta date</span>
-      <span style={{ display: "block", fontSize: 14, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>Ton plan se construit à partir de ton prochain match ou objectif →</span>
+      <span style={{ display: "block", fontSize: 14, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>Ton plan se construit à partir de {motsSport().prochain} ou de ton objectif →</span>
     </button>
   );
   const j = joursAvant(cible.date);
@@ -5555,8 +5604,225 @@ function MissionCard({ cible, onEdit, onBilan }) {
   );
 }
 
+// ── Après la compétition et semaine différente : réponses gardées sur ce téléphone ──
+const isoDe = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const lireLocal = (cle) => { try { return JSON.parse(localStorage.getItem(cle) || "null"); } catch { return null; } };
+const ecrireLocal = (cle, v) => { try { localStorage.setItem(cle, JSON.stringify(v)); } catch {} };
+const cleSemaine = (d = new Date()) => { const l = new Date(d); l.setHours(12, 0, 0, 0); l.setDate(l.getDate() - ((l.getDay() + 6) % 7)); return `voltra_semaine_${isoDe(l)}`; };
+const cleApresCompet = (iso) => `voltra_apres_${iso}`;
+
+// La dernière compétition date d'hier ou d'avant-hier (jour habituel ou objectif daté)
+function derniereCompet(rythme, cible) {
+  for (let i = 1; i <= 2; i++) {
+    const d = new Date(Date.now() - i * JOUR_MS);
+    const iso = isoDe(d);
+    const habituel = rythme?.match === d.getDay() && !lireLocal(cleSemaine(d))?.sansCompet;
+    if (habituel || (cible?.type === "match" && cible.date === iso)) return { iso, jours: i };
+  }
+  return null;
+}
+
+function choixApresCompet(m) {
+  if (m.nom === "combat") return [{ id: "plein", ic: "🔥", t: "Combat complet" }, { id: "peu", ic: "⏱️", t: "Combat court" }, { id: "rien", ic: "🪑", t: "Pas combattu" }];
+  if (m.nom === "course") return [{ id: "plein", ic: "🔥", t: "Oui, à fond" }, { id: "peu", ic: "⏱️", t: "Course courte ou abandon" }, { id: "rien", ic: "🪑", t: "Pas couru" }];
+  return [{ id: "plein", ic: "🔥", t: "Presque tout le match" }, { id: "peu", ic: "⏱️", t: "Un peu" }, { id: "rien", ic: "🪑", t: "Je n'ai pas joué" }];
+}
+
+// Le remplaçant qui n'a pas joué fait l'effort du match à la fin de sa séance
+function blocCompensation(sport) {
+  const base = { id: "compensation", materiel: "cardio", muscles: "", chargeKg: 0 };
+  if (sport === "combat") return { ...base, nom: "Rounds de compensation (shadow ou sac)", sets: 4, travailSec: 180, reposSec: 60, reps: "3 min", intensite: "Rythme de combat", conseil: "Tu n'as pas combattu : ces rounds remplacent l'effort du combat." };
+  if (sport === "natation") return { ...base, nom: "Fractionné de compensation 30/30 (corde ou rameur)", sets: 10, travailSec: 30, reposSec: 30, reps: "30 s", intensite: "Rythme de course", conseil: "Tu n'as pas nagé : ce bloc garde ton cardio." };
+  if (sport === "sprint") return { ...base, nom: "Accélérations de compensation", sets: 6, travailSec: 10, reposSec: 60, reps: "10 s", intensite: "Vite, presque à fond", conseil: "Tu n'as pas couru : ces efforts courts gardent ta vitesse." };
+  return { ...base, nom: "Fractionné de compensation 15/15", sets: 16, travailSec: 15, reposSec: 15, reps: "15 s", intensite: "Vite, comme pendant un match", conseil: "Tu n'as pas joué : ce bloc remplace l'effort du match." };
+}
+
+// Ce que la réponse change à la séance : allégée après un gros effort, bloc en plus sans temps de jeu
+function adaptationApresCompet(rythme, cible) {
+  const der = derniereCompet(rythme, cible);
+  const rep = der && lireLocal(cleApresCompet(der.iso));
+  const m = motsSport();
+  if (rep === "plein") return { iso: der.iso, charge: 0.75, setsMoins: 1, allegee: true, note: `${m.Nom} à fond ${der.jours === 1 ? "hier" : "avant-hier"} : séance allégée pour bien récupérer.` };
+  if (rep === "rien") return { iso: der.iso, compensation: true, note: `Pas de temps de ${m.nom === "match" ? "jeu" : m.nom} pour toi : séance complète, avec un bloc de compensation à la fin.` };
+  return null;
+}
+
+const SEMAINE_CHARGEE = { charge: 0.85, setsMoins: 1, allegee: true, note: "Semaine chargée : charges -15 % et 1 série de moins. Tes prochaines séances ne baissent pas." };
+const plusLeger = (a, b) => !a ? b : !b ? a : b.charge < a.charge ? b : a;
+
+function ApresCompetCard({ rythme, cible, sport }) {
+  const der = derniereCompet(rythme, cible);
+  const [rep, setRep] = useState(() => der && lireLocal(cleApresCompet(der.iso)));
+  const [juste, setJuste] = useState(false);
+  if (!der || (rep && !juste)) return null;
+  const m = motsSport(sport);
+  const quand = der.jours === 1 ? "d'hier" : "d'avant-hier";
+  const question = m.nom === "combat" ? `Ton combat ${quand} : tu as combattu ?` : m.nom === "course" ? `Ta course ${quand} : tu as couru ?` : `Ton match ${quand} : tu as joué combien ?`;
+  const choisir = (id) => { ecrireLocal(cleApresCompet(der.iso), id); setRep(id); setJuste(true); };
+  const reponses = { plein: "Ta prochaine séance sera allégée pour bien récupérer.", peu: "Ta prochaine séance reste normale.", rien: "Ta prochaine séance sera complète, avec un bloc de compensation à la fin." };
+  return (
+    <div style={{ marginBottom: 16, padding: 16, borderRadius: 20, background: DS.colors.surface, boxShadow: DS.shadow.card, fontFamily: "'Inter',sans-serif" }}>
+      <p style={{ fontSize: 15, fontWeight: 800, color: DS.colors.textPrimary, margin: 0 }}>🏆 {question}</p>
+      {rep ? (
+        <p style={{ fontSize: 13, color: DS.colors.textSec, margin: "8px 0 0", lineHeight: 1.45 }}>✓ Noté. {reponses[rep]}</p>
+      ) : (
+        <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+          {choixApresCompet(m).map(c => (
+            <button key={c.id} onClick={() => choisir(c.id)} style={{ flex: 1, padding: "10px 4px", borderRadius: 14, border: `1px solid ${DS.colors.border}`, background: DS.colors.surfaceHigh, color: DS.colors.textPrimary, cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 700, lineHeight: 1.25 }}>
+              <span style={{ display: "block", fontSize: 18, marginBottom: 4 }}>{c.ic}</span>{c.t}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Séance de dépannage : générée tout de suite avec le matériel dispo maintenant ──
+const MATERIEL_DEPANNAGE = [
+  { id: "rien", l: "Rien", ic: "🙌" },
+  { id: "elastique", l: "Élastique", ic: "🪢" },
+  { id: "halteres", l: "Haltères", ic: "🏋️" },
+  { id: "kettlebell", l: "Kettlebell", ic: "🔔" },
+  { id: "corde a sauter", l: "Corde à sauter", ic: "➰" },
+  { id: "barre de traction", l: "Barre de traction", ic: "🪜" },
+  { id: "banc ou chaise", l: "Banc ou chaise", ic: "🪑" },
+  { id: "espace pour courir", l: "De la place pour courir", ic: "🏃" },
+  { id: "salle", l: "Salle complète", ic: "🏟️" },
+];
+const MATERIEL_DEPANNAGE_SPORT = {
+  combat: [{ id: "sac de frappe", l: "Sac de frappe", ic: "🥊" }],
+  football: [{ id: "ballon", l: "Ballon", ic: "⚽" }, { id: "plots", l: "Plots", ic: "🔺" }],
+  basketball: [{ id: "ballon et panier", l: "Ballon et panier", ic: "🏀" }],
+  rugby: [{ id: "ballon", l: "Ballon", ic: "🏉" }],
+  tennis: [{ id: "raquette et balles", l: "Raquette et balles", ic: "🎾" }],
+  sprint: [{ id: "piste", l: "Piste", ic: "🏟️" }],
+};
+
+async function genererDepannage(corps) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Pas de session");
+  const res = await appelerFonction("generate-program", session.access_token, { mode: "depannage", ...corps });
+  const data = await res.json();
+  if (!res.ok || !data.seance) throw new Error(data.error || "Erreur");
+  return data.seance;
+}
+
+// Écran plein pendant que l'IA écrit la séance de dépannage (≈ 20 s)
+function DepannageChargement({ sport, materiel, duree, type }) {
+  const theme = getSportTheme(sport);
+  const ac = accentLisible(theme.accent);
+  const [t, setT] = useState(0);
+  useEffect(() => { const d = Date.now(); const i = setInterval(() => setT((Date.now() - d) / 1000), 200); return () => clearInterval(i); }, []);
+  // Avance vite au début puis ralentit : ne touche jamais 100 % avant la vraie réponse
+  const pct = Math.round(96 * (1 - Math.exp(-t / 8)));
+  const nomType = type && TYPES_SEANCE[type] ? TYPES_SEANCE[type].l.toLowerCase() : null;
+  const etapes = [
+    { ic: "🧰", txt: materiel.length ? `Matériel pris en compte : ${materiel.map(m => m.l.toLowerCase()).join(", ")}` : "Séance sans matériel", a: 0 },
+    { ic: "🎯", txt: nomType ? `Séance ${nomType} de ${duree} min` : `Ace choisit le meilleur type de séance pour ${duree} min`, a: 2.5 },
+    { ic: "🔥", txt: "Échauffement spécifique à ton sport", a: 6 },
+    { ic: "💪", txt: "Choix des exercices et des charges", a: 10 },
+    { ic: "🧘", txt: "Retour au calme", a: 15 },
+  ];
+  const actif = etapes.reduce((n, e, i) => (t >= e.a ? i : n), 0);
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: DS.colors.bg, isolation: "isolate", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px", fontFamily: "'Inter',sans-serif", animation: "vScaleIn 260ms var(--ease-out)" }}>
+      <Bloom echelle={0.8} />
+      <div style={{ position: "absolute", top: -20, right: -30, fontSize: 200, opacity: 0.05, pointerEvents: "none", lineHeight: 1, transform: "rotate(-15deg)" }}>{SPORT_EMOJIS[sport] || "⚡"}</div>
+      <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 390 }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ position: "relative", width: 84, height: 84, margin: "0 auto 18px" }}>
+            <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `3px solid ${theme.accent}30`, borderTopColor: theme.accent, animation: "spin 1.1s linear infinite" }} />
+            <div style={{ position: "absolute", inset: 10, borderRadius: "50%", background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, animation: "vGlow 1.6s ease-out infinite" }}>🧰</div>
+          </div>
+          <p style={{ fontSize: 11, fontWeight: 700, color: ac, letterSpacing: "0.08em", margin: "0 0 8px" }}>SÉANCE DE DÉPANNAGE</p>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: DS.colors.textPrimary, lineHeight: 1.1, margin: 0 }}>Ace prépare<br />ta séance</h1>
+          <p style={{ fontSize: 13, color: DS.colors.textSec, margin: "10px 0 0" }}>Environ 20 secondes, reste sur cet écran.</p>
+        </div>
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: DS.colors.textSec, margin: 0 }}>Création en cours</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: ac, margin: 0, fontVariantNumeric: "tabular-nums" }}>{pct} %</p>
+          </div>
+          <div style={{ background: DS.colors.surface, borderRadius: 9999, height: 6, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: "100%", transform: `translateX(${pct - 100}%)`, background: theme.accent, borderRadius: 9999, transition: "transform 400ms linear", boxShadow: `0 0 12px ${theme.accent}80` }} />
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {etapes.map((e, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderRadius: 14, background: i === actif ? `color-mix(in srgb, ${theme.accent} 14%, ${DS.colors.surface})` : DS.colors.surface, border: `1px solid ${i <= actif ? theme.accent + "40" : DS.colors.border}`, opacity: i > actif ? 0.4 : 1, transition: "background 300ms ease, opacity 300ms ease, border-color 300ms ease" }}>
+              <span style={{ fontSize: 16, filter: i > actif ? "grayscale(1)" : "none" }}>{e.ic}</span>
+              <p style={{ fontSize: 13, color: DS.colors.textPrimary, fontWeight: i === actif ? 700 : 500, flex: 1, margin: 0, lineHeight: 1.35 }}>{e.txt}</p>
+              {i < actif && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, animation: "pop 0.35s var(--ease-spring)" }}><circle cx="12" cy="12" r="11" fill={theme.accent} /><path d="M7 12.5L10.5 16L17 8" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+              {i === actif && <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${theme.accent}`, borderTopColor: "transparent", animation: "spin 0.6s linear infinite", flexShrink: 0 }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DepannageSheet({ sport, progData, user, onClose, onSeance }) {
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const [materiel, setMateriel] = useState(["rien"]);
+  const [duree, setDuree] = useState(30);
+  const [type, setType] = useState("auto");
+  const [etat, setEtat] = useState("");
+  const options = [...MATERIEL_DEPANNAGE, ...(MATERIEL_DEPANNAGE_SPORT[sport] || [])];
+  const basculer = (id) => setMateriel(l => id === "rien" ? ["rien"] : l.includes(id) ? (l.filter(x => x !== id).length ? l.filter(x => x !== id) : ["rien"]) : [...l.filter(x => x !== "rien"), id]);
+  const puce = (on) => ({ padding: "9px 12px", borderRadius: 999, border: `1px solid ${on ? ac : DS.colors.border}`, background: on ? DS.colors.primarySoft : DS.colors.surface, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, cursor: "pointer" });
+  const titre = { fontSize: 13, fontWeight: 700, color: DS.colors.textSec, textTransform: "uppercase", letterSpacing: "0.06em", margin: "20px 0 10px" };
+  const generer = async () => {
+    setEtat("charge");
+    try {
+      const meta = user?.user_metadata?.onboarding || {};
+      const seance = await genererDepannage({
+        sport, poste: progData?.poste, niveau: progData?.niveau || meta.niveau, objectif: progData?.objectif || meta.objectif, douleurs: progData?.douleurs,
+        poids: meta.poids, age: meta.age, taille: meta.taille,
+        materiel: materiel.filter(x => x !== "rien"), duree, type: type === "auto" ? null : type,
+      });
+      onSeance(seance);
+    } catch (e) {
+      setEtat(String(e?.message || "").includes("abonnés") ? "pro" : "erreur");
+    }
+  };
+  if (etat === "charge") return <DepannageChargement sport={sport} materiel={options.filter(o => o.id !== "rien" && materiel.includes(o.id))} duree={duree} type={type === "auto" ? null : type} />;
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, maxHeight: "92dvh", overflowY: "auto", background: DS.colors.bg, borderRadius: "24px 24px 0 0", padding: "22px 18px calc(18px + env(safe-area-inset-bottom, 0px))", fontFamily: "'Inter',sans-serif", color: DS.colors.textPrimary }}>
+        <p style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>🧰 Séance de dépannage</p>
+        <p style={{ fontSize: 14, color: DS.colors.textSec, margin: "6px 0 0", lineHeight: 1.45 }}>Une séance de ton sport, tout de suite, avec ce que tu as sous la main.</p>
+        <p style={titre}>Ton matériel maintenant</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {options.map(o => <button key={o.id} onClick={() => basculer(o.id)} style={puce(materiel.includes(o.id))}>{o.ic} {o.l}</button>)}
+        </div>
+        <p style={titre}>Ton temps</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          {[20, 30, 45].map(d => <button key={d} onClick={() => setDuree(d)} style={{ ...puce(duree === d), flex: 1 }}>{d} min</button>)}
+        </div>
+        <p style={titre}>Type de séance</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <button onClick={() => setType("auto")} style={puce(type === "auto")}>✨ Au choix d'Ace</button>
+          {Object.entries(TYPES_SEANCE).map(([id, t]) => <button key={id} onClick={() => setType(id)} style={puce(type === id)}>{t.ic} {t.l}</button>)}
+        </div>
+        {etat === "erreur" && <p style={{ fontSize: 13, color: DS.colors.warning, marginTop: 14 }}>La séance n'a pas pu être créée. Réessaie.</p>}
+        {etat === "pro" && <p style={{ fontSize: 13, color: DS.colors.textSec, marginTop: 14 }}>La séance de dépannage est réservée à l'offre payante.</p>}
+        <PrimaryButton onClick={generer} disabled={etat === "charge"} style={{ height: 56, marginTop: 22 }}>Créer ma séance →</PrimaryButton>
+        <button onClick={onClose} disabled={etat === "charge"} style={{ width: "100%", marginTop: 8, padding: 12, background: "none", border: "none", color: DS.colors.textSec, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>Annuler</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Semaine réelle, réorganisée autour des matchs ──
-function SemaineCard({ jours, matchs, cible, onAjouterMatch, rythme, seances }) {
+function SemaineCard({ jours, matchs, cible, onAjouterMatch, rythme: rythmeProgramme, seances, onDepannage }) {
+  // « Cette semaine est différente » : pas de compétition, pas de club, ou semaine chargée
+  const [semaine, setSemaine] = useState(() => lireLocal(cleSemaine()) || {});
+  const [modifier, setModifier] = useState(false);
+  const basculer = (k) => { const n = { ...semaine, [k]: !semaine[k] }; setSemaine(n); ecrireLocal(cleSemaine(), n); };
+  const rythme = { ...rythmeProgramme, match: semaine.sansCompet ? null : rythmeProgramme?.match, club: semaine.clubAnnule ? [] : rythmeProgramme?.club };
+  const m = motsSport();
   const lundi = new Date(); lundi.setHours(12, 0, 0, 0); lundi.setDate(lundi.getDate() - ((lundi.getDay() + 6) % 7));
   const matchsDates = datesDeMatch(matchs, cible);
   const auj = (new Date().getDay() + 6) % 7;
@@ -5567,7 +5833,7 @@ function SemaineCard({ jours, matchs, cible, onAjouterMatch, rythme, seances }) 
     const d = new Date(lundi.getTime() + i * JOUR_MS);
     const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const club = rythme?.club?.includes(d.getDay());
-    if (matchsDates.includes(iso) || rythme?.match === d.getDay()) return { l, ic: "🏆", t: "MATCH", match: true };
+    if (matchsDates.includes(iso) || rythme?.match === d.getDay()) return { l, ic: "🏆", t: motsSport().Nom.toUpperCase(), match: true };
     const prevu = (jours || []).includes(d.getDay());
     const ad = adaptationDuJour(matchs, cible, i - auj);
     if (ad?.label === "Récup") return { l, ic: ad.ic, t: ad.label, club };
@@ -5577,14 +5843,12 @@ function SemaineCard({ jours, matchs, cible, onAjouterMatch, rythme, seances }) 
     if (club) return { l, ic: "🏟️", t: "Club" };
     return { l, ic: "·", t: "" };
   });
-  const typesVus = Object.values(TYPES_SEANCE).filter(t => cases.some(c => c.c === t.c));
-  const legende = [...typesVus.map(t => `${t.ic} ${t.l}`), ...(rythme?.club?.length ? ["🏟️ Club"] : []), ...(cases.some(c => c.match) ? ["🏆 Match"] : [])];
   const note = adaptationDuJour(matchs, cible, 0)?.note;
   return (
     <div style={{ marginBottom: 16, fontFamily: "'Inter',sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <p style={{ fontSize: 15, fontWeight: 800, color: DS.colors.textPrimary }}>Ta semaine</p>
-        <button onClick={onAjouterMatch} style={{ background: "none", border: "none", color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>+ Ajouter un match</button>
+        <button onClick={onAjouterMatch} style={{ background: "none", border: "none", color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>+ Ajouter {motsSport().un}</button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 5 }}>
         {cases.map((c, i) => (
@@ -5596,8 +5860,24 @@ function SemaineCard({ jours, matchs, cible, onAjouterMatch, rythme, seances }) 
           </div>
         ))}
       </div>
-      {legende.length > 1 && <p style={{ fontSize: 11, color: DS.colors.textSec, marginTop: 8, display: "flex", flexWrap: "wrap", gap: "4px 10px" }}>{legende.map(t => <span key={t}>{t}</span>)}</p>}
-      <p style={{ fontSize: 13, color: DS.colors.textSec, marginTop: 10, lineHeight: 1.45 }}>{note || (rythme?.match != null ? `Match chaque ${DAY_NAMES[rythme.match]} : tes séances sont placées autour. Un match en plus ? Ajoute-le.` : "Ajoute un match : tes séances s'adaptent toutes seules autour de la date.")}</p>
+      {semaine.chargee && <p style={{ fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, marginTop: 10 }}>🔋 Semaine chargée : séances allégées</p>}
+      {note && <p style={{ fontSize: 13, color: DS.colors.textSec, marginTop: 10, lineHeight: 1.45 }}>{note}</p>}
+      <button onClick={() => setModifier(o => !o)} style={{ marginTop: 12, padding: 0, background: "none", border: "none", color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>{modifier ? "Fermer" : "Cette semaine est différente ?"}</button>
+      {modifier && (
+        <div style={{ marginTop: 10, padding: 14, borderRadius: 18, background: DS.colors.surface, boxShadow: DS.shadow.card }}>
+          {[
+            rythmeProgramme?.match != null && ["sansCompet", `Pas de ${m.nom} cette semaine`],
+            rythmeProgramme?.club?.length > 0 && ["clubAnnule", "Pas d'entraînement au club"],
+            ["chargee", "Semaine chargée"],
+          ].filter(Boolean).map(([k, l]) => (
+            <button key={k} onClick={() => basculer(k)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 0", background: "none", border: "none", cursor: "pointer", textAlign: "left", color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 600 }}>
+              <span style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: semaine[k] ? (DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark) : DS.colors.surfaceHigh, color: "#000", fontSize: 13, fontWeight: 900 }}>{semaine[k] ? "✓" : ""}</span>{l}
+            </button>
+          ))}
+          <p style={{ fontSize: 12, color: DS.colors.textSec, margin: "6px 0 0", lineHeight: 1.45 }}>Valable jusqu'à dimanche.</p>
+          {(semaine.sansCompet || semaine.clubAnnule) && onDepannage && <button onClick={onDepannage} style={{ marginTop: 10, padding: "10px 16px", borderRadius: 999, border: "none", background: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark, color: "#000", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>🧰 Séance de dépannage</button>}
+        </div>
+      )}
     </div>
   );
 }
@@ -5620,18 +5900,35 @@ const TESTS_CATALOGUE = {
   nage_400m: { t: "400 m nage libre", d: "Chronométré, allure régulière", u: "s", pas: 1, depart: 420, mieux: -1, dec: 0, chrono: true },
   gainage_s: { t: "Gainage planche", d: "Sur les avant-bras, le plus longtemps possible", u: "s", pas: 5, depart: 60, mieux: 1, dec: 0, chrono: true },
   burpees: { t: "Burpees en 1 minute", d: "Poitrine au sol, saut bras en l'air", u: "", pas: 1, depart: 15, mieux: 1, dec: 0 },
+  corde_temps: { t: "Corde à sauter non-stop", d: "Rythme de boxeur, chrono arrêté à la première faute", u: "s", pas: 5, depart: 120, mieux: 1, dec: 0, chrono: true },
+  sac_coups_30s: { t: "Coups au sac en 30 s", d: "Jab-direct à fond, compte avec une vidéo", u: "", pas: 1, depart: 60, mieux: 1, dec: 0 },
+  sac_rounds: { t: "Rounds de sac à fond", d: "Rounds de 3 min, 1 min de repos : combien tu en tiens à bonne intensité", u: "", pas: 1, depart: 3, mieux: 1, dec: 0 },
+  sprawls_1min: { t: "Sprawls en 1 minute", d: "Hanches au sol, retour en garde", u: "", pas: 1, depart: 20, mieux: 1, dec: 0 },
+  uchikomi_30s: { t: "Uchi-komi en 30 s", d: "À l'élastique ou avec un partenaire, entrée complète", u: "", pas: 1, depart: 20, mieux: 1, dec: 0 },
+  suspension_serviette: { t: "Suspension à la serviette", d: "Deux serviettes sur la barre, bras tendus", u: "s", pas: 5, depart: 30, mieux: 1, dec: 0, chrono: true },
+  bronco: { t: "Bronco test", d: "5 allers-retours 20, 40 et 60 m d'affilée (1 200 m)", u: "s", pas: 1, depart: 330, mieux: -1, dec: 0, chrono: true },
 };
 const TESTS_PAR_SPORT = {
   basketball: ["detente_cm", "sprint_20m", "t_test"],
   football: ["sprint_20m", "vma_kmh", "detente_cm"],
   tennis: ["navette_5105", "detente_cm", "vma_kmh"],
-  rugby: ["sprint_20m", "vma_kmh", "pompes"],
+  rugby: ["sprint_20m", "bronco", "pompes"],
   natation: ["nage_50m", "nage_400m", "gainage_s"],
   sprint: ["sprint_30m", "saut_longueur_cm", "detente_cm"],
   combat: ["burpees", "pompes", "gainage_s"],
 };
 const COLONNES_TEST = ["detente_cm", "sprint_20m", "pompes"];
-const testsDuSport = (sport) => (TESTS_PAR_SPORT[sport] || ["detente_cm", "sprint_20m", "pompes"]).map(k => ({ k, ...TESTS_CATALOGUE[k] }));
+// Sports de combat : chaque discipline a ses propres tests
+const TESTS_PAR_DISCIPLINE = {
+  boxe_anglaise: ["corde_temps", "sac_coups_30s", "sac_rounds"],
+  boxe_francaise: ["corde_temps", "sac_coups_30s", "sac_rounds"],
+  boxe_thai: ["corde_temps", "sac_rounds", "sac_coups_30s"],
+  mma: ["sac_rounds", "sprawls_1min", "corde_temps"],
+  judo: ["uchikomi_30s", "suspension_serviette", "burpees"],
+  jiu_jitsu: ["suspension_serviette", "sprawls_1min", "gainage_s"],
+};
+let POSTE_COURANT = null;
+const testsDuSport = (sport, poste = POSTE_COURANT) => ((sport === "combat" && TESTS_PAR_DISCIPLINE[poste]) || TESTS_PAR_SPORT[sport] || ["detente_cm", "sprint_20m", "pompes"]).map(k => ({ k, ...TESTS_CATALOGUE[k] }));
 const virgule = (n, dec = 0) => Number(n).toFixed(dec).replace(".", ",");
 const INTERVALLE_TEST = 28;
 
@@ -5779,18 +6076,21 @@ async function dessinerSlide({ surTitre, valeur, ligne, photo, fond, resultat, l
   return new Promise(ok => c.toBlob(ok, "image/png"));
 }
 
-function CarrouselScreen({ tests, onBack }) {
+function CarrouselScreen({ tests, liste, onBack }) {
   const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
   const [photos, setPhotos] = useState([null, null]);
   const [message, setMessage] = useState("");
-  const a = tests[0], b = tests[tests.length - 1];
-  const sem = Math.max(1, Math.round((new Date(b.date_test) - new Date(a.date_test)) / (7 * JOUR_MS)));
-  const gain = Math.round(Number(b.detente_cm) - Number(a.detente_cm));
-  const gainTxt = `${gain >= 0 ? "+" : ""}${gain} cm`;
-  const lignes = [`Sprint 20 m : ${virgule(b.sprint_20m, 2)} s`, `Pompes : ${b.pompes}`];
+  // Le test vedette est le premier test du sport mesuré deux fois ; les autres vont sur la dernière image
+  const paires = comparables(liste, tests);
+  const vedette = paires.find(p => p.n >= 2) || paires[0];
+  const { t, a, b } = vedette;
+  const sem = semainesEntre(a, b);
+  const ecart = (Number(b[t.k]) - Number(a[t.k])) * t.mieux;
+  const gainTxt = `${ecart >= 0 ? "+" : "−"}${valeurTest(t, Math.abs(Number(b[t.k]) - Number(a[t.k])))}`;
+  const lignes = paires.filter(p => p !== vedette).slice(0, 2).map(p => `${p.t.t} : ${valeurTest(p.t, Number(p.b[p.t.k]))}`);
   const slides = [
-    { surTitre: "AVANT", valeur: `${virgule(a.detente_cm)} cm`, ligne: "Ma détente au départ", photo: photos[0], fond: "#262A30" },
-    { surTitre: `${sem} SEMAINE${sem > 1 ? "S" : ""} APRÈS`, valeur: `${virgule(b.detente_cm)} cm`, ligne: `${gainTxt} de détente, mesurés`, photo: photos[1], fond: "#27351B" },
+    { surTitre: "AVANT", valeur: valeurTest(t, Number(a[t.k])), ligne: `${t.t} au départ`, photo: photos[0], fond: "#262A30" },
+    { surTitre: `${sem} SEMAINE${sem > 1 ? "S" : ""} APRÈS`, valeur: valeurTest(t, Number(b[t.k])), ligne: `${t.t} : ${ecart >= 0 ? "mieux" : "à retravailler"}, mesuré`, photo: photos[1], fond: "#27351B" },
     { surTitre: "MA PROGRESSION", valeur: gainTxt, resultat: true, lignes, fond: "#0E1209" },
   ];
   const choisir = (i, e) => {
@@ -6069,6 +6369,7 @@ function BilanSemaineCard({ user, isPro }) {
       .catch(() => {});
   }, [isPro, user?.id]);
 
+  const [ouvert, setOuvert] = useState(false);
   if (!bilan) return null;
   const fermer = () => {
     try { localStorage.setItem(cleFerme, lundiCourant()); } catch {}
@@ -6091,7 +6392,7 @@ function BilanSemaineCard({ user, isPro }) {
           <span style={{ flexShrink: 0, color: DS.colors.isDark ? ac : DS.colors.textPrimary, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{virguleKg(g.de)} → {virguleKg(g.a)} kg</span>
         </div>
       ))}
-      <p style={{ fontSize: 13, lineHeight: 1.5, color: DS.colors.textSec, margin: "8px 0 0" }}>{bilan.texte}</p>
+      <p onClick={() => setOuvert(o => !o)} style={{ fontSize: 13, lineHeight: 1.5, color: DS.colors.textSec, margin: "8px 0 0", cursor: "pointer", ...(ouvert ? {} : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }) }}>{bilan.texte}</p>
     </div>
   );
 }
@@ -6099,12 +6400,16 @@ function BilanSemaineCard({ user, isPro }) {
 // ─────────────────────────────────────────────
 // ACE EN DEHORS DES SÉANCES
 // ─────────────────────────────────────────────
-const QUESTIONS_ACE = ["Comment préparer mon prochain match ?", "Je peux m'entraîner si je suis courbaturé ?", "Sur quoi je dois me concentrer cette semaine ?"];
+const questionsAce = () => [`Comment préparer ${motsSport().prochain.replace(/^ta /, "ma ").replace(/^ton /, "mon ")} ?`, "Je peux m'entraîner si je suis courbaturé ?", "Sur quoi je dois me concentrer cette semaine ?"];
 const ACCUEIL_ACE = { role: "assistant", text: "Salut, je connais ton objectif et tes charges. Pose-moi ta question." };
 
-function AceScreen({ user, sport, cible, matchs, programme, onBack }) {
+function AceScreen({ user, isPro, onAbonnement, sport, cible, matchs, programme, onBack }) {
   const theme = getSportTheme(sport);
   const cle = `voltra_ace_${user.id}`;
+  // Sans abonnement : 2 messages par jour, puis Ace propose l'offre payante
+  const cleGratuit = `voltra_ace_gratuit_${user.id}_${new Date().toISOString().slice(0, 10)}`;
+  const [gratuits, setGratuits] = useState(() => { try { return Number(localStorage.getItem(cleGratuit)) || 0; } catch { return 0; } });
+  const bloque = !isPro && gratuits >= 2;
   const [messages, setMessages] = useState(() => {
     try { const sauves = JSON.parse(localStorage.getItem(cle) || "[]"); return Array.isArray(sauves) && sauves.length ? sauves : [ACCUEIL_ACE]; }
     catch { return [ACCUEIL_ACE]; }
@@ -6129,7 +6434,8 @@ function AceScreen({ user, sport, cible, matchs, programme, onBack }) {
 
   const envoyer = async (question) => {
     const message = String(question || "").trim();
-    if (!message || enCours) return;
+    if (!message || enCours || bloque) return;
+    if (!isPro) { const n = gratuits + 1; setGratuits(n); try { localStorage.setItem(cleGratuit, String(n)); } catch {} }
     const historique = messages.slice(-8);
     setTexte("");
     setMessages(prev => [...prev, { role: "user", text: message }]);
@@ -6180,14 +6486,21 @@ function AceScreen({ user, sport, cible, matchs, programme, onBack }) {
           </div>
         ))}
         {enCours && <p style={{ fontSize: 13, color: DS.colors.textSec, margin: 0 }}>Ace écrit...</p>}
-        {messages.length === 1 && !enCours && QUESTIONS_ACE.map(q => (
+        {bloque && !enCours && (
+          <div style={{ alignSelf: "stretch", padding: 16, borderRadius: 18, background: DS.colors.surface, border: `1px solid ${theme.accent}`, textAlign: "center" }}>
+            <p style={{ fontSize: 15, fontWeight: 800, color: DS.colors.textPrimary, margin: 0 }}>Tu veux continuer à parler avec Ace ?</p>
+            <p style={{ fontSize: 13, color: DS.colors.textSec, margin: "6px 0 12px", lineHeight: 1.45 }}>Avec la version gratuite, tu as 2 messages par jour. Passe à l'offre payante pour parler à Ace autant que tu veux.</p>
+            {onAbonnement && <button onClick={onAbonnement} style={{ padding: "10px 18px", borderRadius: DS.radius.full, border: "none", background: theme.accent, color: "#000", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>Voir les offres →</button>}
+          </div>
+        )}
+        {messages.length === 1 && !enCours && questionsAce().map(q => (
           <button key={q} onClick={() => envoyer(q)} style={{ alignSelf: "flex-start", minHeight: 40, padding: "8px 14px", background: "none", border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, textAlign: "left", cursor: "pointer" }}>{q}</button>
         ))}
         <div ref={finRef} />
       </div>
 
       <div style={{ display: "flex", gap: 8, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))", borderTop: `1px solid ${DS.colors.border}` }}>
-        <input enterKeyHint="send" value={texte} onChange={e => setTexte(e.target.value)} onKeyDown={e => e.key === "Enter" && envoyer(texte)} placeholder="Parle à Ace..." aria-label="Ton message à Ace" style={{ flex: 1, minWidth: 0, height: 46, padding: "0 16px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 16, outline: "none", fontFamily: "'Inter',sans-serif" }} />
+        <input enterKeyHint="send" value={texte} onChange={e => setTexte(e.target.value)} onKeyDown={e => e.key === "Enter" && envoyer(texte)} disabled={bloque} placeholder={bloque ? "Passe à l'offre payante pour continuer" : "Parle à Ace..."} aria-label="Ton message à Ace" style={{ flex: 1, minWidth: 0, height: 46, padding: "0 16px", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.full, color: DS.colors.textPrimary, fontSize: 16, outline: "none", fontFamily: "'Inter',sans-serif" }} />
         <button onClick={() => envoyer(texte)} disabled={!texte.trim() || enCours} aria-label="Envoyer" style={{ width: 46, height: 46, flexShrink: 0, borderRadius: DS.radius.full, background: texte.trim() ? theme.accent : DS.colors.surfaceHigh, border: "none", color: texte.trim() ? "#000" : DS.colors.textSec, fontSize: 18, fontWeight: 700, cursor: "pointer" }}>→</button>
       </div>
     </div>
@@ -6270,7 +6583,10 @@ export default function VoltraApp() {
   const [seanceActive, setSeanceActive] = useState(null);
   const [resumeState, setResumeState] = useState(null);
   const [programmeActif, setProgrammeActif] = useState(null);
+  POSTE_COURANT = programmeActif?.data_json?.poste || null;
   const [sportActif, setSportActif] = useState(null);
+  definirSport(sportActif);
+  const [ouvrirTests, setOuvrirTests] = useState(false);
   const [onboardingData, setOnboardingData] = useState(null);
   const [matchs, setMatchs] = useState([]);
   const [showMatchs, setShowMatchs] = useState(false);
@@ -6325,7 +6641,16 @@ export default function VoltraApp() {
   };
 
   const launchSeance = (seanceBrute, forme, peuDeTemps) => {
-    const adaptee = adapterSeance(seanceBrute, adaptationAvecForme(adaptationDuJour(matchs, cible), forme));
+    // Le plus léger l'emporte : compétition proche, forme du jour, semaine chargée, gros effort la veille
+    const rythme = programmeActif?.data_json?.rythme;
+    const apres = adaptationApresCompet(rythme, cible);
+    let adaptation = adaptationAvecForme(adaptationDuJour(matchs, cible), forme);
+    if (lireLocal(cleSemaine())?.chargee) adaptation = plusLeger(adaptation, SEMAINE_CHARGEE);
+    if (apres?.charge) adaptation = plusLeger(adaptation, apres);
+    let adaptee = adapterSeance(seanceBrute, adaptation);
+    // Le bloc de compensation ne sert qu'une fois
+    if (apres?.compensation && !seanceBrute.depannage) ecrireLocal(cleApresCompet(apres.iso), "fait");
+    if (apres?.compensation && !seanceBrute.depannage) adaptee = { ...adaptee, exercices: [...(adaptee.exercices || []), blocCompensation(sportActif)], adaptation: [adaptee.adaptation, apres.note].filter(Boolean).join(" ") };
     const rawSeance = peuDeTemps ? seanceCourte(adaptee) : adaptee;
     const profilCharges = profilDeCharges();
     const seance = {
@@ -6717,6 +7042,7 @@ export default function VoltraApp() {
     sport={sportActif}
     cycleLoading={cycleComplete}
     onContinue={() => setScreen("app")}
+    onTests={() => { setOuvrirTests(true); setScreen("app"); }}
   />;
   if (screen === "auth") return <AuthScreen confirmation={authConfirmation} onboardingData={onboardingData} onBack={onboardingData || authConfirmation ? null : () => setScreen("welcome")} onAuth={async (u) => {
     setUser(u);
@@ -6906,6 +7232,8 @@ if (screen === "pricing") return <PricingScreen key={appTheme} programme={progra
               onEditCible={() => setScreen("objectif-edit")}
               isPro={isPro}
               onAbonnement={() => { setPricingRetour(true); setScreen("pricing"); }}
+              ouvrirTests={ouvrirTests}
+              onTestsOuverts={() => setOuvrirTests(false)}
               onMissionSuivante={(resultat) => {
                 const passees = user?.user_metadata?.missions || [];
                 const mission = { type: cible?.type, date: cible?.date, debut: cible?.debut, resultat };

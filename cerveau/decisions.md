@@ -2,7 +2,7 @@
 
 À ne pas rediscuter sauf si Waner le demande.
 
-- **Pas de plafond de messages** sur le coach pour l'instant.
+- **Coach gratuit limité** (12 novembre 2026, choix de Waner) : sans abonnement, 2 messages par séance guidée et 2 par jour avec Ace sur l'accueil, puis Ace propose l'offre payante. Abonnés : pas de plafond.
 - **Le paiement reste sur la page Stripe** pour l'instant (6 novembre 2026). Possible plus tard : le formulaire Stripe intégré à une page de l'app, avec la clé publique `pk_live`.
 - **Pas de case de rétractation** dans le parcours d'achat : à la place, remboursement intégral et arrêt immédiat sur demande pendant 14 jours après la souscription.
 - **Pas de relecture par un juriste** pour le lancement : choix de Waner, le 5 novembre 2026.

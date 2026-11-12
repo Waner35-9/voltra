@@ -201,7 +201,10 @@ function expandWeeks(prog: any) {
           if (ex.materiel === "cardio" && sets > 1) sets = Math.max(1, sets + BLOCS_CARDIO[n - 1]);
           else if (ex.materiel === "cardio") travailSec = Math.round((travailSec * DUREE_CARDIO[n - 1]) / 60) * 60 || travailSec;
         } else if (n > 1) {
-          if (charge > 0) {
+          if (charge > 0 && ["medball", "kettlebell"].includes(detecterMateriel(ex))) {
+            // Poids fixes (3 kg, 4 kg…) : +5 % ne tombe sur aucun poids, on garde la charge et on progresse par les séries
+            if (n === 3 && sets < 4) sets += 1;
+          } else if (charge > 0) {
             charge = roundKg(charge * FACTEURS_SEMAINE[n - 1]);
           } else if (/^\d+$/.test(reps) && Number(reps) >= 8 && n < 4) {
             reps = String(Number(reps) + (n - 1)); // +1 rep (S2), +2 reps (S3)
@@ -476,6 +479,20 @@ const TYPES_SEANCE: Record<string, string> = {
   mobilite: "MOBILITE & RECUPERATION (6 a 8 exercices): cardio tres leger 5-8 min, mobilite des hanches, chevilles, epaules et colonne, etirements actifs des muscles du sport, prevention legere, gainage doux, respiration. Aucun effort intense. 35 a 40 min.",
 };
 
+// Le mot de la competition selon le sport : un boxeur fait des combats, un nageur des courses
+const COMPETITIONS: Record<string, { nom: string; pl: string }> = {
+  combat: { nom: "combat", pl: "combats" },
+  natation: { nom: "course", pl: "courses" },
+  sprint: { nom: "course", pl: "courses" },
+};
+function vocabulaire(texte: string, sport: string): string {
+  const c = COMPETITIONS[sport];
+  if (!c) return texte;
+  return texte.replace(/\bMATCHS\b/g, c.pl.toUpperCase()).replace(/\bMATCH\b/g, c.nom.toUpperCase())
+    .replace(/\bmatchs\b/g, c.pl).replace(/\bmatch\b/g, c.nom).replace(/\bMatch\b/g, c.nom[0].toUpperCase() + c.nom.slice(1))
+    + `\nVOCABULAIRE: pour ce sport on dit "${c.nom}" (pluriel "${c.pl}"), JAMAIS "match", dans les titres, objectifs, conseils et intensites.`;
+}
+
 function buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, plan, rythme }: any) {
   const startCycle = cycle || 1;
   const freq = plan.length;
@@ -707,6 +724,34 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Non autorisé" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    const body = await req.json();
+    const { sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, jours, rythme } = body;
+    const json = (corps: unknown, status = 200) => new Response(JSON.stringify(corps), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // Séance de dépannage : une seule séance, tout de suite, avec le matériel dispo maintenant. Rien n'est enregistré ici.
+    if (body.mode === "depannage") {
+      if (!sport) return json({ error: "Paramètres manquants" }, 400);
+      const { data: profilPro } = await supabase.from("profiles").select("is_pro").eq("id", user.id).maybeSingle();
+      if (!profilPro?.is_pro) return json({ error: "Réservé aux abonnés" }, 403);
+      const materiel: string[] = Array.isArray(body.materiel) ? body.materiel.map((m: unknown) => String(m).slice(0, 40)).slice(0, 12) : [];
+      const dureeMin = [20, 30, 45].includes(Number(body.duree)) ? Number(body.duree) : 30;
+      const lourds = materiel.some((m) => /halteres|kettlebell|salle/.test(m));
+      const type = TYPES_VALIDES.includes(body.type) ? body.type : lourds ? "renforcement" : "cardio";
+      const aujourdhui = new Date().getDay();
+      const volume = dureeMin <= 20 ? "3-4 exercices, echauffement 4 min, retour au calme 2 min" : dureeMin <= 30 ? "4-5 exercices, echauffement 6 min, retour au calme 3 min" : "5-7 exercices";
+      const planD: JourPlan[] = [{
+        jour: aujourdhui, nomJour: NOMS_JOURS[aujourdhui], type,
+        contexte: `SEANCE DE DEPANNAGE, prioritaire sur les durees et le materiel indiques plus haut: ${dureeMin} min TOUT COMPRIS (${volume}). Materiel disponible maintenant, et RIEN d'autre: ${materiel.length ? materiel.join(", ") : "aucun, poids du corps seul"}. Reste specifique au sport`,
+      }];
+      const equipD = materiel.includes("salle") ? "salle_complete" : lourds ? "salle_basique" : "maison";
+      const ctx = buildPrompt({ sport, objectif: objectif || "performance", niveau: niveau || "intermediaire", frequence: 1, cycle: 1, equipement: equipD, douleurs, poste, poids, age, taille, plan: planD, rythme: null });
+      const brute = await demanderSeance(vocabulaire(ctx + consigneSeance(planD, 0), sport));
+      const poidsD = Number(poids), ageD = Number(age);
+      const profilD: Profil = { poids: poidsD >= 30 && poidsD <= 250 ? poidsD : null, niveau: niveau || "intermediaire", age: ageD >= 12 && ageD <= 90 ? ageD : null, cycle: Number(cycle) || 1, avecCharges: lourds };
+      const progD = securiserProgramme(imposerPlan({ semaines: [{ numero: 1, seances: [brute] }] }, planD), profilD);
+      return json({ seance: { ...progD.semaines[0].seances[0], id: `depannage_${Date.now()}`, depannage: true, dureeMin } });
+    }
+
     // Chaque génération coûte un appel IA : 5 programmes maximum par compte sur 24 h
     const { count: generesRecemment } = await supabase
       .from("programmes")
@@ -716,9 +761,6 @@ serve(async (req: Request) => {
     if ((generesRecemment || 0) >= 5) {
       return new Response(JSON.stringify({ error: "Limite atteinte : réessaie demain." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    const body = await req.json();
-    const { sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, jours, rythme } = body;
 
     if (!sport || !objectif || !niveau || !frequence) {
       return new Response(JSON.stringify({ error: "Paramètres manquants" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -731,8 +773,8 @@ serve(async (req: Request) => {
     // Une demande à l'IA par séance, toutes en même temps : chaque séance est longue et complète
     const contexte = buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, plan, rythme });
     const seances = await Promise.all(plan.map(async (_p, i) => {
-      try { return await demanderSeance(contexte + consigneSeance(plan, i)); }
-      catch (e) { console.error(`Seance ${i + 1}, nouvel essai:`, (e as Error).message); return await demanderSeance(contexte + consigneSeance(plan, i)); }
+      try { return await demanderSeance(vocabulaire(contexte + consigneSeance(plan, i), sport)); }
+      catch (e) { console.error(`Seance ${i + 1}, nouvel essai:`, (e as Error).message); return await demanderSeance(vocabulaire(contexte + consigneSeance(plan, i), sport)); }
     }));
     let programme: any = {
       meta: { sport, objectif, niveau, frequence: freq, cycle: cycle || 1, startCycle: cycle || 1, totalSemaines: 4 },

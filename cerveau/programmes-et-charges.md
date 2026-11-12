@@ -34,6 +34,13 @@ Question posée à chaque lancement de séance : réponse non enregistrée. Fati
 - Mouvements libres : `ExerciseAnimation` (bonhomme animé), mouvement choisi par `animation` de la fiche ou `motifExercice`.
 - « Ma salle » : tout est disponible par défaut. Les machines décochées sont remplacées au lancement de la séance par la première alternative disponible.
 
+- Vocabulaire par sport (`motsSport` côté appli, `vocabulaire` côté serveur) : combat pour les sports de combat, course pour natation et sprint, match ailleurs. Le champ technique reste `rythme.match`.
+- Médecine-ball et kettlebell : poids fixes, la charge ne bouge pas d'une semaine à l'autre, on ajoute une série en semaine 3.
+- Après la compétition (`ApresCompetCard`) : la veille ou l'avant-veille d'un jour de compétition habituel, question « tu as joué combien ? ». À fond : séance allégée. Pas joué : bloc de compensation propre au sport (`blocCompensation`) ajouté une seule fois. Réponse gardée sur le téléphone (`voltra_apres_<date>`).
+- Semaine différente (dans `SemaineCard`) : pas de compétition, pas de club, ou semaine chargée (charges -15 %, 1 série de moins). Gardé sur le téléphone jusqu'au dimanche (`voltra_semaine_<lundi>`). Ne régénère rien.
+- Séance de dépannage : `generate-program` avec `mode: "depannage"`, abonnés seulement. Matériel, durée (20/30/45 min) et type au choix. Une seule séance, renvoyée sans être enregistrée dans `programmes`, puis lancée comme une séance normale.
+
 ## Limites connues
 - Les programmes déjà créés n'ont pas de machines.
 - Une seule charge par exercice est enregistrée : la plus lourde des séries.
+- Séance de dépannage : pas de limite par jour, chaque demande coûte un appel IA.
