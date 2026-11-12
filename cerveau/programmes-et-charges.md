@@ -1,10 +1,17 @@
 # Programmes et charges
 
 ## Génération (`generate-program`)
-- L'IA crée la semaine 1 (noms d'exercices en anglais). Le serveur construit les semaines 2 à 4 : +5 %, +10 %, -10 %.
+- L'IA crée la semaine 1 (noms d'exercices en anglais pour renforcement et vitesse, en français pour cardio, mobilité, échauffement et retour au calme). Le serveur construit les semaines 2 à 4 : +5 %, +10 %, -10 % ; cardio fractionné +1, +2, -1 bloc, endurance +10 %, +20 %, -20 %.
+- Une demande à l'IA par séance, toutes en parallèle (`demanderSeance`), avec un contexte commun (`buildPrompt`) et la consigne de la séance (`consigneSeance`) : séances complètes sans dépasser le temps d'une Edge Function. Durée visée : environ 45 min par séance (choix de Waner), 8 exercices maximum, échauffement 8-10 min, retour au calme 5 min. Coût : autant d'appels que de séances.
+- Contenu sport par sport dans `FICHES_SPORT` (exigences, renfo, cardio, vitesse, prévention, échauffement, retour au calme) et `FICHES_POSTE` (disciplines de combat, postes), plus `REGLES_COACH` (échauffement RAMP, ordre vitesse > force > cardio, volumes de pliométrie, formats de fractionné). Sources citées en commentaire.
+- Chaque séance a un `type` (`renforcement`, `cardio`, `vitesse`, `mobilite`), un `echauffement`, des `exercices` et un `retourCalme`. Le type est choisi par le serveur (`planifierSemaine`), pas par l'IA : mélange propre au sport (`MIX_SPORT`), saison, puis autour du club et du match (lendemain = mobilité, veille = vitesse courte, pas de cardio dur à J-2 ni un jour de club).
+- `data_json.rythme` = `{ club: [jours], match: jour | null, saison: pre | saison | treve }`, aussi gardé dans les réponses d'inscription. Changer club, match ou jours dans le profil recrée le programme.
+- Séances conseillées (`frequenceConseillee`) : 5 en saison, 6 en pré-saison et trêve, moins les jours de club et de match, au moins 2. Simple conseil, l'utilisateur peut en choisir plus.
+- Exercice au chrono (`travailSec`) : jamais de charge. Dans la séance guidée, minuteur, et les blocs de fractionné s'enchaînent seuls après la récupération.
+- Échauffement et retour au calme ne sont pas enregistrés ; cardio et mobilité sont enregistrés sans muscle, pour ne pas fausser la carte du corps.
 - Limite : 5 programmes par compte sur 24 h.
 - Équipements : `salle_complete`, `salle_basique`, `maison`, `terrain`.
-- Salle complète : 1 à 2 machines par séance (2 pour un débutant), jamais en premier. Si l'IA en oublie, `garantirMachines` en ajoute une compatible avec les douleurs.
+- Salle complète : 1 à 2 machines par séance de renforcement (2 pour un débutant), jamais en premier. Si l'IA en oublie, `garantirMachines` en ajoute une compatible avec les douleurs.
 - Les garde-fous `RATIOS`, `detecterMateriel`, `detecterMouvement` et `securiserExercice` existent en **double** : `generate-program` et `src/App.jsx`. Changer les deux.
 
 ## Charge affichée dans une séance (`launchSeance`, `src/App.jsx`)

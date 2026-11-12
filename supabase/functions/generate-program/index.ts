@@ -34,6 +34,8 @@ const SANS_CHARGE = /push[- ]?up|pull[- ]?up|chin[- ]?up|plank|jump|sprint|burpe
 function detecterMateriel(ex: any): string {
   const m = String(ex.materiel || "").toLowerCase();
   const n = String(ex.nom || "").toLowerCase();
+  // Cardio, mobilité et tout ce qui se fait au chrono : jamais de charge
+  if (m === "cardio" || m === "mobilite" || Number(ex.travailSec) > 0) return "poids_du_corps";
   if (/assisted|glute ham|back extension|captain|roman chair|sled|battle rope|rowing machine|air bike|ski ?erg/.test(n)) return "poids_du_corps";
   if (/medicine ball|med ball|medball/.test(n) || m === "medball") return "medball";
   if (/kettlebell|\bkb\b/.test(n) || m === "kettlebell") return "kettlebell";
@@ -119,12 +121,14 @@ function securiserExercice(ex: any, p: Profil, facteurSemaine = 1) {
   else charge = Math.min(charge, max);
   charge = arrondirMateriel(charge, materiel, mouvement);
   const unite = materiel === "halteres" ? "par main" : materiel === "kettlebell" && /double|two/.test(String(ex.nom).toLowerCase()) ? "par main" : "";
-  return { ...ex, chargeKg: charge, materiel, chargeUnite: unite };
+  // Cardio et mobilité gardent leur étiquette : l'appli s'en sert pour l'écran de séance et la carte du corps
+  const garde = ["cardio", "mobilite"].includes(String(ex.materiel)) ? ex.materiel : materiel;
+  return { ...ex, chargeKg: charge, materiel: garde, chargeUnite: unite };
 }
 
-const SYSTEM_PROMPT = `Tu es un préparateur physique expert (certifié NSCA/CSCS). Tu génères des programmes en JSON pur.
-RÈGLE ABSOLUE : JSON valide uniquement. Aucun texte. Aucun markdown. Maximum 8 exercices par séance.
-Tu raisonnes comme un vrai coach : charges réalistes pour CE corps et CE niveau, technique avant la charge, progression sûre.`;
+const SYSTEM_PROMPT = `Tu es un préparateur physique expert (certifié NSCA/CSCS) qui prépare des athlètes de club. Tu génères des programmes en JSON pur.
+RÈGLE ABSOLUE : JSON valide uniquement. Aucun texte. Aucun markdown. Maximum 8 exercices dans le corps de chaque séance. Chaque séance dure environ 45 min, échauffement et retour au calme compris.
+Tu raisonnes comme un vrai coach de club, pas comme un coach de musculation : la semaine mélange renforcement, cardio, vitesse et mobilité selon le sport, s'organise autour des entraînements du club et du match, et chaque séance a un échauffement et un retour au calme. Charges réalistes pour CE corps et CE niveau, technique avant la charge, progression sûre.`;
 
 // Noms des machines que l'IA peut proposer : mêmes noms que src/catalogueEquipements.js
 const MACHINES_SALLE = [
@@ -155,6 +159,8 @@ function garantirMachines(prog: any, douleurs: string[] = []) {
   if (!Array.isArray(seances) || possibles.length === 0) return prog;
   seances.forEach((se: any, i: number) => {
     const exercices = se.exercices || [];
+    // Seules les séances de renforcement passent par les machines
+    if (se.type && se.type !== "renforcement") return;
     if (exercices.length >= 8 || exercices.some((ex: any) => detecterMateriel(ex) === "machine")) return;
     const m = possibles[i % possibles.length];
     const machine = { id: `${se.id || `s${i}`}_machine`, nom: m.nom, materiel: "machine", muscles: m.muscles, sets: 3, reps: "10", chargeKg: 0, reposSec: 75, conseil: m.conseil };
@@ -167,6 +173,9 @@ function garantirMachines(prog: any, douleurs: string[] = []) {
 
 // Construit les semaines 2 a 4 a partir de la semaine 1 (progression deterministe)
 const FACTEURS_SEMAINE = [1, 1.05, 1.1, 0.9];
+// Cardio : fractionné +1 puis +2 blocs, décharge -1 ; endurance continue +10 %, +20 %, -20 %
+const BLOCS_CARDIO = [0, 1, 2, -1];
+const DUREE_CARDIO = [1, 1.1, 1.2, 0.8];
 function expandWeeks(prog: any) {
   const w1 = prog?.semaines?.[0];
   if (!w1 || !Array.isArray(w1.seances) || w1.seances.length === 0) {
@@ -185,8 +194,13 @@ function expandWeeks(prog: any) {
         let sets = Number(ex.sets) || 3;
         let reps = String(ex.reps ?? "");
         let charge = Number(ex.chargeKg) || 0;
+        let travailSec = Number(ex.travailSec) || 0;
 
-        if (n > 1) {
+        if (n > 1 && travailSec > 0) {
+          // Exercice au chrono : on ne touche qu'au cardio, la mobilité reste la même
+          if (ex.materiel === "cardio" && sets > 1) sets = Math.max(1, sets + BLOCS_CARDIO[n - 1]);
+          else if (ex.materiel === "cardio") travailSec = Math.round((travailSec * DUREE_CARDIO[n - 1]) / 60) * 60 || travailSec;
+        } else if (n > 1) {
           if (charge > 0) {
             charge = roundKg(charge * FACTEURS_SEMAINE[n - 1]);
           } else if (/^\d+$/.test(reps) && Number(reps) >= 8 && n < 4) {
@@ -203,6 +217,7 @@ function expandWeeks(prog: any) {
           sets,
           reps,
           chargeKg: charge,
+          ...(travailSec > 0 ? { travailSec } : {}),
         };
       }),
     })),
@@ -225,15 +240,251 @@ function securiserProgramme(prog: any, profil: Profil) {
   };
 }
 
-function buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille }: any) {
+// ─────────────────────────────────────────────────────────────
+// Semaine type : chaque séance Voltra reçoit un type (renforcement, cardio,
+// vitesse, mobilité) selon le sport, la saison, les jours de club et le match.
+// ─────────────────────────────────────────────────────────────
+const NOMS_JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const LUNDI_DABORD = (d: number) => (d + 6) % 7;
+
+// Ordre de priorité des types de séances, par sport (les premiers passent avant)
+const MIX_SPORT: Record<string, string[]> = {
+  basketball: ["renforcement", "vitesse", "cardio", "renforcement", "mobilite"],
+  football: ["renforcement", "cardio", "vitesse", "renforcement", "mobilite"],
+  tennis: ["renforcement", "vitesse", "cardio", "mobilite", "renforcement"],
+  rugby: ["renforcement", "vitesse", "renforcement", "cardio", "mobilite"],
+  natation: ["renforcement", "cardio", "mobilite", "renforcement", "vitesse"],
+  sprint: ["vitesse", "renforcement", "vitesse", "mobilite", "renforcement"],
+  combat: ["cardio", "renforcement", "vitesse", "cardio", "mobilite"],
+};
+const MIX_DEFAUT = ["renforcement", "cardio", "vitesse", "renforcement", "mobilite"];
+
+// La saison change le mélange : plus de cardio en pré-saison et pendant la trêve
+function mixSaison(sport: string, saison: string) {
+  const mix = [...(MIX_SPORT[sport] || MIX_DEFAUT)];
+  if (saison === "pre" && mix.indexOf("cardio") > 1) {
+    mix.splice(mix.indexOf("cardio"), 1);
+    mix.splice(1, 0, "cardio");
+  }
+  if (saison === "treve") {
+    const v = mix.indexOf("vitesse");
+    if (v >= 0) mix[v] = "cardio";
+  }
+  return mix;
+}
+
+type JourPlan = { jour: number; nomJour: string; type: string; contexte: string };
+
+function planifierSemaine(sport: string, jours: number[], rythme: any, freq: number): JourPlan[] {
+  const club: number[] = Array.isArray(rythme?.club) ? rythme.club.filter((d: any) => Number.isInteger(d) && d >= 0 && d <= 6) : [];
+  const match = Number.isInteger(rythme?.match) ? rythme.match : null;
+  const saison = ["pre", "saison", "treve"].includes(rythme?.saison) ? rythme.saison : "saison";
+  let liste = Array.isArray(jours) ? [...new Set(jours.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))] : [];
+  if (liste.length !== freq) liste = ({ 1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] } as Record<number, number[]>)[freq] || [1, 3, 5];
+  liste.sort((a, b) => LUNDI_DABORD(a) - LUNDI_DABORD(b));
+
+  const plan: JourPlan[] = liste.map((d) => {
+    const avant = match === null ? null : (match - d + 7) % 7;
+    const apres = match === null ? null : (d - match + 7) % 7;
+    const memeJourClub = club.includes(d);
+    let type = "";
+    const notes: string[] = [];
+    if (avant === 0) { type = "mobilite"; notes.push("JOUR DE MATCH : activation 20 min seulement (mobilite dynamique, gammes, 2-3 accelerations courtes), aucune fatigue"); }
+    else if (apres === 1) { type = "mobilite"; notes.push("LENDEMAIN DE MATCH : recuperation complete de 35-45 min (velo ou footing tres leger 10-15 min, mobilite, etirements, respiration), aucun effort intense"); }
+    else if (avant === 1) { type = "vitesse"; notes.push("VEILLE DE MATCH : activation de 30-35 min, vitesse et reactivite a faible volume, AUCUN renforcement lourd des jambes, aucun cardio long"); }
+    else if (avant === 2) notes.push("J-2 DU MATCH : pas de jambes lourdes ni de cardio long, privilegie haut du corps, gainage, prevention");
+    if (memeJourClub) notes.push("ENTRAINEMENT CLUB LE MEME JOUR : seance de 40 min maximum, pas de fractionne dur (le club fait deja du cardio)");
+    else if (club.includes((d + 1) % 7)) notes.push("entrainement club le lendemain : pas d'epuisement des jambes");
+    if (!notes.length) notes.push("jour libre, loin du match : c'est ici que vont les seances les plus exigeantes");
+    return { jour: d, nomJour: NOMS_JOURS[d], type, contexte: notes.join(". ") };
+  });
+
+  // Les autres jours suivent le mélange du sport, les plus durs loin du match
+  const mix = mixSaison(sport, saison);
+  plan.filter((p) => p.type).forEach((p) => { const i = mix.indexOf(p.type); if (i >= 0) mix.splice(i, 1); });
+  const libres = plan.filter((p) => !p.type);
+  const distance = (p: JourPlan) => match === null ? 7 : Math.min((match - p.jour + 7) % 7, (p.jour - match + 7) % 7);
+  const parDistance = [...libres].sort((a, b) => distance(b) - distance(a));
+  parDistance.forEach((p, i) => { p.type = mix[i] || "renforcement"; });
+  // Pas de cardio dur à J-2 du match : on l'échange avec une autre séance libre
+  plan.forEach((p) => {
+    if (p.type !== "cardio" || match === null || (match - p.jour + 7) % 7 !== 2) return;
+    const autre = libres.find((q) => q !== p && q.type !== "cardio" && !club.includes(q.jour) && (match - q.jour + 7) % 7 > 2);
+    if (autre) { p.type = autre.type; autre.type = "cardio"; } else p.type = "vitesse";
+  });
+  // Cardio dur le même jour que le club : on échange avec un renforcement si possible
+  plan.forEach((p) => {
+    if (p.type === "cardio" && club.includes(p.jour)) {
+      const autre = plan.find((q) => q.type === "renforcement" && !club.includes(q.jour));
+      if (autre) { autre.type = "cardio"; p.type = "renforcement"; }
+    }
+  });
+  // Au moins un renforcement par semaine, s'il reste au moins 2 jours libres (sinon la priorité du sport passe avant)
+  if (libres.length >= 2 && !plan.some((p) => p.type === "renforcement")) {
+    const p = parDistance[0] || plan.find((q) => q.type !== "mobilite");
+    if (p) p.type = "renforcement";
+  }
+  return plan;
+}
+
+// L'IA suit le plan : bon nombre de séances, bons types, échauffement et retour au calme présents
+const TYPES_VALIDES = ["renforcement", "cardio", "vitesse", "mobilite"];
+function imposerPlan(prog: any, plan: JourPlan[]) {
+  const seances = prog?.semaines?.[0]?.seances;
+  if (!Array.isArray(seances) || seances.length === 0) return prog;
+  const liste = plan.map((p, i) => {
+    const se = seances[i] || seances[i % seances.length];
+    const type = TYPES_VALIDES.includes(p.type) ? p.type : TYPES_VALIDES.includes(se.type) ? se.type : "renforcement";
+    const elements = (l: any) => (Array.isArray(l) ? l : []).filter((e: any) => e && e.nom).slice(0, 8)
+      .map((e: any) => ({ nom: String(e.nom), conseil: e.conseil || "", ...(Number(e.travailSec) > 0 ? { travailSec: Math.round(Number(e.travailSec)) } : { reps: String(e.reps || "10") }) }));
+    return {
+      ...se,
+      id: `s1j${i + 1}`,
+      jour: i + 1,
+      jourSemaine: p.jour,
+      type,
+      echauffement: elements(se.echauffement),
+      retourCalme: elements(se.retourCalme),
+      exercices: (Array.isArray(se.exercices) ? se.exercices : []).slice(0, 8).map((ex: any, j: number) => ({ ...ex, id: ex.id || `e${j + 1}` })),
+    };
+  });
+  return { ...prog, semaines: [{ ...prog.semaines[0], seances: liste }] };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Fiches sport : ce que fait un vrai préparateur physique de club, sport par sport.
+// Sources principales (novembre 2026) : Buchheit & Laursen (HIIT), FIFA 11+ et Nordic
+// (ischios), Copenhagen (adducteurs), revue Antoranz 2024 (basket : programmes
+// neuromusculaires), Kovacs / Fernandez-Fernandez (tennis : points 5-10 s, ratio 1:3 à 1:5),
+// RHIE rugby (≥ 3 efforts, < 21 s de récup), revues dryland natation (sauts et force
+// pour départs et virages, coiffe des rotateurs), Franchini (sports de combat),
+// Jeffreys (échauffement RAMP), méta-analyse Eddens 2018 (force avant endurance).
+// ─────────────────────────────────────────────────────────────
+type FicheSport = { efforts: string; renforcement: string; cardio: string; vitesse: string; prevention: string; echauffement: string; retourCalme: string; cleSemaine?: string };
+const FICHES_SPORT: Record<string, FicheSport> = {
+  basketball: {
+    efforts: "Match intermittent: des centaines de changements de direction, sprints de 2-3 s, 40 a 60 sauts, contacts au poste. Tout se joue sur les premiers pas, la detente repetee et la capacite a repeter les efforts.",
+    renforcement: "Force des jambes (trap bar, squat, front squat, fentes arriere, split squat bulgare), chaine posterieure (RDL, hip thrust, nordic), mollets et pieds, unilateral obligatoire, pliometrie verticale ET laterale (CMJ, drop jump bas, bonds lateraux, skater jumps), gainage anti-rotation (pallof, carry unilateral), haut du corps pour les contacts (developpe, tractions, rowing).",
+    cardio: "Sprints repetes multidirectionnels: 2-3 series de 6-8 x 15-20 m avec demi-tour, 20-25 s de recup, 3 min entre series. Navettes 'suicides' sur la largeur du terrain. Intermittent 15/15 ou 10/10 avec changements de direction a 100-110 % VMA, 2 blocs de 6-8 min. Circuits 'possession' 24 s d'effort / 36 s de recup. Pas chasses defensifs + sprint + saut en continu.",
+    vitesse: "Premiers pas depuis la position defensive (pas court et explosif, pas de grand premier pas), acceleration wall drill, broad jump en appui decale, box drop + sprint 5 m, close-out (sprint puis freinage en pas chasses), departs avec pivot, sprint arriere puis avant, saut + sprint, pogos reactifs, reaction a un signal.",
+    prevention: "Chevilles: equilibre unipodal (yeux fermes, instable), receptions de sauts tenues 2-3 s, mobilite et force de la cheville. Genoux/LCA: receptions genoux dans l'axe, fentes controlees, nordic, travail neuromusculaire en echauffement (la revue 2024 montre que c'est le plus efficace).",
+    echauffement: "Footing et pas chasses, mobilite chevilles et hanches, activation fessiers (monster walk elastique), receptions de sauts, pogos, 2-3 accelerations courtes avec changement de direction.",
+    retourCalme: "Mollets, quadriceps, flechisseurs de hanche, fessiers, bas du dos, respiration.",
+  },
+  football: {
+    efforts: "10-12 km par match dont 20 a 40 sprints, beaucoup d'accelerations et de freinages, duels, frappes. Le foot est intermittent: il faut repeter les sprints et bien recuperer entre eux.",
+    renforcement: "Force des jambes (squat, trap bar, split squat, step-up), ischios en excentrique (nordic, RDL, glissades), adducteurs (Copenhagen), hip thrust et fessiers, mollets, unilateral, gainage, haut du corps pour les duels (tractions, pompes, rowing). Pliometrie horizontale (broad jump, bonds).",
+    cardio: "Intermittent court 15/15 ou 10/10 a 100-110 % VMA: 2-3 blocs de 6-8 min, 3 min de recup entre blocs. Intervalles longs 3-4 min a 90-95 % VMA (4 x 4 min). Sprints repetes: 2-3 series de 6 x 30 m, 20-25 s de recup. Courses 'box-to-box' (sprint de surface a surface puis retour en trottinant). Fartlek pour l'aerobie en pre-saison.",
+    vitesse: "Echelle de rythme (appuis rapides), sprints 10-20-30 m, accelerations 10-20 m (departs debout, de dos, apres un saut), vitesse maximale lancee 20-30 m UNE fois par semaine au moins (la vitesse max protege les ischios), changements de direction 5-10-5, freinages, sauts horizontaux, reaction a un signal.",
+    prevention: "Nordic hamstring (fait baisser fortement les blessures des ischios), Copenhagen plank (adducteurs), equilibre unipodal (chevilles), exercices du programme FIFA 11+ en echauffement (fentes, sauts lateraux, planche).",
+    echauffement: "Footing avec ouvertures de hanche, mobilite hanches/adducteurs, exercices FIFA 11+ (fentes, sauts, planche laterale), gammes (talons-fesses, montees de genoux, pas chasses), 3 accelerations progressives.",
+    retourCalme: "Ischios, quadriceps, adducteurs, flechisseurs de hanche, mollets, respiration.",
+    cleSemaine: "Logique du foot (micro-cycle): la seance la plus lourde en force loin du match (J-4), l'endurance et la vitesse max a J-3, puis on allege (J-2, J-1 = vitesse courte et reactivite).",
+  },
+  tennis: {
+    efforts: "Points de 5 a 10 s, 20-25 s de recup entre les points (ratio 1:3 a 1:5), matchs longs. Deplacements lateraux, freinages, rotations du tronc, frappes repetees: il faut une bonne base aerobie pour recuperer entre les points et de l'explosivite sur les 3-4 premiers pas.",
+    renforcement: "Rotation du tronc (lancers de medball en rotation contre un mur, landmine rotation, cable woodchop), jambes unilaterales et laterales (fentes laterales, step-up, split squat), chaine posterieure (RDL, hip thrust), epaule (rotation externe, Y-T-W, face pull), avant-bras et poignet, gainage anti-rotation.",
+    cardio: "Intermittent facon match: 10 s d'effort / 20 s de recup ou 15/25, en blocs de 6-8 min. Huit (figure-8) autour de deux plots, retour au centre apres chaque frappe simulee. Spider drill (5 plots, aller-retour depuis le centre). Couloirs: deplacements lateraux 15 s / 25 s. Repetitions de 25 s a fond / 20 s. Endurance continue 20-30 min (velo, footing) en pre-saison pour la recup entre les points.",
+    vitesse: "Split-step + depart dans les 4 directions, echelle en pas lateraux, retour rapide au centre apres chaque frappe, premiers pas lateraux et croises, freinages en position basse, changements de direction 5 m, lancers de medball explosifs (rotation, coup droit, revers, au-dessus de la tete comme un service), sauts lateraux.",
+    prevention: "Epaule: rotation externe a l'elastique, Y-T-W, travail des omoplates. Chevilles: montees sur pointes, equilibre (les entorses sont frequentes). Coude et poignet: excentriques du poignet. Dos: mobilite thoracique, gainage anti-rotation. Hanches et ischios: mobilite. Augmenter la charge progressivement (les pics de charge sont le premier facteur de blessure).",
+    echauffement: "Corde a sauter ou pas chasses, mobilite epaules (cercles, elastique), rotations thoraciques, rotation externe a l'elastique, split-step et pas croises, 2-3 departs explosifs.",
+    retourCalme: "Epaules (face posterieure), avant-bras, rotations douces du tronc, hanches, ischios, respiration.",
+  },
+  rugby: {
+    efforts: "Sequences d'efforts repetes intenses (RHIE): au moins 3 sprints, plaquages ou rucks avec moins de 21 s de recup, 4 a 6 efforts par sequence. Beaucoup de contacts. Les avants poussent et plaquent, les arrieres sprintent plus.",
+    renforcement: "Force maximale (squat, trap bar, developpe couche, tractions lestees, rowing), puissance (power clean ou hang clean si avance, kettlebell swing, sauts, lancers de medball), exercices de resistance avec partenaire du programme Activate de World Rugby, cou (isometrie dans les 4 directions), prehension (farmer walk), gainage pour les impacts, unilateral, nordic. Repos complets sur les gros mouvements (2-3 min).",
+    cardio: "Circuits RHIE: sprint 20 m + plaquage d'un sac ou sprawl + se relever + sprint 10 m, 4 a 6 efforts enchaines, 1-2 min de recup, 3 a 5 series. Sprints repetes 6-8 x 30-40 m. Poussees de traineau. Intervalles longs 3 min pour la base aerobie en pre-saison. Releves du sol + sprint.",
+    vitesse: "Accelerations 10-20 m, departs depuis le sol (a plat ventre, a genoux), sprints avec resistance (traineau, elastique), changements d'appui et crochets (arrieres), reaction.",
+    prevention: "Cou: isometrie flexion/extension/laterale (un cou fort protege des commotions), epaules (rotation externe, Y-T-W), ischios (nordic), adducteurs (Copenhagen), apprendre a tomber et se relever.",
+    echauffement: "Footing, mobilite hanches et epaules, isometrie du cou, activation fessiers, releves du sol, accelerations progressives, contacts legers (pousser un partenaire ou un sac).",
+    retourCalme: "Cou (doux), pectoraux, epaules, ischios, quadriceps, hanches, respiration.",
+  },
+  natation: {
+    efforts: "Le nageur nage deja avec son club: Voltra fait le travail HORS de l'eau (dryland). Les etudes montrent que la force, les sauts et le travail balistique ameliorent les departs et les virages, et que le renforcement de la coiffe des rotateurs protege l'epaule.",
+    renforcement: "Tirage (tractions, lat pulldown, rowing), poussee (developpe halteres, pompes), triceps, rotateurs externes, jambes et sauts pour le depart et les virages (squat, trap bar, box jump, broad jump), hip hinge, gainage anti-extension et rotationnel (planche, dead bug, pallof, russian twist, battements sur le dos en position de coulee 30 s), lancers de medball au-dessus de la tete et vers le sol.",
+    cardio: "Hors de l'eau et a faible impact: rameur et ski erg (meme gestuelle de tirage), velo, corde a sauter. Fractionne 30/30 ou 1 min / 1 min, blocs de 6-10 min. Endurance 20-30 min a allure facile. Circuits epaules/gainage en continu.",
+    vitesse: "Sauts pour le depart (squat jump, broad jump pour ne pas plonger trop bas, box jump), streamline squat jumps (sauts bras tendus en position de coulee), lancers de medball explosifs (au-dessus de la tete, vers le sol), sauts depuis l'accroupi (comme un virage).",
+    prevention: "Epaule: band pull-aparts, rotation externe a l'elastique, face pull, Y-T-W, pompes scapulaires (serratus), pas plus de 5 exercices d'epaule, courts et reguliers. Bas du dos (bird dog). Mobilite thoracique et des chevilles (pour les battements).",
+    echauffement: "Rameur ou corde a sauter, cercles d'epaules, mobilite thoracique, rotation externe a l'elastique, activation des omoplates, quelques sauts.",
+    retourCalme: "Grand dorsal, pectoraux, epaules en douceur, triceps, hanches, respiration.",
+  },
+  sprint: {
+    efforts: "Courses tres courtes a vitesse maximale: acceleration (0-30 m) puis vitesse maximale (30-60 m). Le 200 m demande en plus de l'endurance de vitesse, le 400 m de l'endurance speciale (lactique).",
+    renforcement: "Force maximale (squat, trap bar, hip thrust, step-up), chaine posterieure (RDL, nordic, ponts unipodaux), mollets et pieds (montees sur pointes, pliometrie basse), unilateral, gainage. Pliometrie: bonds, drop jumps, sauts de haies, hops. Peu de volume, beaucoup de qualite, repos complets.",
+    cardio: "Tempo runs: 6-10 x 100 m a 65-75 %, 45 s de marche (ameliore la recuperation sans casser la vitesse). Pour le 400 m: endurance speciale 2-4 x 150-300 m a 90-95 % avec 8-15 min de recup. Pas de longs footings.",
+    vitesse: "Gammes (A-skip, B-skip, jambes tendues griffees, montees de genoux, talons-fesses), wickets (mini-haies espacees pour le rythme, bassin haut), departs (3 appuis, accroupi, en chute), accelerations 10-30 m, sprints au traineau (10-20 m), sprints lances 20-30 m (flying), bonds alternes, sprints en cote. 150-300 m de sprint au total par seance, 2-4 min de recup.",
+    prevention: "Ischios en excentrique (nordic, RDL, glissades), mollets et tendon d'Achille (excentriques sur une marche), adducteurs, mobilite des hanches. La plupart des blessures des ischios arrivent en sprintant: exposer regulierement a la vitesse max protege.",
+    echauffement: "Footing, mobilite dynamique hanches et chevilles, gammes athletiques, activation fessiers, accelerations progressives 60-80-90 %.",
+    retourCalme: "Ischios, flechisseurs de hanche, quadriceps, mollets, respiration.",
+  },
+  combat: {
+    efforts: "Rounds intenses (boxe 3 min / 1 min, MMA 5 min, judo 4 min) avec des efforts explosifs repetes et des lactates tres eleves, portes par une bonne base aerobie. Il faut de la puissance, de l'explosivite et la capacite a tenir les rounds.",
+    renforcement: "Force et puissance (trap bar, squat, developpe, tractions, rowing), d'abord mobilite et force en rotation puis puissance en rotation (medball de 3-6 kg: slam en rotation, lancer lateral contre un mur, woodchop; landmine punch), prehension (tractions avec serviette ou kimono, farmer walk) surtout pour judo et jiu-jitsu, cou (isometrie), gainage. Garder des repos complets sur la force (pas de circuit sur les exercices lourds).",
+    cardio: "Rounds: shadow, sac, corde a sauter (2-3 min d'effort, 1 min de repos, 3 a 6 rounds). Intervalles courts 30/30, 20/10, 5 s explosif / 10 s actif au sac. Burpees + sprawls en rounds. Une sortie aerobie facile de 30-40 min par semaine en pre-saison.",
+    vitesse: "Lancers de medball explosifs (rotation, poitrine), sauts, sprints courts, reaction a un signal, enchainements tres rapides de 5-10 s.",
+    prevention: "Cou (isometrie dans les 4 directions), epaules (rotation externe), poignets et mains pour les frappeurs, genoux et hanches pour les lutteurs, mobilite des hanches (90/90).",
+    echauffement: "Corde a sauter, shadow leger, mobilite epaules/hanches/cou, isometrie du cou, activation, quelques enchainements explosifs.",
+    retourCalme: "Epaules, pectoraux, hanches, cou en douceur, respiration.",
+  },
+};
+// Postes et disciplines : précisions qui priment sur la fiche du sport
+const FICHES_POSTE: Record<string, string> = {
+  boxe_anglaise: "Boxe anglaise: rounds de 3 min. Cardio = shadow boxing en rounds (jab-direct, esquives, deplacements), sac de frappe, corde a sauter en rounds, intervalles 5 s de coups explosifs / 10 s d'esquives. Puissance des poings: lancers de medball poitrine et rotation, landmine punch.",
+  boxe_francaise: "Boxe francaise: pieds-poings. Shadow pieds-poings en rounds, chasses et fouettes enchaines, corde a sauter, mobilite et force des hanches et ischios, equilibre unipodal.",
+  boxe_thai: "Boxe thai: rounds de 3 min, coups de genou et de coude. Shadow pieds-poings-genoux, genoux repetes au sac, clinch (isometrie du haut du corps), mollets et tibias, cou.",
+  mma: "MMA: rounds de 5 min, debout et au sol. Rounds melant shadow, sprawls, releves du sol, frappes au sol sur un sac, lutte. Force de tirage et de prehension, cou, hanches.",
+  judo: "Judo: combats de 4 min, grip decisif. Uchi-komi a l'elastique en fractionne (facon randori 20/10), tractions kimono ou serviette, tirages, force des jambes et des hanches, gainage, travail de prehension 1-2 fois par semaine sans exces (tendons).",
+  jiu_jitsu: "Jiu-jitsu bresilien: rounds de 5 min au sol. Crevettes (shrimps), releves techniques, bear crawl, sprawls, prehension (serviette, kimono), force des hanches et du cou, gainage.",
+  meneur: "Meneur: vitesse, changements de direction, endurance intermittente.",
+  pivot: "Pivot: force, contacts au poste, detente repetee pour les rebonds.",
+  gardien: "Gardien: explosivite laterale, plongeons et relevers, detente, reaction, peu de cardio long.",
+  defenseur: "Defenseur: force, duels aeriens, detente, accelerations courtes.",
+  milieu: "Milieu: endurance intermittente et sprints repetes en priorite.",
+  attaquant: "Attaquant: vitesse maximale, accelerations, changements de direction.",
+  pilier: "Pilier / talonneur: force maximale, poussees, cou, efforts de contact repetes.",
+  troisieme_ligne: "3e ligne: force + endurance, plaquages et releves repetes.",
+  demi: "Demi: agilite, accelerations, endurance intermittente.",
+  trois_quarts: "Trois-quarts: vitesse maximale, crochets, accelerations.",
+  arriere: "Arriere: vitesse maximale, jeu au pied, reception, accelerations longues.",
+  fond_de_court: "Joueur de fond de court: endurance intermittente, deplacements lateraux, regularite.",
+  serve_volley: "Serveur-volleyeur: explosivite, premiers pas vers l'avant, epaule.",
+  "60m": "60 m / 100 m: acceleration et vitesse maximale, tres peu de cardio long.",
+  "200m": "200 m: vitesse maximale + endurance de vitesse (repetitions de 100-150 m).",
+  "400m": "400 m: endurance speciale (150-300 m a 90-95 %, recuperation longue) + vitesse.",
+};
+
+// Règles de préparateur communes à tous les sports
+const REGLES_COACH = `REGLES DE PREPARATEUR PHYSIQUE (a appliquer partout):
+- ECHAUFFEMENT facon RAMP: 1) monter en temperature (4-5 min de cardio leger propre au sport), 2) mobilite dynamique + activation + 1-2 exercices de PREVENTION du sport, 3) potentialisation: 2-3 exercices progressifs (accelerations, sauts, lancers) qui preparent le corps de la seance.
+- DANS UNE SEANCE: vitesse et explosivite d'abord (frais), puis force, puis cardio. Jamais de cardio intense avant de la force lourde.
+- FORCE: repos 2-3 min sur les exercices lourds et explosifs, 60-90 s sur les accessoires. Pas de circuit sur les exercices lourds.
+- PLIOMETRIE: debutant 60-80 contacts au sol par seance, intermediaire 80-100, avance 100-120. Qualite avant quantite.
+- VITESSE: toujours frais, juste apres l'echauffement, recuperation complete (environ 1 min par 10 m de sprint).
+- FRACTIONNE (Buchheit & Laursen): court 10/10 ou 15/15 a 100-110 % VMA en blocs de 6-8 min avec 3 min de recup; long 3-4 min a 90-95 % VMA avec 2-3 min de recup; sprints repetes de 6 s max, 6-10 repetitions, 20-25 s de recup.
+- Chaque exercice a une vraie consigne (allure, sensations, technique) dans "conseil" ou "intensite".`;
+
+const SAISONS: Record<string, string> = {
+  pre: "PRE-SAISON : on construit. Volume eleve, force et cardio developpes. Seances d'environ 45 min, denses (repos bien geres).",
+  saison: "EN SAISON : on entretient et on reste frais pour les matchs, mais les seances restent completes. Seances d'environ 45 min (sauf veille et lendemain de match, plus courtes).",
+  treve: "TREVE : on garde la forme et on corrige les points faibles. Cardio aerobie, renforcement general, mobilite. Seances d'environ 45 min.",
+};
+
+const TYPES_SEANCE: Record<string, string> = {
+  renforcement: "RENFORCEMENT (6 a 8 exercices): 1-2 explosifs (sauts, lancers), 2-3 gros mouvements de force, 2-3 accessoires/unilateral propres au sport, 1-2 prevention ou gainage. Environ 45 min avec l'echauffement.",
+  cardio: "CARDIO (5 a 7 exercices): 2 blocs de fractionne DIFFERENTS et propres au sport (voir la fiche du sport), puis un circuit de 3-4 exercices au poids du corps et gainage. Environ 45 min avec l'echauffement.",
+  vitesse: "VITESSE & EXPLOSIVITE (6 a 8 exercices): gammes, departs varies, sprints courts, changements de direction ou agilite, 2-3 exercices de pliometrie, 1-2 lancers de medball, 1 gainage. Recuperation complete. Environ 45 min avec l'echauffement.",
+  mobilite: "MOBILITE & RECUPERATION (6 a 8 exercices): cardio tres leger 5-8 min, mobilite des hanches, chevilles, epaules et colonne, etirements actifs des muscles du sport, prevention legere, gainage doux, respiration. Aucun effort intense. 35 a 40 min.",
+};
+
+function buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, plan, rythme }: any) {
   const startCycle = cycle || 1;
-  const freq = Math.min(Number(frequence), 4);
+  const freq = plan.length;
 
   const equipementConfig: Record<string, { desc: string; nb: string; sets: string }> = {
-    salle_complete: { desc: "salle complete (barres, halteres, kettlebells, machines, poulies)", nb: "5-6 exos", sets: "3-4 series" },
-    salle_basique: { desc: "salle basique : barres, halteres, kettlebells, banc. PAS de machines ni poulies", nb: "4-5 exos", sets: "3-4 series" },
-    maison: { desc: "MAISON poids du corps SEUL, INTERDIT halteres/barres/machines", nb: "6-8 exos", sets: "2-3 series" },
-    terrain: { desc: "EXTERIEUR poids du corps SEUL, INTERDIT halteres/barres/machines", nb: "6-8 exos", sets: "2-3 series" },
+    salle_complete: { desc: "salle complete (barres, halteres, kettlebells, machines, poulies)", nb: "6-7 exos", sets: "3-4 series" },
+    salle_basique: { desc: "salle basique : barres, halteres, kettlebells, banc. PAS de machines ni poulies", nb: "6-7 exos", sets: "3-4 series" },
+    maison: { desc: "MAISON poids du corps SEUL, INTERDIT halteres/barres/machines", nb: "6-7 exos", sets: "2-3 series" },
+    terrain: { desc: "EXTERIEUR poids du corps SEUL, INTERDIT halteres/barres/machines", nb: "6-7 exos", sets: "2-3 series" },
   };
   const c = equipementConfig[equipement] || equipementConfig.salle_complete;
   const avecCharges = equipement === "salle_complete" || equipement === "salle_basique";
@@ -272,16 +523,17 @@ function buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, do
     douleursTexte = `CONTRAINTES BLESSURES (OBLIGATOIRE): ${parts.join(". ")}. MAX 2 exercices de renforcement blessure au total dans toute la seance (pas un par douleur): ${inclureParts.join(" OU ")}. Le reste des exercices doit rester sport-specifique selon les qualites cles ci-dessus.`;
   }
 
-  const sportQualites: Record<string, string> = {
-    basketball: "detente, changements de direction, gainage anti-rotation",
-    football: "vitesse lineaire, endurance intermittente, ischios",
-    tennis: "rotation tronc, reactivite laterale, stabilite genou",
-    rugby: "force haut du corps, puissance jambes, gainage impact",
-    natation: "endurance epaules/dos, traction, gainage rotationnel",
-    sprint: "force relative, extension hanche, pliometrie",
-    combat: "puissance hanche, endurance haute intensite, prehension",
-  };
-  const qualitesCles = sportQualites[sport] || "force generale, puissance, endurance";
+  const fiche = FICHES_SPORT[sport];
+  const ficheTexte = fiche
+    ? `FICHE ${sport.toUpperCase()} (a suivre de pres):
+- Exigences: ${fiche.efforts}
+- Renforcement: ${fiche.renforcement}
+- Cardio: ${fiche.cardio}
+- Vitesse: ${fiche.vitesse}
+- Prevention: ${fiche.prevention}
+- Echauffement type: ${fiche.echauffement}
+- Retour au calme: ${fiche.retourCalme}${fiche.cleSemaine ? `\n- Semaine: ${fiche.cleSemaine}` : ""}${poste && FICHES_POSTE[poste] ? `\n- POSTE/DISCIPLINE (prioritaire): ${FICHES_POSTE[poste]}` : ""}`
+    : "FICHE: force generale, puissance, endurance intermittente, prevention chevilles/genoux/epaules.";
 
   const objectifSchemas: Record<string, string> = {
     explosivite: "3-5 reps explosifs (sauts/med-ball), repos 2-3min, contraste force+explosif",
@@ -339,38 +591,105 @@ chargeKg = charge realiste en kg. Pour halteres/kettlebells : TOUJOURS le poids 
     if (tailleNum >= 190) morphoTexte += " Grand gabarit: privilegie goblet squat, trap bar, split squat et hip hinge controle; amplitude adaptee.";
   }
 
+  const cardioMateriel: Record<string, string> = {
+    salle_complete: "rameur, velo, tapis de course, ski erg, corde a sauter",
+    salle_basique: "corde a sauter, burpees, montees de genoux, course dehors si possible",
+    maison: "corde a sauter, burpees, montees de genoux, jumping jacks, mountain climbers, shadow",
+    terrain: "course (fractionne, navettes, cotes), corde a sauter",
+  };
+  const cardioTexte = `MATERIEL CARDIO disponible: ${cardioMateriel[equipement] || cardioMateriel.terrain}${sport === "natation" ? " (le nageur nage deja au club: cardio HORS de l'eau)" : ""}. Adapte les formats de la fiche a ce materiel.`;
+  const saisonCle = ["pre", "saison", "treve"].includes(rythme?.saison) ? rythme.saison : "saison";
+  const clubJours = Array.isArray(rythme?.club) ? rythme.club.filter((d: any) => d >= 0 && d <= 6) : [];
+  const matchJour = Number.isInteger(rythme?.match) ? rythme.match : null;
+  const chargeClub = clubJours.length + (matchJour !== null ? 1 : 0);
+  const rythmeTexte = `CLUB: ${clubJours.length ? `entrainement le ${clubJours.map((d: number) => NOMS_JOURS[d]).join(", ")}` : "aucun entrainement de club indique"}${matchJour !== null ? `, match le ${NOMS_JOURS[matchJour]}` : ""}.${chargeClub + freq >= 6 ? " SEMAINE CHARGEE : seances Voltra un peu plus courtes (35-40 min) et intensite maitrisee, mais toujours completes." : ""}`;
+  const planTexte = plan.map((p: JourPlan, i: number) => `- Seance ${i + 1} (jour ${i + 1}, ${p.nomJour}) : type "${p.type}". ${p.contexte}.`).join("\n");
+  const typesUtilises = [...new Set(plan.map((p: JourPlan) => p.type))].map((t) => TYPES_SEANCE[t as string]).join("\n");
+
   const niv = String(niveau || "").toLowerCase();
   const machinesTexte = equipement === "salle_complete"
-    ? `MACHINES OBLIGATOIRES: chaque seance contient ${niv.startsWith("deb") ? "2" : "1 a 2"} exercices sur machine (materiel "machine"), jamais en premier: d'abord explosif et gros mouvement libre, puis machines. Varie les machines sur la semaine et choisis-les utiles au sport et coherentes avec les contraintes blessures. Noms exacts a utiliser: ${MACHINES_SALLE.join(", ")}. Autorise, au plus 1 par semaine et en fin de seance (materiel "poids_du_corps", chargeKg 0): ${CROSS_SALLE.join(", ")}.`
+    ? `MACHINES OBLIGATOIRES: chaque seance de RENFORCEMENT contient ${niv.startsWith("deb") ? "2" : "1 a 2"} exercices sur machine (materiel "machine"), jamais en premier: d'abord explosif et gros mouvement libre, puis machines. Varie les machines sur la semaine et choisis-les utiles au sport et coherentes avec les contraintes blessures. Noms exacts a utiliser: ${MACHINES_SALLE.join(", ")}. Autorise, au plus 1 par semaine et en fin de seance (materiel "poids_du_corps", chargeKg 0): ${CROSS_SALLE.join(", ")}.`
     : "";
   const niveauTexte = niv.startsWith("deb")
-    ? "NIVEAU DEBUTANT: exercices simples et stables (goblet squat, halteres, machines si dispo), pas de mouvements olympiques ni de pliometrie a fort impact, 2-3 series, charges legeres (RPE 6-7)."
+    ? "NIVEAU DEBUTANT: exercices simples et stables (goblet squat, halteres, machines si dispo), pas de mouvements olympiques ni de pliometrie a fort impact, 2-3 series, charges legeres (RPE 6-7). Cardio progressif, fractionne modere."
     : niv.startsWith("inter")
       ? "NIVEAU INTERMEDIAIRE: mouvements polyarticulaires a la barre autorises, pliometrie moderee, RPE 7-8."
       : "NIVEAU AVANCE: contraste force/vitesse, variantes unilaterales chargees, pliometrie intense, RPE 8-9.";
 
-  return `Prepa physique ${sport}, style Overtime Athletes (contraste/PAP, priorite neurologique).
+  return `Tu prepares UN athlete de club en ${sport}. Programme de preparation physique d'un vrai club, pas de la musculation.
 
-ATHLETE: ${sport}, obj=${objectif}, niv=${niveau}, freq=${freq}/sem, cycle=${startCycle}${poste ? `, poste=${poste}` : ""}${poidsValide ? `, poids=${poidsNum}kg` : ""}${tailleValide ? `, taille=${tailleNum}cm` : ""}${ageValide ? `, age=${ageNum}` : ""}
-QUALITES CLES: ${qualitesCles}
-REPS/CHARGES: ${schemaReps}
-ORDRE: explosif/pliometrie d'abord, force ensuite, accessoires/gainage en dernier
+ATHLETE: ${sport}, obj=${objectif}, niv=${niveau}, freq=${freq} seances Voltra/sem, cycle=${startCycle}${poste ? `, poste=${poste}` : ""}${poidsValide ? `, poids=${poidsNum}kg` : ""}${tailleValide ? `, taille=${tailleNum}cm` : ""}${ageValide ? `, age=${ageNum}` : ""}
+REPS/CHARGES pour l'objectif: ${schemaReps}
+${SAISONS[saisonCle]}
+${rythmeTexte}
+
+${ficheTexte}
+
+SEMAINE (types imposes):
+${planTexte}
+
+${typesUtilises}
+${cardioTexte}
+
+${REGLES_COACH}
+
+SEANCES LONGUES ET BIEN REMPLIES: respecte le nombre d'exercices et la duree de chaque type. Une seance legere avec peu d'exercices est un echec.
+CHAQUE SEANCE = "echauffement" (8-10 min, 5-6 elements, facon RAMP, avec la prevention du sport) + "exercices" (le corps de la seance) + "retourCalme" (5 min, 4-5 elements: retour au calme cardio, etirements des muscles travailles, respiration).
+
 CYCLE ${startCycle}: ${cycleProfile}
 ${niveauTexte}
-MATERIEL: ${c.desc}. ${c.nb}, ${c.sets}.
+MATERIEL: ${c.desc}. Renforcement: ${c.nb}, ${c.sets}.
 ${machinesTexte}
 ${chargesTexte}
 ${morphoTexte}
 ${ageTexte}
 ${douleursTexte}
 
-JSON strict:
-{"meta":{"sport":"${sport}","objectif":"${objectif}","niveau":"${niveau}","frequence":${freq},"cycle":${startCycle},"startCycle":${startCycle},"totalSemaines":4},"semaines":[{"numero":1,"theme":"S1","seances":[{"id":"s1j1","jour":1,"titre":"Seance 1","dureeMin":45,"exercices":[{"id":"e1","nom":"dumbbell goblet squat","materiel":"halteres","muscles":"Muscle","sets":3,"reps":"5","chargeKg":0,"reposSec":150,"ordre":1,"conseil":"court"}]}]}]}
+FORMAT DES EXERCICES:
+RENFORCEMENT et VITESSE: nom = nom ANGLAIS standard de base d'exercices, materiel en premier (ex: "barbell full squat", "dumbbell goblet squat", "dumbbell bench press", "kettlebell swing", "box jump", "body weight squat", "cable pallof press", "sprint", "medicine ball rotational throw"). Pas de nom invente. Sprints et sauts: reps = distance ou nombre ("20 m", "5"), materiel "poids_du_corps" (ou "medball"), chargeKg 0, repos 60-180 s.
+CARDIO et MOBILITE: nom FRANCAIS clair, materiel "cardio" ou "mobilite", chargeKg 0, "travailSec" = duree d'un bloc en secondes, "sets" = nombre de blocs, "reposSec" = recuperation entre blocs, "reps" = texte court ("30 s", "3 min"), "intensite" = consigne d'allure simple ("Vite, 90 % de ta VMA", "Facile, tu peux parler"). Endurance continue: sets 1, travailSec = duree totale. Mobilite: travailSec 30-60 par element, sets 1-2, reposSec 10-15. muscles = "Cardio" ou "Mobilite" + zone.
+ECHAUFFEMENT / RETOURCALME: noms FRANCAIS, chaque element a soit "travailSec" (duree) soit "reps" (texte), et un "conseil" court. Pas de charge.
+materiel = un de: "barre", "halteres", "kettlebell", "machine", "poulie", "medball", "elastique", "poids_du_corps", "cardio", "mobilite".
+titre/muscles/conseil francais courts. "objectif" = une phrase qui dit a quoi sert la seance pour le sport. Le conseil donne LE point technique cle. Pour l'exercice de renforcement blessure, precise dans "conseil" pourquoi.
+dureeMin = duree totale realiste, echauffement et retour au calme compris.`;
+}
 
-nom = nom ANGLAIS standard de base d'exercices, materiel en premier (ex: "barbell full squat", "dumbbell goblet squat", "dumbbell bench press", "kettlebell swing", "box jump", "body weight squat", "cable pallof press"). Pas de nom invente ni de variante exotique.
-materiel = un de: "barre", "halteres", "kettlebell", "machine", "poulie", "medball", "elastique", "poids_du_corps".
-titre/theme/muscles/conseil francais courts. Le conseil donne LE point technique cle du mouvement. Pour l'exercice de renforcement blessure, precise dans "conseil" pourquoi (ex: "Renforce le genou en securite").
-Genere UNIQUEMENT la semaine 1 (le tableau "semaines" contient UNE seule semaine) avec ${freq} seances, respecte ${c.nb}/${c.sets}/ordre/cycle/contraintes blessures. Les semaines suivantes sont calculees automatiquement. JSON compact sans espaces inutiles.`;
+// Consigne pour UNE séance : chaque séance est demandée séparément (en parallèle) pour qu'elle soit complète
+function consigneSeance(plan: JourPlan[], i: number) {
+  const p = plan[i];
+  const autres = plan.filter((_, j) => j !== i).map((q) => `${q.nomJour} ${q.type}`).join(", ") || "aucune";
+  return `
+
+GENERE UNIQUEMENT LA SEANCE ${i + 1} : ${p.nomJour}, type "${p.type}". ${p.contexte}.
+Les autres seances Voltra de la semaine (deja prevues, ne les repete pas, sois complementaire): ${autres}.
+JSON strict, un seul objet, compact, sans texte autour:
+{"type":"${p.type}","titre":"court","objectif":"une phrase","dureeMin":45,"echauffement":[{"nom":"Footing leger","travailSec":240,"conseil":"court"},{"nom":"Fentes marchees","reps":"8 par jambe","conseil":"court"}],"exercices":[{"id":"e1","nom":"box jump","materiel":"poids_du_corps","muscles":"Quadriceps Fessiers","sets":3,"reps":"5","chargeKg":0,"reposSec":120,"ordre":1,"conseil":"court"},{"id":"e2","nom":"Fractionne 15/15","materiel":"cardio","muscles":"Cardio","sets":16,"travailSec":15,"reposSec":15,"reps":"15 s","intensite":"Vite, 100 % de ta VMA","ordre":2,"conseil":"court"}],"retourCalme":[{"nom":"Etirement des ischios","travailSec":40,"conseil":"court"}]}`;
+}
+
+// Demande une séance à l'IA et lit le JSON renvoyé
+async function demanderSeance(prompt: string) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 6000,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Claude API error: ${res.status} ${await res.text()}`);
+  const data = await res.json();
+  const brut = data.content?.map((b: any) => b.text || "").join("") ?? "";
+  const morceau = brut.replace(/```json|```/g, "").match(/\{[\s\S]*\}/);
+  if (!morceau) throw new Error("JSON invalide");
+  const seance = JSON.parse(morceau[0]);
+  if (!Array.isArray(seance?.exercices) || seance.exercices.length === 0) throw new Error("Seance vide");
+  return seance;
 }
 
 serve(async (req: Request) => {
@@ -399,49 +718,26 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json();
-    const { sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille } = body;
+    const { sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, jours, rythme } = body;
 
     if (!sport || !objectif || !niveau || !frequence) {
       return new Response(JSON.stringify({ error: "Paramètres manquants" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4096,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille }) }],
-      }),
-    });
+    // 5 séances par semaine au plus : avec le club, au-delà on se blesse
+    const freq = Math.min(Math.max(Number(frequence) || 3, 1), 5);
+    const plan = planifierSemaine(sport, jours, rythme, freq);
 
-    if (!claudeRes.ok) {
-      const err = await claudeRes.text();
-      throw new Error(`Claude API error: ${claudeRes.status} ${err}`);
-    }
-
-    const claudeData = await claudeRes.json();
-    const rawText = claudeData.content?.map((b: any) => b.text || "").join("") ?? "";
-    console.log("RAW:", rawText.substring(0, 300));
-
-    let programme;
-    try {
-      const clean = rawText.replace(/```json|```/g, "").trim();
-      programme = JSON.parse(clean);
-    } catch {
-      const match = rawText.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error("JSON invalide");
-      try {
-        programme = JSON.parse(match[0]);
-      } catch {
-        throw new Error("JSON invalide — structure incorrecte");
-      }
-    }
+    // Une demande à l'IA par séance, toutes en même temps : chaque séance est longue et complète
+    const contexte = buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, plan, rythme });
+    const seances = await Promise.all(plan.map(async (_p, i) => {
+      try { return await demanderSeance(contexte + consigneSeance(plan, i)); }
+      catch (e) { console.error(`Seance ${i + 1}, nouvel essai:`, (e as Error).message); return await demanderSeance(contexte + consigneSeance(plan, i)); }
+    }));
+    let programme: any = {
+      meta: { sport, objectif, niveau, frequence: freq, cycle: cycle || 1, startCycle: cycle || 1, totalSemaines: 4 },
+      semaines: [{ numero: 1, theme: "S1", seances }],
+    };
 
     // Semaine 1 generee par l'IA -> semaines 1 a 4 avec progression -> garde-fous de charges
     const startCycle = cycle || 1;
@@ -453,6 +749,7 @@ serve(async (req: Request) => {
       cycle: startCycle,
       avecCharges: equipement === "salle_complete" || equipement === "salle_basique",
     };
+    programme = imposerPlan(programme, plan);
     if (equipement === "salle_complete") programme = garantirMachines(programme, Array.isArray(douleurs) ? douleurs : []);
     programme = securiserProgramme(expandWeeks(programme), profil);
 
@@ -465,7 +762,7 @@ serve(async (req: Request) => {
         total_semaines: 4,
         semaine_courante: 1,
         statut: "actif",
-        data_json: { ...programme, cycle: startCycle, startCycle, niveau, frequence, objectif, equipement, douleurs, poste }
+        data_json: { ...programme, cycle: startCycle, startCycle, niveau, frequence, objectif, equipement, douleurs, poste, jours: plan.map((p) => p.jour), rythme: rythme || null }
       })
       .select().single();
 

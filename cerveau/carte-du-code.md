@@ -3,7 +3,7 @@
 Générée automatiquement à chaque commit : ne pas modifier à la main.
 Pour lire un bloc : `sed -n 'début,finp' fichier`.
 
-## src/App.jsx (6731 lignes)
+## src/App.jsx (6972 lignes)
 
 Écrans : app, auth, cycle-complete, objectif, objectif-edit, onboarding, payment-success, pricing, programme-generating, splash, welcome
 Tables : avatars, exercices, invitations_utilisees, logs_performance, matchs, profiles, programmes, rappels, seances, tests_performance
@@ -17,193 +17,208 @@ Fonctions SQL : appliquer_deload, calculer_progression, check_deload_needed
 - generateProgramIA : 42-62
 - DAY_OPTIONS : 63-63
 - DAY_NAMES : 64-64
-- DEFAULT_JOURS : 65-71
-- RATIOS_CHARGE : 72-79
-- KETTLEBELLS : 80-80
-- MEDBALLS : 81-81
-- SANS_CHARGE : 82-83
-- detecterMateriel : 84-100
-- detecterMouvement : 101-125
-- securiserExercice : 126-159
-- attachJours : 160-167
-- DayPicker : 168-191
-- StepTitle : 192-201
-- RULER_TICK : 202-202
-- RulerPicker : 203-240
-- saveCompleteSession : 241-317
-- AceAvatar : 318-340
-- SPORT_THEMES : 341-352
-- accentLisible : 353-358
-- getSportTheme : 359-370
-- THEMES : 371-412
-- applyTheme : 413-417
-- fonduBas : 418-423
-- hautSur : 424-427
-- useStaggerUneFois : 428-433
-- PrimaryButton : 434-451
-- Input : 452-479
-- Card : 480-493
-- Badge : 494-511
-- ProgressBar : 512-534
-- MOCK_PROGRAM : 535-549
-- SPORTS : 550-558
-- SPORT_EMOJIS : 559-563
-- OBJECTIFS_PAR_SPORT : 564-603
-- OBJECTIFS : 604-604
-- NIVEAUX : 605-605
-- PLANS : 606-613
-- getMuscleIcon : 614-669
-- getExerciceColor : 670-680
-- MOTIVATION : 681-685
-- getRandom : 686-690
-- RestTimer : 691-751
-- SEG : 752-752
-- SOL : 753-755
-- ik2 : 756-764
-- lerp : 765-765
-- lerpCible : 766-769
-- resoudre : 770-775
-- epauleDe : 776-778
-- cibleEntre : 779-784
-- calculerPose : 785-802
-- DEBOUT : 803-803
-- PEND : 804-804
-- construireMotif : 805-849
-- motifExercice : 850-867
-- ExerciseAnimation : 868-962
-- poidsAnormal : 963-964
-- ChampSerie : 965-980
-- SeanceScreen : 981-1548
-  - formatElapsed : 1034
-  - remplacerCourant : 1048
-  - sendCoachMessage : 1086
-  - handleSetComplete : 1143
-  - validerSerie : 1153
-  - handlePause : 1176
-- PaymentSuccessScreen : 1549-1612
-- ProgrammeGeneratingScreen : 1613-1740
-- CycleCompleteScreen : 1741-1830
-- WelcomeScreen : 1831-1922
-- SplashScreen : 1923-1961
-- LEGAL_EMAIL : 1962-1962
-- LEGAL_DATE : 1963-1964
-- LEGAL_SIRET : 1965-1965
-- LEGAL_STATUT : 1966-1966
-- LEGAL_MEDIATEUR : 1967-1967
-- LEGAL_DOCS : 1968-2016
-- LegalScreen : 2017-2046
-- CLE_CODE_EMAIL : 2047-2047
-- lireCodeEmail : 2048-2053
-- garderCodeEmail : 2054-2061
-- avecDelai : 2062-2067
-- AuthScreen : 2068-2361
-- POSTES_PAR_SPORT : 2362-2400
-- DOULEURS : 2401-2409
-- EQUIPEMENTS : 2410-2416
-- TOTAL_STEPS : 2417-2418
-- OnboardingScreen : 2419-2989
-  - getStepContent : 2439
-  - goNext : 2451
-  - getReactionMessage : 2468
-  - handleFinish : 2508
-  - retryGeneration : 2519
-  - skipGeneration : 2524
-  - toggleDouleur : 2530
-  - canNext : 2545
-- MESSAGES_INVITATION : 2990-2994
-- PricingScreen : 2995-3144
-- MatchsScreen : 3145-3289
-- DashboardScreen : 3290-3546
-- ecartTest : 3547-3551
-- valeurTest : 3552-3552
-- semainesEntre : 3553-3554
-- AvantMaintenant : 3555-3606
-- ZONES_CORPS : 3607-3618
-- sansAccents : 3619-3621
-- zonesDepuisMuscles : 3622-3633
-- COULEURS_NIVEAU : 3634-3634
-- rgbNiveau : 3635-3643
-- ZONES_CARTE : 3644-3648
-- chargerImage : 3649-3654
-- peindreCorps : 3655-3712
-- CorpsIllustre : 3713-3734
-- ANCRES_ZONES : 3735-3739
-- useSeriesCorps : 3740-3758
-- lireSeries : 3759-3765
-- CarteDuCorps : 3766-3796
-- PARTAGE_DUREE : 3797-3797
-- lisse : 3798-3798
-- entre : 3799-3800
-- dessinerCartePartage : 3801-3865
-- PartageProgression : 3866-3945
-- HistoriqueScreen : 3946-4214
-- callSubscription : 4215-4227
-- AVANTAGES_PRO : 4228-4238
-- SubscriptionScreen : 4239-4494
-- MaSalleScreen : 4495-4527
-- ProfilScreen : 4528-4967
-  - handleAvatarUpload : 4549
-  - openEdit : 4633
-  - saveEdit : 4638
-- JOUR_MS : 4968-4968
-- CIBLES : 4969-4974
-- dateLocale : 4975-4975
-- isoDans : 4976-4976
-- joursAvant : 4977-4977
-- dateLongue : 4978-4980
-- phasesObjectif : 4981-4997
-- etatPlan : 4998-5011
-- datesDeMatch : 5012-5018
-- adaptationDuJour : 5019-5032
-- cleExercice : 5033-5034
-- ressentisParExercice : 5035-5054
-- poidsLePlusProche : 5055-5062
-- appliquerRessenti : 5063-5078
-- exerciceDepuisFiche : 5079-5093
-- adapterSeance : 5094-5108
-- FORMES : 5109-5116
-- adaptationAvecForme : 5117-5123
-- seanceCourte : 5124-5131
-- Bloom : 5132-5135
-- PLAN_DEBUT : 5136-5138
-- ConstructionPlan : 5139-5201
-- ObjectifScreen : 5202-5328
-- MissionCard : 5329-5370
-- SemaineCard : 5371-5409
-- TESTS_PERF : 5410-5414
-- virgule : 5415-5415
-- INTERVALLE_TEST : 5416-5417
-- useTests : 5418-5428
-- TestCard : 5429-5444
-- TestScreen : 5445-5517
-- dessinerSlide : 5518-5549
-- CarrouselScreen : 5550-5617
-- BottomNav : 5618-5647
-- FormeDuJour : 5648-5677
-- Interrupteur : 5678-5689
-- progresExercices : 5690-5701
-- virguleKg : 5702-5702
-- RESULTATS_MISSION : 5703-5708
-- BilanMissionScreen : 5709-5794
-- appelerFonction : 5795-5803
-- activerInvitation : 5804-5819
-- lundiCourant : 5820-5825
-- BilanSemaineCard : 5826-5869
-- QUESTIONS_ACE : 5870-5870
-- ACCUEIL_ACE : 5871-5872
-- AceScreen : 5873-5967
-- RappelsCard : 5968-6002
-- JETON_STOP_RAPPELS : 6003-6004
-- RappelsStopScreen : 6005-6024
-- VoltraApp : 6025-6731
-  - changerAbsentes : 6060
-  - chargerRessentis : 6065
-  - profilDeCharges : 6077
-  - remplacerExercice : 6089
-  - launchSeance : 6095
-  - startGeneration : 6135
-  - essayerInvitation : 6145
-  - handleLogout : 6389
+- DEFAULT_JOURS : 65-67
+- SAISONS : 68-72
+- RYTHME_DEFAUT : 73-75
+- frequenceConseillee : 76-82
+- joursConseilles : 83-102
+- TYPES_SEANCE : 103-108
+- typeSeance : 109-110
+- duree : 111-112
+- dosage : 113-119
+- RATIOS_CHARGE : 120-127
+- KETTLEBELLS : 128-128
+- MEDBALLS : 129-129
+- SANS_CHARGE : 130-131
+- detecterMateriel : 132-150
+- detecterMouvement : 151-175
+- securiserExercice : 176-209
+- attachJours : 210-217
+- DayPicker : 218-247
+- RythmeClub : 248-288
+- StepTitle : 289-298
+- RULER_TICK : 299-299
+- RulerPicker : 300-337
+- saveCompleteSession : 338-418
+- AceAvatar : 419-441
+- SPORT_THEMES : 442-453
+- accentLisible : 454-459
+- getSportTheme : 460-471
+- THEMES : 472-513
+- applyTheme : 514-518
+- fonduBas : 519-524
+- hautSur : 525-528
+- useStaggerUneFois : 529-534
+- PrimaryButton : 535-552
+- Input : 553-580
+- Card : 581-594
+- Badge : 595-612
+- ProgressBar : 613-635
+- MOCK_PROGRAM : 636-650
+- SPORTS : 651-659
+- SPORT_EMOJIS : 660-664
+- OBJECTIFS_PAR_SPORT : 665-704
+- OBJECTIFS : 705-705
+- NIVEAUX : 706-706
+- PLANS : 707-714
+- getMuscleIcon : 715-770
+- getExerciceColor : 771-781
+- MOTIVATION : 782-786
+- getRandom : 787-791
+- RestTimer : 792-852
+- SEG : 853-853
+- SOL : 854-856
+- ik2 : 857-865
+- lerp : 866-866
+- lerpCible : 867-870
+- resoudre : 871-876
+- epauleDe : 877-879
+- cibleEntre : 880-885
+- calculerPose : 886-903
+- DEBOUT : 904-904
+- PEND : 905-905
+- construireMotif : 906-950
+- motifExercice : 951-968
+- ExerciseAnimation : 969-1063
+- poidsAnormal : 1064-1065
+- ChampSerie : 1066-1081
+- SeanceScreen : 1082-1690
+  - formatElapsed : 1136
+  - remplacerCourant : 1173
+  - sendCoachMessage : 1215
+  - handleSetComplete : 1272
+  - validerSerie : 1282
+  - handlePause : 1306
+- PaymentSuccessScreen : 1691-1754
+- ProgrammeGeneratingScreen : 1755-1882
+- CycleCompleteScreen : 1883-1972
+- WelcomeScreen : 1973-2064
+- SplashScreen : 2065-2103
+- LEGAL_EMAIL : 2104-2104
+- LEGAL_DATE : 2105-2106
+- LEGAL_SIRET : 2107-2107
+- LEGAL_STATUT : 2108-2108
+- LEGAL_MEDIATEUR : 2109-2109
+- LEGAL_DOCS : 2110-2158
+- LegalScreen : 2159-2188
+- CLE_CODE_EMAIL : 2189-2189
+- lireCodeEmail : 2190-2195
+- garderCodeEmail : 2196-2203
+- avecDelai : 2204-2209
+- AuthScreen : 2210-2503
+- POSTES_PAR_SPORT : 2504-2542
+- DOULEURS : 2543-2551
+- EQUIPEMENTS : 2552-2558
+- TOTAL_STEPS : 2559-2560
+- OnboardingScreen : 2561-3154
+  - getStepContent : 2581
+  - goNext : 2593
+  - getReactionMessage : 2615
+  - handleFinish : 2658
+  - retryGeneration : 2669
+  - skipGeneration : 2674
+  - toggleDouleur : 2680
+  - canNext : 2695
+- MESSAGES_INVITATION : 3155-3159
+- PricingScreen : 3160-3309
+- MatchsScreen : 3310-3454
+- DashboardScreen : 3455-3722
+- ecartTest : 3723-3727
+- minSec : 3728-3728
+- valeurTest : 3729-3729
+- semainesEntre : 3730-3731
+- AvantMaintenant : 3732-3785
+- ZONES_CORPS : 3786-3797
+- sansAccents : 3798-3800
+- zonesDepuisMuscles : 3801-3812
+- COULEURS_NIVEAU : 3813-3813
+- rgbNiveau : 3814-3822
+- ZONES_CARTE : 3823-3827
+- chargerImage : 3828-3833
+- peindreCorps : 3834-3891
+- CorpsIllustre : 3892-3913
+- ANCRES_ZONES : 3914-3918
+- useSeriesCorps : 3919-3937
+- lireSeries : 3938-3944
+- CarteDuCorps : 3945-3975
+- PARTAGE_DUREE : 3976-3976
+- lisse : 3977-3977
+- entre : 3978-3979
+- dessinerCartePartage : 3980-4043
+- PartageProgression : 4044-4123
+- HistoriqueScreen : 4124-4392
+- callSubscription : 4393-4405
+- AVANTAGES_PRO : 4406-4416
+- SubscriptionScreen : 4417-4672
+- MaSalleScreen : 4673-4705
+- ProfilScreen : 4706-5155
+  - handleAvatarUpload : 4727
+  - openEdit : 4811
+  - memes : 4817
+  - saveEdit : 4821
+- JOUR_MS : 5156-5156
+- CIBLES : 5157-5162
+- dateLocale : 5163-5163
+- isoDans : 5164-5164
+- joursAvant : 5165-5165
+- dateLongue : 5166-5168
+- phasesObjectif : 5169-5185
+- etatPlan : 5186-5199
+- datesDeMatch : 5200-5206
+- adaptationDuJour : 5207-5220
+- cleExercice : 5221-5222
+- ressentisParExercice : 5223-5242
+- poidsLePlusProche : 5243-5250
+- appliquerRessenti : 5251-5266
+- exerciceDepuisFiche : 5267-5281
+- adapterSeance : 5282-5296
+- FORMES : 5297-5304
+- adaptationAvecForme : 5305-5311
+- seanceCourte : 5312-5319
+- Bloom : 5320-5323
+- PLAN_DEBUT : 5324-5326
+- ConstructionPlan : 5327-5389
+- ObjectifScreen : 5390-5516
+- MissionCard : 5517-5558
+- SemaineCard : 5559-5609
+- TESTS_CATALOGUE : 5610-5623
+- TESTS_PAR_SPORT : 5624-5632
+- COLONNES_TEST : 5633-5633
+- testsDuSport : 5634-5634
+- virgule : 5635-5635
+- INTERVALLE_TEST : 5636-5638
+- comparables : 5639-5644
+- useTests : 5645-5656
+- TestCard : 5657-5672
+- TestScreen : 5673-5749
+- dessinerSlide : 5750-5781
+- CarrouselScreen : 5782-5849
+- BottomNav : 5850-5879
+- FormeDuJour : 5880-5909
+- Interrupteur : 5910-5921
+- progresExercices : 5922-5933
+- virguleKg : 5934-5934
+- RESULTATS_MISSION : 5935-5940
+- BilanMissionScreen : 5941-6026
+- appelerFonction : 6027-6035
+- activerInvitation : 6036-6051
+- lundiCourant : 6052-6057
+- BilanSemaineCard : 6058-6101
+- QUESTIONS_ACE : 6102-6102
+- ACCUEIL_ACE : 6103-6104
+- AceScreen : 6105-6199
+- RappelsCard : 6200-6234
+- JETON_STOP_RAPPELS : 6235-6236
+- RappelsStopScreen : 6237-6256
+- VoltraApp : 6257-6972
+  - changerAbsentes : 6292
+  - chargerRessentis : 6297
+  - profilDeCharges : 6309
+  - remplacerExercice : 6321
+  - launchSeance : 6327
+  - startGeneration : 6375
+  - essayerInvitation : 6385
+  - handleLogout : 6629
 
 ## src/Auth.jsx (119 lignes)
 
@@ -325,7 +340,7 @@ Secrets lus (noms seulement) : EXERCISEDB_RESOLUTIONS, RAPIDAPI_KEY, SUPABASE_SE
 - mots : 62-64
 - score : 65-154
 
-## supabase/functions/generate-program/index.ts (487 lignes)
+## supabase/functions/generate-program/index.ts (784 lignes)
 
 Tables : programmes
 Secrets lus (noms seulement) : ANTHROPIC_API_KEY, SUPABASE_ANON_KEY, SUPABASE_URL
@@ -333,22 +348,34 @@ Secrets lus (noms seulement) : ANTHROPIC_API_KEY, SUPABASE_ANON_KEY, SUPABASE_UR
 - KETTLEBELLS : 29-29
 - MEDBALLS : 30-31
 - SANS_CHARGE : 32-33
-- detecterMateriel : 34-50
-- detecterMouvement : 51-75
-- niveauIndex : 76-80
-- premiersReps : 81-85
-- chargeMax : 86-101
-- arrondirMateriel : 102-112
-- securiserExercice : 113-124
-- SYSTEM_PROMPT : 125-129
-- MACHINES_SALLE : 130-139
-- CROSS_SALLE : 140-142
-- MACHINES_SECOURS : 143-151
-- garantirMachines : 152-168
-- FACTEURS_SEMAINE : 169-169
-- expandWeeks : 170-214
-- securiserProgramme : 215-227
-- buildPrompt : 228-487
+- detecterMateriel : 34-52
+- detecterMouvement : 53-77
+- niveauIndex : 78-82
+- premiersReps : 83-87
+- chargeMax : 88-103
+- arrondirMateriel : 104-114
+- securiserExercice : 115-128
+- SYSTEM_PROMPT : 129-133
+- MACHINES_SALLE : 134-143
+- CROSS_SALLE : 144-146
+- MACHINES_SECOURS : 147-155
+- garantirMachines : 156-174
+- FACTEURS_SEMAINE : 175-176
+- BLOCS_CARDIO : 177-177
+- DUREE_CARDIO : 178-178
+- expandWeeks : 179-229
+- securiserProgramme : 230-246
+- NOMS_JOURS : 247-247
+- LUNDI_DABORD : 248-259
+- MIX_DEFAUT : 260-262
+- mixSaison : 263-277
+- planifierSemaine : 278-330
+- TYPES_VALIDES : 331-331
+- imposerPlan : 332-456
+- REGLES_COACH : 457-478
+- buildPrompt : 479-657
+- consigneSeance : 658-669
+- demanderSeance : 670-784
 
 ## supabase/functions/invitation/index.ts (43 lignes)
 
