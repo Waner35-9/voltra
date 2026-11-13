@@ -3905,7 +3905,8 @@ function zonesDepuisMuscles(muscles) {
 }
 
 // Du plus clair (peu travaillé) au plus foncé (le plus travaillé)
-const COULEURS_NIVEAU = ["#FFE0B0", "#FFB37A", "#F2775F", "#CF4152", "#8A1E3C"];
+// Une couleur bien distincte par niveau, de Débutant à Élite
+const COULEURS_NIVEAU = ["#F1ECE4", "#FFE27A", "#FFB23F", "#FF7433", "#E8364A", "#B3207A", "#5A2BA0"];
 function rgbNiveau(t) {
   const x = Math.min(1, Math.max(0, t)) * (COULEURS_NIVEAU.length - 1);
   const i = Math.min(COULEURS_NIVEAU.length - 2, Math.floor(x)), f = x - i;
@@ -4013,15 +4014,15 @@ const ANCRES_ZONES = {
 
 // ── Niveau de chaque muscle, de Débutant à Élite ──
 // Mélange la force réelle (meilleure charge estimée sur 1 répétition / poids de corps) et le travail fourni (séries par semaine)
-const NIVEAUX_CORPS = ["Débutant", "Intermédiaire", "Confirmé", "Avancé", "Élite"];
+const NIVEAUX_CORPS = ["Débutant", "Novice", "Intermédiaire", "Confirmé", "Avancé", "Expert", "Élite"];
 // Rapport charge / poids de corps à atteindre pour Intermédiaire, Confirmé, Avancé, Élite
 const SEUILS_FORCE = {
-  quadriceps: [0.75, 1.1, 1.5, 2], fessiers: [0.75, 1.1, 1.5, 2], ischios: [0.75, 1.1, 1.5, 2], mollets: [0.75, 1.1, 1.5, 2],
-  pectoraux: [0.5, 0.75, 1, 1.3], epaules: [0.35, 0.5, 0.7, 0.9], dos: [0.5, 0.75, 1, 1.3], lombaires: [0.75, 1.1, 1.5, 2],
-  bras: [0.2, 0.3, 0.42, 0.55], abdos: [0.3, 0.5, 0.75, 1],
+  quadriceps: [0.5, 0.8, 1.1, 1.4, 1.75, 2.2], fessiers: [0.5, 0.8, 1.1, 1.4, 1.75, 2.2], ischios: [0.5, 0.8, 1.1, 1.4, 1.75, 2.2], mollets: [0.5, 0.8, 1.1, 1.4, 1.75, 2.2],
+  pectoraux: [0.35, 0.55, 0.75, 1, 1.25, 1.5], epaules: [0.25, 0.35, 0.5, 0.65, 0.8, 1], dos: [0.35, 0.55, 0.75, 1, 1.25, 1.5], lombaires: [0.5, 0.8, 1.1, 1.4, 1.75, 2.2],
+  bras: [0.15, 0.22, 0.3, 0.4, 0.5, 0.6], abdos: [0.2, 0.35, 0.5, 0.7, 0.9, 1.1],
 };
 // Séries par semaine sur la zone pour Intermédiaire, Confirmé, Avancé, Élite
-const SEUILS_VOLUME = [2, 5, 9, 14];
+const SEUILS_VOLUME = [2, 4, 7, 10, 14, 20];
 const palier = (v, seuils) => seuils.filter(s => v >= s).length;
 const PERIODES_CORPS = [{ id: 30, n: "1 mois" }, { id: 91, n: "3 mois" }, { id: 182, n: "6 mois" }, { id: 0, n: "Depuis le début" }];
 
@@ -4033,7 +4034,14 @@ function useSeriesCorps(user) {
       supabase.from("logs_performance").select("reps_par_set, charge_kg, logged_at, exercices(muscles)").eq("user_id", user.id).order("logged_at", { ascending: true }).limit(5000),
       supabase.from("profiles").select("poids").eq("id", user.id).maybeSingle(),
     ]).then(([{ data }, { data: profil }]) => {
-      const logs = (data || []).map(l => ({ t: new Date(l.logged_at).getTime(), reps: Array.isArray(l.reps_par_set) ? l.reps_par_set : [], charge: Number(l.charge_kg) || 0, zones: zonesDepuisMuscles(l.exercices?.muscles) }));
+      // Un même exercice enregistré plusieurs fois en moins d'une minute ne compte qu'une fois
+      const vus = {};
+      const logs = (data || []).filter(l => {
+        const t = new Date(l.logged_at).getTime(), cle = `${l.exercices?.muscles}|${l.charge_kg}|${l.reps_par_set}`;
+        const doublon = vus[cle] && t - vus[cle] < 60000;
+        vus[cle] = t;
+        return !doublon;
+      }).map(l => ({ t: new Date(l.logged_at).getTime(), reps: Array.isArray(l.reps_par_set) ? l.reps_par_set : [], charge: Number(l.charge_kg) || 0, zones: zonesDepuisMuscles(l.exercices?.muscles) }));
       setDonnees({ logs, poids: Number(profil?.poids) || Number(user?.user_metadata?.onboarding?.poids) || 70 });
     });
   }, [user?.id]);
@@ -4066,12 +4074,17 @@ function lireSeries(donnees, choix = {}, periode = 0) {
   const { logs, poids } = donnees, premier = logs[0].t, maintenantT = Date.now();
   const depart = Object.fromEntries(ZONES_CORPS.map(z => [z.id, 0]));
   Object.assign(depart, niveauxEntre(logs, poids, premier, premier + 7 * JOUR_MS, 1));
-  (choix.forts || []).forEach(z => { depart[z] = Math.max(depart[z], 2); });
+  (choix.forts || []).forEach(z => { depart[z] = Math.max(depart[z], 3); });
   (choix.faibles || []).forEach(z => { depart[z] = 0; });
+  // Niveau atteint à une date : le meilleur bloc de 4 semaines jusque-là, pour qu'une pause ou une semaine légère ne fasse pas reculer
   const a = (fin) => {
-    if (fin < premier + 7 * JOUR_MS) return depart;
-    const n = niveauxEntre(logs, poids, fin - 28 * JOUR_MS, fin, 4);
-    return Object.fromEntries(ZONES_CORPS.map(z => [z.id, n[z.id] ?? depart[z.id]]));
+    const atteint = { ...depart };
+    for (let f = premier + 14 * JOUR_MS; f - 7 * JOUR_MS < fin; f += 7 * JOUR_MS) {
+      const bout = Math.min(f, fin), deb = Math.max(premier, bout - 28 * JOUR_MS);
+      const n = niveauxEntre(logs, poids, deb, bout, Math.max(1, (bout - deb) / (7 * JOUR_MS)));
+      ZONES_CORPS.forEach(z => { if (n[z.id] > atteint[z.id]) atteint[z.id] = n[z.id]; });
+    }
+    return atteint;
   };
   const avant = periode ? a(maintenantT - periode * JOUR_MS) : depart;
   const maintenant = a(maintenantT);
@@ -4089,7 +4102,7 @@ function corpsPartage(donnees, choix = {}, periode = 0) {
 }
 
 // Couleur du niveau (0 à 4) sur l'illustration : jamais 0, pour qu'un muscle débutant reste visible
-const tNiveau = (niveaux) => Object.fromEntries(Object.entries(niveaux).map(([z, v]) => [z, (v + 0.4) / 4.4]));
+const tNiveau = (niveaux) => Object.fromEntries(Object.entries(niveaux).map(([z, v]) => [z, Math.max(0.001, v / (NIVEAUX_CORPS.length - 1))]));
 
 function CarteDuCorps({ donnees, user, onPartager }) {
   const [choix, setChoix] = useState(user?.user_metadata?.points_corps || {});
@@ -4129,11 +4142,11 @@ function CarteDuCorps({ donnees, user, onPartager }) {
       <div style={{ margin: "0 -6px" }}>
         <CorpsIllustre niveaux={vide ? {} : tNiveau(vue === "avant" ? l.avant : l.maintenant)} />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 4, marginTop: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${NIVEAUX_CORPS.length}, 1fr)`, gap: 3, marginTop: 10 }}>
         {NIVEAUX_CORPS.map((n, i) => (
-          <div key={n} style={{ textAlign: "center" }}>
-            <div style={{ height: 8, borderRadius: 4, background: `rgb(${rgbNiveau((i + 0.4) / 4.4).join(",")})` }} />
-            <div style={{ fontSize: 10, fontWeight: 700, color: DS.colors.textSec, marginTop: 4 }}>{n}</div>
+          <div key={n} style={{ textAlign: "center", minWidth: 0 }}>
+            <div style={{ height: 8, borderRadius: 4, background: COULEURS_NIVEAU[i], boxShadow: `inset 0 0 0 1px ${DS.colors.border}` }} />
+            <div style={{ fontSize: 9, fontWeight: 700, color: DS.colors.textSec, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n === "Intermédiaire" ? "Interm." : n}</div>
           </div>
         ))}
       </div>

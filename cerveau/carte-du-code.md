@@ -3,7 +3,7 @@
 Générée automatiquement à chaque commit : ne pas modifier à la main.
 Pour lire un bloc : `sed -n 'début,finp' fichier`.
 
-## src/App.jsx (7520 lignes)
+## src/App.jsx (7533 lignes)
 
 Écrans : app, auth, cycle-complete, objectif, objectif-edit, onboarding, payment-success, pricing, programme-generating, splash, welcome
 Tables : avatars, exercices, invitations_utilisees, logs_performance, matchs, profiles, programmes, rappels, seances, tests_performance
@@ -136,120 +136,120 @@ Fonctions SQL : appliquer_deload, calculer_progression, check_deload_needed
 - AvantMaintenant : 3827-3880
 - ZONES_CORPS : 3881-3892
 - sansAccents : 3893-3895
-- zonesDepuisMuscles : 3896-3907
-- COULEURS_NIVEAU : 3908-3908
-- rgbNiveau : 3909-3917
-- ZONES_CARTE : 3918-3922
-- chargerImage : 3923-3928
-- peindreCorps : 3929-3986
-- CorpsIllustre : 3987-4008
-- ANCRES_ZONES : 4009-4015
-- NIVEAUX_CORPS : 4016-4017
-- SEUILS_FORCE : 4018-4023
-- SEUILS_VOLUME : 4024-4024
-- palier : 4025-4025
-- PERIODES_CORPS : 4026-4027
-- useSeriesCorps : 4028-4043
-- niveauxEntre : 4044-4063
-- lireSeries : 4064-4083
-- corpsPartage : 4084-4091
-- tNiveau : 4092-4093
-- CarteDuCorps : 4094-4171
-- PARTAGE_DUREE : 4172-4172
-- lisse : 4173-4173
-- entre : 4174-4175
-- dessinerCartePartage : 4176-4298
-- PartageProgression : 4299-4378
-- HistoriqueScreen : 4379-4648
-- callSubscription : 4649-4661
-- AVANTAGES_PRO : 4662-4672
-- SubscriptionScreen : 4673-4928
-- MaSalleScreen : 4929-4961
-- ProfilScreen : 4962-5420
-  - handleAvatarUpload : 4983
-  - openEdit : 5067
-  - memes : 5073
-  - saveEdit : 5077
-- JOUR_MS : 5421-5421
-- CIBLES : 5422-5427
-- dateLocale : 5428-5428
-- isoDans : 5429-5429
-- joursAvant : 5430-5430
-- dateLongue : 5431-5433
-- phasesObjectif : 5434-5450
-- etatPlan : 5451-5464
-- datesDeMatch : 5465-5471
-- adaptationDuJour : 5472-5485
-- cleExercice : 5486-5487
-- ressentisParExercice : 5488-5507
-- poidsLePlusProche : 5508-5515
-- appliquerRessenti : 5516-5531
-- exerciceDepuisFiche : 5532-5546
-- adapterSeance : 5547-5561
-- FORMES : 5562-5569
-- adaptationAvecForme : 5570-5576
-- seanceCourte : 5577-5584
-- Bloom : 5585-5588
-- PLAN_DEBUT : 5589-5591
-- ConstructionPlan : 5592-5654
-- ObjectifScreen : 5655-5781
-- MissionCard : 5782-5823
-- isoDe : 5824-5824
-- lireLocal : 5825-5825
-- ecrireLocal : 5826-5827
-- cleApresCompet : 5828-5830
-- derniereCompet : 5831-5840
-- choixApresCompet : 5841-5847
-- blocCompensation : 5848-5856
-- adaptationApresCompet : 5857-5865
-- SEMAINE_CHARGEE : 5866-5866
-- plusLeger : 5867-5868
-- ApresCompetCard : 5869-5897
-- MATERIEL_DEPANNAGE : 5898-5908
-- MATERIEL_DEPANNAGE_SPORT : 5909-5917
-- genererDepannage : 5918-5927
-- DepannageChargement : 5928-5981
-- DepannageSheet : 5982-6035
-- SemaineCard : 6036-6106
-- TESTS_CATALOGUE : 6107-6127
-- TESTS_PAR_SPORT : 6128-6136
-- COLONNES_TEST : 6137-6138
-- TESTS_PAR_DISCIPLINE : 6139-6147
-- testsDuSport : 6148-6148
-- virgule : 6149-6149
-- INTERVALLE_TEST : 6150-6152
-- comparables : 6153-6158
-- useTests : 6159-6170
-- TestCard : 6171-6186
-- TestScreen : 6187-6263
-- dessinerSlide : 6264-6295
-- CarrouselScreen : 6296-6366
-- BottomNav : 6367-6396
-- FormeDuJour : 6397-6426
-- Interrupteur : 6427-6438
-- progresExercices : 6439-6450
-- virguleKg : 6451-6451
-- RESULTATS_MISSION : 6452-6457
-- BilanMissionScreen : 6458-6543
-- appelerFonction : 6544-6552
-- activerInvitation : 6553-6568
-- lundiCourant : 6569-6574
-- BilanSemaineCard : 6575-6619
-- questionsAce : 6620-6620
-- ACCUEIL_ACE : 6621-6622
-- AceScreen : 6623-6729
-- RappelsCard : 6730-6764
-- JETON_STOP_RAPPELS : 6765-6766
-- RappelsStopScreen : 6767-6786
-- VoltraApp : 6787-7520
-  - changerAbsentes : 6825
-  - chargerRessentis : 6830
-  - profilDeCharges : 6842
-  - remplacerExercice : 6855
-  - launchSeance : 6861
-  - startGeneration : 6918
-  - essayerInvitation : 6928
-  - handleLogout : 7172
+- zonesDepuisMuscles : 3896-3908
+- COULEURS_NIVEAU : 3909-3909
+- rgbNiveau : 3910-3918
+- ZONES_CARTE : 3919-3923
+- chargerImage : 3924-3929
+- peindreCorps : 3930-3987
+- CorpsIllustre : 3988-4009
+- ANCRES_ZONES : 4010-4016
+- NIVEAUX_CORPS : 4017-4018
+- SEUILS_FORCE : 4019-4024
+- SEUILS_VOLUME : 4025-4025
+- palier : 4026-4026
+- PERIODES_CORPS : 4027-4028
+- useSeriesCorps : 4029-4051
+- niveauxEntre : 4052-4071
+- lireSeries : 4072-4096
+- corpsPartage : 4097-4104
+- tNiveau : 4105-4106
+- CarteDuCorps : 4107-4184
+- PARTAGE_DUREE : 4185-4185
+- lisse : 4186-4186
+- entre : 4187-4188
+- dessinerCartePartage : 4189-4311
+- PartageProgression : 4312-4391
+- HistoriqueScreen : 4392-4661
+- callSubscription : 4662-4674
+- AVANTAGES_PRO : 4675-4685
+- SubscriptionScreen : 4686-4941
+- MaSalleScreen : 4942-4974
+- ProfilScreen : 4975-5433
+  - handleAvatarUpload : 4996
+  - openEdit : 5080
+  - memes : 5086
+  - saveEdit : 5090
+- JOUR_MS : 5434-5434
+- CIBLES : 5435-5440
+- dateLocale : 5441-5441
+- isoDans : 5442-5442
+- joursAvant : 5443-5443
+- dateLongue : 5444-5446
+- phasesObjectif : 5447-5463
+- etatPlan : 5464-5477
+- datesDeMatch : 5478-5484
+- adaptationDuJour : 5485-5498
+- cleExercice : 5499-5500
+- ressentisParExercice : 5501-5520
+- poidsLePlusProche : 5521-5528
+- appliquerRessenti : 5529-5544
+- exerciceDepuisFiche : 5545-5559
+- adapterSeance : 5560-5574
+- FORMES : 5575-5582
+- adaptationAvecForme : 5583-5589
+- seanceCourte : 5590-5597
+- Bloom : 5598-5601
+- PLAN_DEBUT : 5602-5604
+- ConstructionPlan : 5605-5667
+- ObjectifScreen : 5668-5794
+- MissionCard : 5795-5836
+- isoDe : 5837-5837
+- lireLocal : 5838-5838
+- ecrireLocal : 5839-5840
+- cleApresCompet : 5841-5843
+- derniereCompet : 5844-5853
+- choixApresCompet : 5854-5860
+- blocCompensation : 5861-5869
+- adaptationApresCompet : 5870-5878
+- SEMAINE_CHARGEE : 5879-5879
+- plusLeger : 5880-5881
+- ApresCompetCard : 5882-5910
+- MATERIEL_DEPANNAGE : 5911-5921
+- MATERIEL_DEPANNAGE_SPORT : 5922-5930
+- genererDepannage : 5931-5940
+- DepannageChargement : 5941-5994
+- DepannageSheet : 5995-6048
+- SemaineCard : 6049-6119
+- TESTS_CATALOGUE : 6120-6140
+- TESTS_PAR_SPORT : 6141-6149
+- COLONNES_TEST : 6150-6151
+- TESTS_PAR_DISCIPLINE : 6152-6160
+- testsDuSport : 6161-6161
+- virgule : 6162-6162
+- INTERVALLE_TEST : 6163-6165
+- comparables : 6166-6171
+- useTests : 6172-6183
+- TestCard : 6184-6199
+- TestScreen : 6200-6276
+- dessinerSlide : 6277-6308
+- CarrouselScreen : 6309-6379
+- BottomNav : 6380-6409
+- FormeDuJour : 6410-6439
+- Interrupteur : 6440-6451
+- progresExercices : 6452-6463
+- virguleKg : 6464-6464
+- RESULTATS_MISSION : 6465-6470
+- BilanMissionScreen : 6471-6556
+- appelerFonction : 6557-6565
+- activerInvitation : 6566-6581
+- lundiCourant : 6582-6587
+- BilanSemaineCard : 6588-6632
+- questionsAce : 6633-6633
+- ACCUEIL_ACE : 6634-6635
+- AceScreen : 6636-6742
+- RappelsCard : 6743-6777
+- JETON_STOP_RAPPELS : 6778-6779
+- RappelsStopScreen : 6780-6799
+- VoltraApp : 6800-7533
+  - changerAbsentes : 6838
+  - chargerRessentis : 6843
+  - profilDeCharges : 6855
+  - remplacerExercice : 6868
+  - launchSeance : 6874
+  - startGeneration : 6931
+  - essayerInvitation : 6941
+  - handleLogout : 7185
 
 ## src/Auth.jsx (119 lignes)
 
