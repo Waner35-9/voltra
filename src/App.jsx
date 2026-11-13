@@ -39,7 +39,7 @@ function getNiveauCycle(niveau) {
   return 1;
 }
 
-async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, jours, rythme }) {
+async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, equipement, materiel, chargeMaison, douleurs, poste, poids, age, taille, jours, rythme }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Pas de session");
   const startCycle = cycle || getNiveauCycle(niveau);
@@ -52,7 +52,7 @@ async function generateProgramIA({ sport, objectif, niveau, frequence, cycle, eq
         "Authorization": `Bearer ${session.access_token}`,
         "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle, startCycle, equipement, douleurs, poste, poids, age, taille, jours, rythme }),
+      body: JSON.stringify({ sport, objectif, niveau, frequence, cycle: startCycle, startCycle, equipement, materiel, chargeMaison, douleurs, poste, poids, age, taille, jours, rythme }),
     }
   );
   const data = await res.json();
@@ -209,6 +209,8 @@ function securiserExercice(ex, p) {
       * (1 + Math.min(Math.max((p.cycle || 1) - 1, 0), 3) * 0.05)
       * (reps >= 15 ? 0.7 : reps >= 10 ? 0.85 : 1)
       * 1.1; // marge pour la semaine 3 (+10 %)
+    // À la maison : jamais plus lourd que l'haltère ou la kettlebell la plus lourde
+    if (p.plafond && ["halteres", "haltere_unique", "kettlebell"].includes(materiel)) max = Math.min(max, p.plafond);
   }
   let charge = Number(ex.chargeKg) || 0;
   if (max === 0) charge = 0;
@@ -2585,11 +2587,54 @@ const DOULEURS = [
 ];
 
 const EQUIPEMENTS = [
-  { id: "salle_complete", label: "Salle complete", desc: "Tout le materiel disponible", emoji: "🏋️" },
-  { id: "salle_basique", label: "Salle basique", desc: "Barres, halteres, machines", emoji: "⚙️" },
-  { id: "maison", label: "Maison", desc: "Poids du corps + elastiques", emoji: "🏠" },
-  { id: "terrain", label: "Terrain / Exterieur", desc: "Sans materiel specifique", emoji: "🌿" },
+  { id: "salle_complete", label: "Salle complète", desc: "Machines, barres, haltères", emoji: "🏋️" },
+  { id: "salle_basique", label: "Salle basique", desc: "Barres et haltères, sans machines", emoji: "⚙️" },
+  { id: "maison", label: "Maison", desc: "Avec ton propre matériel", emoji: "🏠" },
+  { id: "terrain", label: "Extérieur", desc: "Parc, stade, rue", emoji: "🌿" },
 ];
+// Matériel à la maison ou dehors : mêmes repères que la séance de dépannage, lus par le serveur
+const MATERIEL_LIEU = {
+  maison: [
+    { id: "halteres", l: "Haltères", ic: "🏋️" }, { id: "kettlebell", l: "Kettlebell", ic: "🔔" },
+    { id: "elastique", l: "Élastiques", ic: "🪢" }, { id: "barre de traction", l: "Barre de traction", ic: "🪜" },
+    { id: "banc ou chaise", l: "Banc ou chaise", ic: "🪑" }, { id: "corde a sauter", l: "Corde à sauter", ic: "➰" },
+    { id: "medball", l: "Médecine-ball", ic: "🏐" }, { id: "sangles", l: "Sangles TRX", ic: "🎗️" },
+    { id: "sac leste", l: "Sac ou gilet lesté", ic: "🎒" }, { id: "marche", l: "Marche ou escalier", ic: "🪜" },
+    { id: "espace pour courir", l: "Jardin ou rue pour courir", ic: "🏃" },
+  ],
+  terrain: [
+    { id: "terrain", l: "Terrain ou piste", ic: "🏟️" }, { id: "cote", l: "Une côte", ic: "⛰️" },
+    { id: "escaliers", l: "Des escaliers", ic: "🪜" }, { id: "barre fixe", l: "Barre fixe", ic: "🤸" },
+    { id: "banc public", l: "Banc", ic: "🪑" }, { id: "elastique", l: "Élastiques", ic: "🪢" },
+    { id: "corde a sauter", l: "Corde à sauter", ic: "➰" }, { id: "sac leste", l: "Sac ou gilet lesté", ic: "🎒" },
+  ],
+};
+const CHARGES_MAISON = [6, 10, 14, 20, 24, 32];
+
+// Choix du matériel quand on s'entraîne à la maison ou dehors
+function MaterielLieu({ lieu, sport, materiel = [], chargeMaison, onChange, accent }) {
+  const ac = accent ? accentLisible(accent) : (DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark);
+  const options = [...(MATERIEL_LIEU[lieu] || []), ...(MATERIEL_DEPANNAGE_SPORT[sport] || []).filter(o => !(MATERIEL_LIEU[lieu] || []).some(x => x.id === o.id))];
+  const basculer = (id) => onChange({ materiel: materiel.includes(id) ? materiel.filter(x => x !== id) : [...materiel, id], chargeMaison });
+  const lourd = materiel.some(m => m === "halteres" || m === "kettlebell");
+  const puce = (on) => ({ padding: "9px 12px", borderRadius: 999, border: `1px solid ${on ? ac : DS.colors.border}`, background: on ? DS.colors.primarySoft : DS.colors.surface, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, cursor: "pointer" });
+  const titre = { fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, color: DS.colors.textSec, margin: "0 0 10px" };
+  return (
+    <div style={{ marginTop: 20 }}>
+      <p style={titre}>{lieu === "terrain" ? "Ce que tu as autour de toi" : "Ton matériel à la maison"}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {options.map(o => <button key={o.id} type="button" onClick={() => basculer(o.id)} style={puce(materiel.includes(o.id))}>{o.ic} {o.l}</button>)}
+      </div>
+      {!materiel.length && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: DS.colors.textSec, margin: "10px 0 0" }}>Rien ? Pas de souci : séances au poids du corps.</p>}
+      {lourd && <>
+        <p style={{ ...titre, marginTop: 18 }}>Ton haltère ou ta kettlebell la plus lourde</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {CHARGES_MAISON.map(kg => <button key={kg} type="button" onClick={() => onChange({ materiel, chargeMaison: kg })} style={puce(chargeMaison === kg)}>{kg === 32 ? "32 kg et +" : `${kg} kg`}</button>)}
+        </div>
+      </>}
+    </div>
+  );
+}
 
 const TOTAL_STEPS = 6;
 
@@ -2597,7 +2642,7 @@ function OnboardingScreen({ onComplete, onLogin }) {
   const [step, setStep] = useState(0);
   const [data, setData] = useState({
     sport: null, objectif: null, poste: null,
-    douleurs: [], equipement: null,
+    douleurs: [], equipement: null, materiel: [], chargeMaison: null,
     niveau: null, frequence: 3, jours: [1, 3, 5], rythme: RYTHME_DEFAUT,
     poids: null, age: null, taille: null,
   });
@@ -3086,6 +3131,7 @@ function OnboardingScreen({ onComplete, onLogin }) {
                 </div>
               ))}
             </div>
+            {MATERIEL_LIEU[data.equipement] && <MaterielLieu lieu={data.equipement} sport={data.sport} materiel={data.materiel} chargeMaison={data.chargeMaison} onChange={(m) => setData(d => ({ ...d, ...m }))} />}
           </div>
         )}
 
@@ -4858,14 +4904,14 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
   }, []);
 
   const openEdit = () => {
-    setEditData({ sport, objectif: objectif !== "Non defini" ? objectif : null, frequence, jours: progData?.jours?.length === frequence ? progData.jours : DEFAULT_JOURS[frequence], rythme: { ...RYTHME_DEFAUT, ...(progData?.rythme || user?.user_metadata?.onboarding?.rythme || {}) } });
+    setEditData({ sport, objectif: objectif !== "Non defini" ? objectif : null, frequence, jours: progData?.jours?.length === frequence ? progData.jours : DEFAULT_JOURS[frequence], rythme: { ...RYTHME_DEFAUT, ...(progData?.rythme || user?.user_metadata?.onboarding?.rythme || {}) }, equipement: progData?.equipement || user?.user_metadata?.onboarding?.equipement || "salle_complete", materiel: progData?.materiel || [], chargeMaison: progData?.chargeMaison ?? null });
     setShowEditDrawer(true);
   };
 
   // Un nouveau programme si le sport, le club ou les jours changent : chaque séance dépend de son jour
   const memes = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
   const rythmeAvant = { ...RYTHME_DEFAUT, ...(progData?.rythme || {}) };
-  const regenere = !!editData?.rythme && (editData.sport !== sport || !memes([...editData.rythme.club].sort(), [...rythmeAvant.club].sort()) || editData.rythme.match !== rythmeAvant.match || editData.rythme.saison !== rythmeAvant.saison || !memes([...editData.jours].sort(), [...(progData?.jours || [])].sort()));
+  const regenere = !!editData?.rythme && (editData.sport !== sport || !memes([...editData.rythme.club].sort(), [...rythmeAvant.club].sort()) || editData.rythme.match !== rythmeAvant.match || editData.rythme.saison !== rythmeAvant.saison || !memes([...editData.jours].sort(), [...(progData?.jours || [])].sort())) || (!!editData?.equipement && (editData.equipement !== (progData?.equipement || "salle_complete") || !memes([...(editData.materiel || [])].sort(), [...(progData?.materiel || [])].sort()) || (editData.chargeMaison ?? null) !== (progData?.chargeMaison ?? null)));
 
   const saveEdit = async () => {
     setSaving(true);
@@ -4953,9 +4999,18 @@ function ProfilScreen({ isPro, user, programme, sportActif: sportActifProp, appT
             <div style={{ marginBottom: 28 }}>
               <DayPicker sport={editData.sport} jours={editData.jours || []} max={editData.frequence} accent={theme.accent} rythme={editData.rythme} onChange={(j) => setEditData(d => ({ ...d, jours: j }))} />
             </div>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: DS.colors.textSec, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>Où tu t'entraînes</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: MATERIEL_LIEU[editData.equipement] ? 0 : 28 }}>
+              {EQUIPEMENTS.map(eq => (
+                <div key={eq.id} onClick={() => setEditData(d => ({ ...d, equipement: eq.id }))} style={{ padding: "12px 10px", borderRadius: DS.radius.md, cursor: "pointer", background: editData.equipement === eq.id ? theme.accent + "20" : DS.colors.surfaceHigh, border: `1px solid ${editData.equipement === eq.id ? theme.accent : DS.colors.border}`, transition: "var(--t-choix)" }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: DS.colors.textPrimary, margin: 0 }}>{eq.emoji} {eq.label}</p>
+                </div>
+              ))}
+            </div>
+            {MATERIEL_LIEU[editData.equipement] && <div style={{ marginBottom: 28 }}><MaterielLieu lieu={editData.equipement} sport={editData.sport} materiel={editData.materiel || []} chargeMaison={editData.chargeMaison} accent={theme.accent} onChange={(m) => setEditData(d => ({ ...d, ...m }))} /></div>}
             {regenere && (
               <div style={{ background: DS.colors.warningSoft, border: "1px solid rgba(255,140,0,0.2)", borderRadius: DS.radius.md, padding: "10px 14px", marginBottom: 16 }}>
-                <p style={{ color: DS.colors.warning, fontSize: 12 }}>⚠️ Un nouveau programme sera créé autour de ces jours.</p>
+                <p style={{ color: DS.colors.warning, fontSize: 12 }}>⚠️ Un nouveau programme sera créé avec ces réglages.</p>
               </div>
             )}
             <button onClick={saveEdit} disabled={saving || !editData.sport || !editData.objectif || (editData.jours || []).length !== editData.frequence} style={{ width: "100%", height: 52, background: editData.sport && editData.objectif ? `linear-gradient(135deg, ${theme.accent}, ${theme.accent}CC)` : DS.colors.surfaceHigh, border: "none", borderRadius: DS.radius.md, color: editData.sport && editData.objectif ? "#000" : DS.colors.textSec, fontSize: 15, cursor: "pointer", ...s.heading, fontWeight: 700, letterSpacing: "0.05em" }}>
@@ -5765,11 +5820,12 @@ function DepannageChargement({ sport, materiel, duree, type }) {
 
 function DepannageSheet({ sport, progData, user, onClose, onSeance }) {
   const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
-  const [materiel, setMateriel] = useState(["rien"]);
+  const options = [...MATERIEL_DEPANNAGE, ...(MATERIEL_DEPANNAGE_SPORT[sport] || [])];
+  // Part du matériel déjà déclaré à la maison ou dehors
+  const [materiel, setMateriel] = useState(() => { const deja = (progData?.materiel || []).filter(m => options.some(o => o.id === m)); return deja.length ? deja : ["rien"]; });
   const [duree, setDuree] = useState(30);
   const [type, setType] = useState("auto");
   const [etat, setEtat] = useState("");
-  const options = [...MATERIEL_DEPANNAGE, ...(MATERIEL_DEPANNAGE_SPORT[sport] || [])];
   const basculer = (id) => setMateriel(l => id === "rien" ? ["rien"] : l.includes(id) ? (l.filter(x => x !== id).length ? l.filter(x => x !== id) : ["rien"]) : [...l.filter(x => x !== "rien"), id]);
   const puce = (on) => ({ padding: "9px 12px", borderRadius: 999, border: `1px solid ${on ? ac : DS.colors.border}`, background: on ? DS.colors.primarySoft : DS.colors.surface, color: DS.colors.textPrimary, fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, cursor: "pointer" });
   const titre = { fontSize: 13, fontWeight: 700, color: DS.colors.textSec, textTransform: "uppercase", letterSpacing: "0.06em", margin: "20px 0 10px" };
@@ -5780,7 +5836,7 @@ function DepannageSheet({ sport, progData, user, onClose, onSeance }) {
       const seance = await genererDepannage({
         sport, poste: progData?.poste, niveau: progData?.niveau || meta.niveau, objectif: progData?.objectif || meta.objectif, douleurs: progData?.douleurs,
         poids: meta.poids, age: meta.age, taille: meta.taille,
-        materiel: materiel.filter(x => x !== "rien"), duree, type: type === "auto" ? null : type,
+        materiel: materiel.filter(x => x !== "rien"), chargeMaison: progData?.chargeMaison, duree, type: type === "auto" ? null : type,
       });
       onSeance(seance);
     } catch (e) {
@@ -6629,7 +6685,8 @@ export default function VoltraApp() {
       age: profilPhysique?.age ?? onboardingData?.age ?? null,
       niveau: dj.niveau || programmeActif?.niveau || onboardingData?.niveau || "debutant",
       cycle: dj.cycle || 1,
-      avecCharges: !["maison", "terrain"].includes(dj.equipement || onboardingData?.equipement),
+      avecCharges: !["maison", "terrain"].includes(dj.equipement || onboardingData?.equipement) || (dj.materiel || []).some(m => m === "halteres" || m === "kettlebell"),
+      plafond: ["maison", "terrain"].includes(dj.equipement) ? dj.chargeMaison || null : null,
     };
   };
 
@@ -7181,6 +7238,8 @@ if (screen === "pricing") return <PricingScreen key={appTheme} programme={progra
                   jours: prog.data_json?.jours,
                   rythme: prog.data_json?.rythme || reponses.rythme,
                   equipement: prog.data_json?.equipement || reponses.equipement,
+                  materiel: prog.data_json?.materiel || reponses.materiel,
+                  chargeMaison: prog.data_json?.chargeMaison ?? reponses.chargeMaison,
                   douleurs: prog.data_json?.douleurs || reponses.douleurs,
                   poste: prog.data_json?.poste || reponses.poste,
                   poids: profilPhysique?.poids ?? reponses.poids,

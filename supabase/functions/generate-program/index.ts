@@ -15,7 +15,7 @@ const corsHeaders = {
 // Pour les haltères et kettlebells, la charge est TOUJOURS par main / par unité.
 // ─────────────────────────────────────────────────────────────
 
-type Profil = { poids: number | null; niveau: string; age: number | null; cycle: number; avecCharges: boolean };
+type Profil = { poids: number | null; niveau: string; age: number | null; cycle: number; avecCharges: boolean; plafond?: number | null };
 
 // [débutant, intermédiaire, avancé] × poids de corps
 const RATIOS: Record<string, Record<string, number[]>> = {
@@ -98,7 +98,9 @@ function chargeMax(ex: any, p: Profil, facteurSemaine = 1): { materiel: string; 
   const facteurCycle = 1 + Math.min(Math.max(p.cycle - 1, 0), 3) * 0.05;
   const reps = premiersReps(ex.reps);
   const facteurReps = reps >= 15 ? 0.7 : reps >= 10 ? 0.85 : 1;
-  return { materiel, max: poids * ratio * facteurAge * facteurCycle * facteurReps * facteurSemaine };
+  const max = poids * ratio * facteurAge * facteurCycle * facteurReps * facteurSemaine;
+  // À la maison : jamais plus lourd que l'haltère ou la kettlebell la plus lourde de l'athlète
+  return { materiel, max: p.plafond && ["halteres", "haltere_unique", "kettlebell"].includes(materiel) ? Math.min(max, p.plafond) : max };
 }
 
 function arrondirMateriel(kg: number, materiel: string, mouvement: string): number {
@@ -480,6 +482,45 @@ const TYPES_SEANCE: Record<string, string> = {
 };
 
 // Le mot de la competition selon le sport : un boxeur fait des combats, un nageur des courses
+// ─────────────────────────────────────────────────────────────
+// Maison et extérieur : ce que font les clubs pros sans salle (confinement)
+// et ce que dit la recherche (poids du corps, élastiques, pliométrie, isométrie)
+// ─────────────────────────────────────────────────────────────
+const MATERIEL_NOMS: Record<string, string> = {
+  "halteres": "halteres", "kettlebell": "kettlebell", "elastique": "elastiques et mini-bandes", "corde a sauter": "corde a sauter",
+  "barre de traction": "barre de traction", "banc ou chaise": "banc ou chaise solide", "espace pour courir": "de la place pour courir dehors",
+  "medball": "medecine-ball", "sangles": "sangles de suspension (TRX)", "sac leste": "sac a dos ou gilet leste", "marche": "marche ou escalier",
+  "cote": "une cote", "escaliers": "des escaliers", "terrain": "un terrain ou une piste", "barre fixe": "barre fixe de parc", "banc public": "banc de parc",
+  "sac de frappe": "sac de frappe", "ballon": "ballon", "plots": "plots", "ballon et panier": "ballon et panier", "raquette et balles": "raquette et balles", "piste": "piste",
+};
+const MATERIEL_LOURD = ["halteres", "kettlebell"];
+
+const LIEUX: Record<string, string> = {
+  maison: `ENTRAINEMENT A LA MAISON (methodes des clubs pros pendant le confinement + recherche):
+- Le poids du corps fait progresser autant que les charges si les series vont PRES DE L'ECHEC (1 a 3 reps en reserve). Sans kg, on progresse par: 1) l'unilateral (split squat, bulgare pied sur chaise, skater squat, shrimp squat, pistol assiste, single-leg RDL, hip thrust une jambe), 2) le tempo (3-4 s a la descente, pause 2 s en bas), 3) l'amplitude (pieds ou mains sureleves, deficit), 4) l'isometrie (3-5 x 20-45 s: chaise contre le mur, split squat tenu, pont ischios tenu; et pousser 3-6 s a fond contre un mur ou un encadrement), 5) la densite (EMOM, repos plus courts).
+- Pousser: pompes et variantes (inclinees, declinees, archer, explosives), dips sur chaise. Tirer: rowing sous une table solide, tirage serviette accrochee a une porte FERMEE, Y-T-W au sol. Ischios: nordic pieds bloques sous un canape ou un lit, glissade des talons sur serviette. Adducteurs: Copenhagen sur canape ou chaise. Mollets et chevilles: montees sur une marche, une jambe. Tronc: dead bug, planche, gainage lateral, bear crawl.
+- Pas d'halteres: charges improvisees = sac a dos rempli de livres ou de bouteilles (squat, fentes, pompes, hip thrust), bidons d'eau (rowing, souleve de terre roumain). Garde chargeKg 0 et ecris l'astuce dans le conseil.
+- Elastiques (tres efficaces pour l'explosivite, le sprint et les changements de direction en sport collectif): rowing, face pull, rotation externe d'epaule, pallof press, marche laterale mini-bande, flexion de hanche.
+- Pliometrie: 2 seances par semaine max, 60-100 contacts (debutant 40-60). Sauts lents (squat jump, CMJ) pour l'acceleration, rebonds rapides (pogos, corde) pour la vitesse max. Atterrissages silencieux, genoux dans l'axe, sol stable.
+- Vitesse sans place: wall drill (acceleration contre un mur), skips sur place, pogos, departs reactifs sur 3-5 m, appuis rapides. Sprints longs seulement si "de la place pour courir" est disponible.
+- Cardio: corde, shadow, burpees, montees de genoux, mountain climbers, escaliers; formats 30/30, 20/10, rounds.
+- Securite: chaise calee contre un mur, porte fermee pour la serviette, sauts loin des meubles.`,
+  terrain: `ENTRAINEMENT EN EXTERIEUR (parc, stade, rue): le meilleur endroit pour la vitesse et le cardio.
+- Sprints 10-40 m (recuperation 1 min par 10 m sprintes), accelerations en cote courte 10-30 m (pente douce: travaille la poussee), escaliers (montees rapides, sauts marche par marche), changements de direction avec reperes (5-10-5, test T), bonds horizontaux sur l'herbe (impacts plus doux), fractionne 15/15, 30/30, 200 m.
+- Renforcement au parc: barre fixe (tractions, suspension, releves de genoux), banc (step-up, bulgare, dips, pompes declinees), muret (hip thrust). Sans charge on progresse par l'unilateral, le tempo, l'isometrie et les series pres de l'echec.
+- Elastiques et sac a dos leste si l'athlete en a. Pliometrie 2 fois par semaine max, 60-100 contacts.`,
+};
+
+const SPORT_LIEU: Record<string, string> = {
+  football: "Chaque semaine: nordic et Copenhagen (prevention des blessures ischios et adducteurs), mollets et chevilles une jambe, sauts lateraux (skater jumps). Avec un ballon: conduite et jongles en recuperation active. Dehors: sprints 10-30 m, sprints repetes, 5-10-5, fractionne 15/15.",
+  basketball: "Sauts verticaux (CMJ, pogos, sauts une jambe) avec atterrissages genoux dans l'axe, mollets, tronc, pas chasses defensifs. Avec ballon et panier: dribble et tirs en recuperation. Dehors: sprints courts, changements de direction, pliometrie sur l'herbe.",
+  tennis: "Jeu de jambes (split step, pas croises, fentes dans toutes les directions), rotation du tronc (lancers de medecine-ball contre un mur, pallof a l'elastique), coiffe des rotateurs a l'elastique, avant-bras et poignet. Dehors: deplacements en etoile, sprints 5-10 m avec freinage.",
+  rugby: "Cou en isometrique (la main resiste, 4 directions), pompes lestees avec sac a dos, nordic, bear crawl, sauts. Dehors: sprints, cotes, bronco, efforts repetes (sprint, plaquer au sol, se relever, repartir).",
+  natation: "Travail a sec: coiffe des rotateurs et omoplates a l'elastique (rotations externes, Y-T-W, tirages), gainage et position streamline, squat jump pour les departs, mobilite des epaules, du dos et des chevilles. Pas trop de pompes.",
+  sprint: "Isometriques lourds (mi-squat tenu, mollet tenu), pogos, sauts lents, nordic, flexion de hanche a l'elastique, A-skips sur place, wall drill. Dehors: accelerations 10-30 m, cotes courtes, vitesse max 30-60 m avec recuperation complete, bonds.",
+  combat: "Corde et shadow par rounds (3 min / 1 min), sac de frappe si disponible, cou (isometriques 4 directions puis extensions), rotation explosive (lancers de medecine-ball, rotations a l'elastique), sprawls, tirage serviette pour la poigne, pompes explosives. Dehors: sprints courts, cotes, fractionne au format des rounds.",
+};
+
 const COMPETITIONS: Record<string, { nom: string; pl: string }> = {
   combat: { nom: "combat", pl: "combats" },
   natation: { nom: "course", pl: "courses" },
@@ -493,7 +534,7 @@ function vocabulaire(texte: string, sport: string): string {
     + `\nVOCABULAIRE: pour ce sport on dit "${c.nom}" (pluriel "${c.pl}"), JAMAIS "match", dans les titres, objectifs, conseils et intensites.`;
 }
 
-function buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, plan, rythme }: any) {
+function buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, plan, rythme, materiel, chargeMaison }: any) {
   const startCycle = cycle || 1;
   const freq = plan.length;
 
@@ -503,8 +544,18 @@ function buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, do
     maison: { desc: "MAISON poids du corps SEUL, INTERDIT halteres/barres/machines", nb: "6-7 exos", sets: "2-3 series" },
     terrain: { desc: "EXTERIEUR poids du corps SEUL, INTERDIT halteres/barres/machines", nb: "6-7 exos", sets: "2-3 series" },
   };
-  const c = equipementConfig[equipement] || equipementConfig.salle_complete;
-  const avecCharges = equipement === "salle_complete" || equipement === "salle_basique";
+  const c = { ...(equipementConfig[equipement] || equipementConfig.salle_complete) };
+  // Maison ou dehors : l'athlète a dit ce qu'il a, l'IA n'utilise que ça
+  const horsSalle = equipement === "maison" || equipement === "terrain";
+  const mat: string[] = Array.isArray(materiel) ? materiel.filter((m: string) => MATERIEL_NOMS[m]) : [];
+  const lourdMaison = horsSalle && mat.some((m) => MATERIEL_LOURD.includes(m));
+  const plafond = lourdMaison && Number(chargeMaison) >= 2 && Number(chargeMaison) <= 60 ? Number(chargeMaison) : null;
+  if (horsSalle) {
+    c.desc = `${equipement === "terrain" ? "EXTERIEUR" : "MAISON"}. Materiel disponible, et RIEN d'autre: ${mat.length ? mat.map((m) => MATERIEL_NOMS[m]).join(", ") : "aucun, poids du corps seul"}${plafond ? ` (halteres et kettlebell jusqu'a ${plafond} kg)` : ""}. N'utilise jamais de machine, de barre olympique ou de materiel absent de cette liste`;
+    c.sets = "3-4 series";
+  }
+  const avecCharges = equipement === "salle_complete" || equipement === "salle_basique" || lourdMaison;
+  const lieuTexte = horsSalle ? `${LIEUX[equipement]}\n${SPORT_LIEU[sport] ? `SPECIFIQUE ${String(sport).toUpperCase()} hors salle: ${SPORT_LIEU[sport]}` : ""}` : "";
 
   const douleurConfig: Record<string, { eviter: string; inclure: string }> = {
     genou: {
@@ -575,10 +626,17 @@ function buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, do
   const poidsValide = poidsNum >= 30 && poidsNum <= 250;
   const ageValide = ageNum >= 12 && ageNum <= 90;
   const tailleValide = tailleNum >= 120 && tailleNum <= 230;
-  const profil: Profil = { poids: poidsValide ? poidsNum : null, niveau, age: ageValide ? ageNum : null, cycle: startCycle, avecCharges };
+  const profil: Profil = { poids: poidsValide ? poidsNum : null, niveau, age: ageValide ? ageNum : null, cycle: startCycle, avecCharges, plafond };
 
   let chargesTexte = "";
-  if (avecCharges) {
+  if (lourdMaison) {
+    const repere = (nom: string) => {
+      const { materiel: m, max } = chargeMax({ nom, reps: "8" }, profil);
+      return arrondirMateriel(max, m, detecterMouvement(nom));
+    };
+    chargesTexte = `CHARGES A LA MAISON (athlete ${poidsValide ? poidsNum + "kg" : "poids inconnu, reste prudent"}, niveau ${niveau})${plafond ? `, halteres et kettlebell de ${plafond} kg MAXIMUM` : ""}. Reperes pour ~8 reps: squat ${repere("dumbbell squat")}kg/main, fentes ${repere("dumbbell lunge")}kg/main, rowing ${repere("dumbbell row")}kg/main, developpe ${repere("dumbbell bench press")}kg/main, goblet squat ${repere("dumbbell goblet squat")}kg, kettlebell swing ${repere("kettlebell swing")}kg.
+Si la charge maximale est trop legere pour un exercice: passe en unilateral, en tempo lent ou en plus de reps plutot que d'inventer des kg. chargeKg = poids d'UNE haltere. Poids du corps, elastiques, sauts: chargeKg 0.`;
+  } else if (avecCharges) {
     // Plafonds calculés par le serveur, donnés à l'IA comme repères (charges de travail pour ~8 reps)
     const repere = (nom: string) => {
       const { materiel, max } = chargeMax({ nom, reps: "8" }, profil);
@@ -611,7 +669,7 @@ chargeKg = charge realiste en kg. Pour halteres/kettlebells : TOUJOURS le poids 
   const cardioMateriel: Record<string, string> = {
     salle_complete: "rameur, velo, tapis de course, ski erg, corde a sauter",
     salle_basique: "corde a sauter, burpees, montees de genoux, course dehors si possible",
-    maison: "corde a sauter, burpees, montees de genoux, jumping jacks, mountain climbers, shadow",
+    maison: `corde a sauter si disponible, burpees, montees de genoux, jumping jacks, mountain climbers, shadow, escaliers${mat.includes("espace pour courir") ? ", course dehors (fractionne, sprints)" : ""}`,
     terrain: "course (fractionne, navettes, cotes), corde a sauter",
   };
   const cardioTexte = `MATERIEL CARDIO disponible: ${cardioMateriel[equipement] || cardioMateriel.terrain}${sport === "natation" ? " (le nageur nage deja au club: cardio HORS de l'eau)" : ""}. Adapte les formats de la fiche a ce materiel.`;
@@ -656,6 +714,7 @@ CHAQUE SEANCE = "echauffement" (8-10 min, 5-6 elements, facon RAMP, avec la prev
 CYCLE ${startCycle}: ${cycleProfile}
 ${niveauTexte}
 MATERIEL: ${c.desc}. Renforcement: ${c.nb}, ${c.sets}.
+${lieuTexte}
 ${machinesTexte}
 ${chargesTexte}
 ${morphoTexte}
@@ -726,6 +785,8 @@ serve(async (req: Request) => {
 
     const body = await req.json();
     const { sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, jours, rythme } = body;
+    const materielLieu: string[] = Array.isArray(body.materiel) ? body.materiel.map((m: unknown) => String(m).slice(0, 40)).filter((m: string) => MATERIEL_NOMS[m]).slice(0, 20) : [];
+    const chargeMaison = Number(body.chargeMaison) >= 2 && Number(body.chargeMaison) <= 60 ? Number(body.chargeMaison) : null;
     const json = (corps: unknown, status = 200) => new Response(JSON.stringify(corps), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     // Séance de dépannage : une seule séance, tout de suite, avec le matériel dispo maintenant. Rien n'est enregistré ici.
@@ -744,10 +805,10 @@ serve(async (req: Request) => {
         contexte: `SEANCE DE DEPANNAGE, prioritaire sur les durees et le materiel indiques plus haut: ${dureeMin} min TOUT COMPRIS (${volume}). Materiel disponible maintenant, et RIEN d'autre: ${materiel.length ? materiel.join(", ") : "aucun, poids du corps seul"}. Reste specifique au sport`,
       }];
       const equipD = materiel.includes("salle") ? "salle_complete" : lourds ? "salle_basique" : "maison";
-      const ctx = buildPrompt({ sport, objectif: objectif || "performance", niveau: niveau || "intermediaire", frequence: 1, cycle: 1, equipement: equipD, douleurs, poste, poids, age, taille, plan: planD, rythme: null });
+      const ctx = buildPrompt({ sport, objectif: objectif || "performance", niveau: niveau || "intermediaire", frequence: 1, cycle: 1, equipement: equipD === "salle_basique" ? "maison" : equipD, douleurs, poste, poids, age, taille, plan: planD, rythme: null, materiel: materiel.filter((m) => MATERIEL_NOMS[m]), chargeMaison });
       const brute = await demanderSeance(vocabulaire(ctx + consigneSeance(planD, 0), sport));
       const poidsD = Number(poids), ageD = Number(age);
-      const profilD: Profil = { poids: poidsD >= 30 && poidsD <= 250 ? poidsD : null, niveau: niveau || "intermediaire", age: ageD >= 12 && ageD <= 90 ? ageD : null, cycle: Number(cycle) || 1, avecCharges: lourds };
+      const profilD: Profil = { poids: poidsD >= 30 && poidsD <= 250 ? poidsD : null, niveau: niveau || "intermediaire", age: ageD >= 12 && ageD <= 90 ? ageD : null, cycle: Number(cycle) || 1, avecCharges: lourds, plafond: materiel.includes("salle") ? null : chargeMaison };
       const progD = securiserProgramme(imposerPlan({ semaines: [{ numero: 1, seances: [brute] }] }, planD), profilD);
       return json({ seance: { ...progD.semaines[0].seances[0], id: `depannage_${Date.now()}`, depannage: true, dureeMin } });
     }
@@ -771,7 +832,7 @@ serve(async (req: Request) => {
     const plan = planifierSemaine(sport, jours, rythme, freq);
 
     // Une demande à l'IA par séance, toutes en même temps : chaque séance est longue et complète
-    const contexte = buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, plan, rythme });
+    const contexte = buildPrompt({ sport, objectif, niveau, frequence, cycle, equipement, douleurs, poste, poids, age, taille, plan, rythme, materiel: materielLieu, chargeMaison });
     const seances = await Promise.all(plan.map(async (_p, i) => {
       try { return await demanderSeance(vocabulaire(contexte + consigneSeance(plan, i), sport)); }
       catch (e) { console.error(`Seance ${i + 1}, nouvel essai:`, (e as Error).message); return await demanderSeance(vocabulaire(contexte + consigneSeance(plan, i), sport)); }
@@ -789,7 +850,8 @@ serve(async (req: Request) => {
       niveau,
       age: ageNum >= 12 && ageNum <= 90 ? ageNum : null,
       cycle: startCycle,
-      avecCharges: equipement === "salle_complete" || equipement === "salle_basique",
+      avecCharges: equipement === "salle_complete" || equipement === "salle_basique" || (["maison", "terrain"].includes(equipement) && materielLieu.some((m) => MATERIEL_LOURD.includes(m))),
+      plafond: ["maison", "terrain"].includes(equipement) ? chargeMaison : null,
     };
     programme = imposerPlan(programme, plan);
     if (equipement === "salle_complete") programme = garantirMachines(programme, Array.isArray(douleurs) ? douleurs : []);
@@ -804,7 +866,7 @@ serve(async (req: Request) => {
         total_semaines: 4,
         semaine_courante: 1,
         statut: "actif",
-        data_json: { ...programme, cycle: startCycle, startCycle, niveau, frequence, objectif, equipement, douleurs, poste, jours: plan.map((p) => p.jour), rythme: rythme || null }
+        data_json: { ...programme, cycle: startCycle, startCycle, niveau, frequence, objectif, equipement, materiel: materielLieu, chargeMaison, douleurs, poste, jours: plan.map((p) => p.jour), rythme: rythme || null }
       })
       .select().single();
 

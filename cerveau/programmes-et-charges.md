@@ -11,6 +11,7 @@
 - Échauffement et retour au calme ne sont pas enregistrés ; cardio et mobilité sont enregistrés sans muscle, pour ne pas fausser la carte du corps.
 - Limite : 5 programmes par compte sur 24 h.
 - Équipements : `salle_complete`, `salle_basique`, `maison`, `terrain`.
+- Maison et extérieur : l'athlète coche son matériel (`data_json.materiel`, mêmes repères que le dépannage) et, s'il a des haltères ou une kettlebell, la plus lourde (`chargeMaison`) : aucune charge ne la dépasse. Le serveur ajoute alors `LIEUX` (méthodes sans salle : unilatéral, tempo, isométrie, élastiques, pliométrie 60-100 contacts) et `SPORT_LIEU` (spécifique au sport). Changer le lieu ou le matériel dans le profil recrée le programme.
 - Salle complète : 1 à 2 machines par séance de renforcement (2 pour un débutant), jamais en premier. Si l'IA en oublie, `garantirMachines` en ajoute une compatible avec les douleurs.
 - Les garde-fous `RATIOS`, `detecterMateriel`, `detecterMouvement` et `securiserExercice` existent en **double** : `generate-program` et `src/App.jsx`. Changer les deux.
 
