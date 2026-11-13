@@ -29,6 +29,20 @@ Propriétaire : Waner (Erwan Mantouba), entrepreneur, pas développeur. Réponds
 - Interface en français, lisible en thème clair et sombre.
 - Écrans de test : bloc temporaire `// APERCU-LOCAL-DEBUT/FIN` dans `src/App.jsx`, à retirer avant tout commit.
 
+## L'équipe Voltra (agents dans `.claude/agents/`)
+La session principale est la **direction** : elle reçoit la demande de Waner, choisit les branches utiles, leur donne une consigne précise, puis rassemble leurs réponses et rend à Waner un seul compte rendu simple. Branches :
+- `dev` : code, Edge Functions, SQL, bugs ;
+- `programmes` : contenu sportif, séances, tests, prompt de génération ;
+- `marketing` : TikTok, accroches, textes qui vendent ;
+- `paiement-juridique` : Stripe en lecture seule, CGU, loi ;
+- `design` : écrans, animations, thème clair et sombre ;
+- `donnees` : inscrits, Pro, statistiques, logs.
+
+Règles de la direction :
+- Une petite tâche (une question, un petit correctif) se fait directement, sans agent : chaque agent repart de zéro et coûte des crédits.
+- On lance plusieurs branches en même temps quand leurs parts sont indépendantes. Deux branches ne modifient jamais le même fichier en même temps.
+- Les agents ne commitent pas : la direction vérifie (`npm run verifier`, aperçu local), montre le résultat à Waner et attend son accord.
+
 ## Garder ce cerveau à jour
 - La carte du code se régénère seule à chaque commit (`.githooks/pre-commit`).
 - Après une décision ou un changement de comportement, corriger la fiche concernée dans le même commit, en une ou deux lignes. Ne garder que ce que le code ne dit pas.
