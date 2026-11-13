@@ -4011,86 +4011,194 @@ const ANCRES_ZONES = {
   dos: [75, 24], lombaires: [75, 40], fessiers: [75, 50], ischios: [75, 63], mollets: [75, 80],
 };
 
+// ── Niveau de chaque muscle, de Débutant à Élite ──
+// Mélange la force réelle (meilleure charge estimée sur 1 répétition / poids de corps) et le travail fourni (séries par semaine)
+const NIVEAUX_CORPS = ["Débutant", "Intermédiaire", "Confirmé", "Avancé", "Élite"];
+// Rapport charge / poids de corps à atteindre pour Intermédiaire, Confirmé, Avancé, Élite
+const SEUILS_FORCE = {
+  quadriceps: [0.75, 1.1, 1.5, 2], fessiers: [0.75, 1.1, 1.5, 2], ischios: [0.75, 1.1, 1.5, 2], mollets: [0.75, 1.1, 1.5, 2],
+  pectoraux: [0.5, 0.75, 1, 1.3], epaules: [0.35, 0.5, 0.7, 0.9], dos: [0.5, 0.75, 1, 1.3], lombaires: [0.75, 1.1, 1.5, 2],
+  bras: [0.2, 0.3, 0.42, 0.55], abdos: [0.3, 0.5, 0.75, 1],
+};
+// Séries par semaine sur la zone pour Intermédiaire, Confirmé, Avancé, Élite
+const SEUILS_VOLUME = [2, 5, 9, 14];
+const palier = (v, seuils) => seuils.filter(s => v >= s).length;
+const PERIODES_CORPS = [{ id: 30, n: "1 mois" }, { id: 91, n: "3 mois" }, { id: 182, n: "6 mois" }, { id: 0, n: "Depuis le début" }];
+
 function useSeriesCorps(user) {
-  const [series, setSeries] = useState(null);
+  const [donnees, setDonnees] = useState(null);
   useEffect(() => {
     if (!user?.id) return;
-    const depuis = new Date(Date.now() - 30 * JOUR_MS).toISOString();
-    supabase.from("logs_performance").select("reps_par_set, exercices(muscles)").eq("user_id", user.id).gte("logged_at", depuis)
-      .then(({ data }) => {
-        const total = {};
-        (data || []).forEach(l => {
-          const nb = Array.isArray(l.reps_par_set) ? l.reps_par_set.length : 1;
-          Object.entries(zonesDepuisMuscles(l.exercices?.muscles)).forEach(([z, p]) => { total[z] = (total[z] || 0) + nb * p; });
-        });
-        setSeries(total);
-      });
+    Promise.all([
+      supabase.from("logs_performance").select("reps_par_set, charge_kg, logged_at, exercices(muscles)").eq("user_id", user.id).order("logged_at", { ascending: true }).limit(5000),
+      supabase.from("profiles").select("poids").eq("id", user.id).maybeSingle(),
+    ]).then(([{ data }, { data: profil }]) => {
+      const logs = (data || []).map(l => ({ t: new Date(l.logged_at).getTime(), reps: Array.isArray(l.reps_par_set) ? l.reps_par_set : [], charge: Number(l.charge_kg) || 0, zones: zonesDepuisMuscles(l.exercices?.muscles) }));
+      setDonnees({ logs, poids: Number(profil?.poids) || Number(user?.user_metadata?.onboarding?.poids) || 70 });
+    });
   }, [user?.id]);
-  return series;
+  return donnees;
 }
 
-// Niveau de chaque zone (de 0 à 1, par rapport à la plus travaillée) et zone la plus travaillée
-function lireSeries(series) {
-  const max = Math.max(0, ...Object.values(series || {}));
-  const niveaux = Object.fromEntries(Object.entries(series || {}).map(([z, v]) => [z, max ? v / max : 0]));
-  const tries = ZONES_CORPS.map(z => ({ ...z, v: (series || {})[z.id] || 0 })).sort((p, q) => q.v - p.v);
-  return { max, niveaux, tries, plus: max ? tries[0] : null };
+// Niveau (0 à 4) de chaque zone d'après les logs entre debut et fin ; une zone sans log n'apparaît pas
+function niveauxEntre(logs, poids, debut, fin, semaines) {
+  const series = {}, force = {};
+  logs.forEach(l => {
+    if (l.t < debut || l.t > fin) return;
+    Object.entries(l.zones).forEach(([z, p]) => {
+      series[z] = (series[z] || 0) + Math.max(1, l.reps.length) * p;
+      // La charge ne compte que pour le muscle principal de l'exercice
+      if (p === 1 && l.charge > 0) {
+        const reps = Math.min(12, Math.max(1, ...l.reps.map(Number).filter(Boolean)));
+        force[z] = Math.max(force[z] || 0, l.charge * (1 + reps / 30) / poids);
+      }
+    });
+  });
+  return Object.fromEntries(Object.keys(series).map(z => {
+    const vol = palier(series[z] / semaines, SEUILS_VOLUME);
+    return [z, force[z] ? Math.round(0.6 * palier(force[z], SEUILS_FORCE[z]) + 0.4 * vol) : vol];
+  }));
 }
 
-function CarteDuCorps({ series, onPartager }) {
-  if (!series) return null;
-  const max = Math.max(0, ...Object.values(series));
-  const niveaux = Object.fromEntries(Object.entries(series).map(([z, v]) => [z, max ? v / max : 0]));
-  const tries = ZONES_CORPS.map(z => ({ ...z, v: series[z.id] || 0 })).sort((p, q) => q.v - p.v);
-  const oubliees = tries.filter(z => z.v < max * 0.15);
-  const plus = max ? tries[0] : null;
-  const moins = max && tries[tries.length - 1].v < max * 0.15 ? tries[tries.length - 1] : null;
-  const etiquette = (z, ic) => {
-    const [x, y] = ANCRES_ZONES[z.id];
-    return <span className="v-pop" style={{ position: "absolute", left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)", whiteSpace: "nowrap", background: DS.colors.surface, color: DS.colors.textPrimary, boxShadow: DS.shadow.card, borderRadius: 99, padding: "7px 11px", fontSize: 12, fontWeight: 800, textTransform: "capitalize" }}>{ic} {z.n}</span>;
+// Niveaux de départ (première semaine, corrigée par les points forts et faibles choisis), d'avant (début de la période) et de maintenant
+function lireSeries(donnees, choix = {}, periode = 0) {
+  if (!donnees?.logs.length) return { depart: {}, avant: {}, maintenant: {}, niveaux: {}, plus: null, gains: [] };
+  const { logs, poids } = donnees, premier = logs[0].t, maintenantT = Date.now();
+  const depart = Object.fromEntries(ZONES_CORPS.map(z => [z.id, 0]));
+  Object.assign(depart, niveauxEntre(logs, poids, premier, premier + 7 * JOUR_MS, 1));
+  (choix.forts || []).forEach(z => { depart[z] = Math.max(depart[z], 2); });
+  (choix.faibles || []).forEach(z => { depart[z] = 0; });
+  const a = (fin) => {
+    if (fin < premier + 7 * JOUR_MS) return depart;
+    const n = niveauxEntre(logs, poids, fin - 28 * JOUR_MS, fin, 4);
+    return Object.fromEntries(ZONES_CORPS.map(z => [z.id, n[z.id] ?? depart[z.id]]));
   };
+  const avant = periode ? a(maintenantT - periode * JOUR_MS) : depart;
+  const maintenant = a(maintenantT);
+  const gains = ZONES_CORPS.map(z => ({ ...z, de: avant[z.id], a: maintenant[z.id] })).filter(g => g.a > g.de).sort((p, q) => (q.a - q.de) - (p.a - p.de));
+  const tries = ZONES_CORPS.map(z => ({ ...z, v: maintenant[z.id] })).sort((p, q) => q.v - p.v);
+  return { depart, avant, maintenant, niveaux: tNiveau(maintenant), plus: tries[0], gains };
+}
+
+// Ce que montre la vidéo à partager : le corps au début de la période, celui d'aujourd'hui et les passages de niveau
+function corpsPartage(donnees, choix = {}, periode = 0) {
+  const l = lireSeries(donnees, choix, periode);
+  const jours = donnees?.logs.length ? Math.max(1, Math.round((Date.now() - donnees.logs[0].t) / JOUR_MS)) : 0;
+  const duree = periode ? `en ${PERIODES_CORPS.find(p => p.id === periode).n}` : jours >= 45 ? `en ${Math.round(jours / 30.4)} mois` : jours >= 14 ? `en ${Math.round(jours / 7)} semaines` : jours ? `en ${jours} jour${jours > 1 ? "s" : ""}` : "";
+  return { avant: tNiveau(l.avant), niveaux: l.niveaux, gains: l.gains, plus: l.plus, total: l.gains.reduce((s, g) => s + g.a - g.de, 0), duree };
+}
+
+// Couleur du niveau (0 à 4) sur l'illustration : jamais 0, pour qu'un muscle débutant reste visible
+const tNiveau = (niveaux) => Object.fromEntries(Object.entries(niveaux).map(([z, v]) => [z, (v + 0.4) / 4.4]));
+
+function CarteDuCorps({ donnees, user, onPartager }) {
+  const [choix, setChoix] = useState(user?.user_metadata?.points_corps || {});
+  const [periode, setPeriode] = useState(0);
+  const [vue, setVue] = useState("maintenant");
+  const [edition, setEdition] = useState(false);
+  if (!donnees) return null;
+  const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
+  const l = lireSeries(donnees, choix, periode);
+  const vide = !donnees.logs.length;
+  const total = l.gains.reduce((s, g) => s + g.a - g.de, 0);
+  const nomPeriode = periode ? `en ${PERIODES_CORPS.find(p => p.id === periode).n}` : "depuis ton début";
+  const basculer = (z) => {
+    const forts = choix.forts || [], faibles = choix.faibles || [];
+    const suivant = forts.includes(z) ? { forts: forts.filter(x => x !== z), faibles: [...faibles, z] }
+      : faibles.includes(z) ? { forts, faibles: faibles.filter(x => x !== z) }
+      : { forts: [...forts, z], faibles };
+    setChoix(suivant);
+    supabase.auth.updateUser({ data: { points_corps: suivant } });
+  };
+  const puce = (actif, texte, onClick) => (
+    <button key={texte} onClick={onClick} style={{ border: `1px solid ${actif ? ac : DS.colors.border}`, background: actif ? ac : "transparent", color: actif ? (DS.colors.isDark ? "#000" : "#fff") : DS.colors.textPrimary, borderRadius: 99, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>{texte}</button>
+  );
   return (
     <div style={{ marginBottom: 22 }}>
-      <p style={{ color: DS.colors.textSec, fontSize: 14, margin: "0 0 10px" }}>{max ? "Ton corps ces 30 derniers jours" : "Fais ta première séance : les muscles travaillés s'allumeront ici."}</p>
-      <div style={{ position: "relative", margin: "0 -6px" }}>
-        <CorpsIllustre niveaux={niveaux} />
-        {plus && etiquette(plus, "🔥")}
-        {moins && etiquette(moins, "💤")}
+      <p style={{ color: DS.colors.textSec, fontSize: 14, margin: "0 0 10px" }}>{vide ? "Fais ta première séance : ton niveau s'affichera muscle par muscle." : "Ton niveau, muscle par muscle"}</p>
+      {!vide && <>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 10, scrollbarWidth: "none" }}>
+          {PERIODES_CORPS.map(p => puce(periode === p.id, p.n, () => setPeriode(p.id)))}
+        </div>
+        <div style={{ display: "flex", background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: 99, padding: 3, marginBottom: 6 }}>
+          {[["avant", periode ? `Il y a ${PERIODES_CORPS.find(p => p.id === periode).n}` : "Au départ"], ["maintenant", "Maintenant"]].map(([id, n]) => (
+            <button key={id} onClick={() => setVue(id)} style={{ flex: 1, border: "none", borderRadius: 99, padding: "8px 0", fontSize: 13, fontWeight: 800, cursor: "pointer", background: vue === id ? DS.colors.surface : "transparent", color: vue === id ? DS.colors.textPrimary : DS.colors.textSec, boxShadow: vue === id ? DS.shadow.card : "none" }}>{n}</button>
+          ))}
+        </div>
+      </>}
+      <div style={{ margin: "0 -6px" }}>
+        <CorpsIllustre niveaux={vide ? {} : tNiveau(vue === "avant" ? l.avant : l.maintenant)} />
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 11, color: DS.colors.textSec, fontWeight: 600 }}>
-        <span>Peu</span>
-        <span style={{ flex: 1, height: 6, borderRadius: 3, background: `linear-gradient(90deg, ${COULEURS_NIVEAU.join(", ")})` }} />
-        <span>Beaucoup</span>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 4, marginTop: 10 }}>
+        {NIVEAUX_CORPS.map((n, i) => (
+          <div key={n} style={{ textAlign: "center" }}>
+            <div style={{ height: 8, borderRadius: 4, background: `rgb(${rgbNiveau((i + 0.4) / 4.4).join(",")})` }} />
+            <div style={{ fontSize: 10, fontWeight: 700, color: DS.colors.textSec, marginTop: 4 }}>{n}</div>
+          </div>
+        ))}
       </div>
-      {max > 0 && onPartager && <p onClick={onPartager} style={{ fontSize: 13, fontWeight: 800, color: DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark, textAlign: "right", marginTop: 10, cursor: "pointer" }}>Partager en vidéo ↗</p>}
+      {!vide && (
+        <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "14px 16px", marginTop: 14 }}>
+          <div style={{ fontSize: 22, fontWeight: 900, color: DS.colors.textPrimary }}>{total ? `+${total} niveau${total > 1 ? "x" : ""}` : "Même niveau"} <span style={{ fontSize: 13, fontWeight: 600, color: DS.colors.textSec }}>{nomPeriode}</span></div>
+          {l.gains.slice(0, 3).map(g => (
+            <div key={g.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 8, color: DS.colors.textPrimary }}>
+              <span style={{ textTransform: "capitalize", fontWeight: 700 }}>{g.n}</span>
+              <span style={{ color: DS.colors.textSec }}>{NIVEAUX_CORPS[g.de]} → <b style={{ color: ac }}>{NIVEAUX_CORPS[g.a]}</b></span>
+            </div>
+          ))}
+          {!total && <p style={{ fontSize: 13, color: DS.colors.textSec, margin: "6px 0 0" }}>Continue tes séances : chaque muscle monte de niveau avec la force et la régularité.</p>}
+        </div>
+      )}
+      {!vide && (
+        <div style={{ marginTop: 12 }}>
+          <p onClick={() => setEdition(!edition)} style={{ fontSize: 13, fontWeight: 800, color: ac, cursor: "pointer", margin: 0 }}>{edition ? "Terminé" : "Mes points forts et faibles au départ"}</p>
+          {edition && <>
+            <p style={{ fontSize: 12, color: DS.colors.textSec, margin: "6px 0 8px" }}>Touche un muscle : une fois pour un point fort 💪, deux fois pour un point faible 🎯, trois fois pour annuler.</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {ZONES_CORPS.map(z => {
+                const fort = (choix.forts || []).includes(z.id), faible = (choix.faibles || []).includes(z.id);
+                return puce(fort || faible, `${fort ? "💪 " : faible ? "🎯 " : ""}${z.n}`, () => basculer(z.id));
+              })}
+            </div>
+          </>}
+        </div>
+      )}
+      {!vide && onPartager && <p onClick={() => onPartager({ choix, periode })} style={{ fontSize: 13, fontWeight: 800, color: ac, textAlign: "right", marginTop: 10, cursor: "pointer" }}>Partager en vidéo ↗</p>}
     </div>
   );
 }
 
 // ── Carte animée à partager (story 1080 × 1920, vidéo ou image) ──
-const PARTAGE_DUREE = 6.5;
+const PARTAGE_DUREE = 10;
 const lisse = (t) => t <= 0 ? 0 : t >= 1 ? 1 : 1 - Math.pow(1 - t, 3);
 const entre = (t, a, b) => lisse((t - a) / (b - a));
 
-function dessinerCartePartage(x, t, { neutre, colore, paires, plus }) {
+function dessinerCartePartage(x, t, { neutre, colore, paires, plus, gains = [], total = 0, duree = "" }) {
   x.save();
   x.clearRect(0, 0, 1080, 1920);
   const fondu = x.createRadialGradient(540, 360, 60, 540, 360, 1300);
   fondu.addColorStop(0, "#22341A"); fondu.addColorStop(0.55, "#0E100C"); fondu.addColorStop(1, "#0B0B0C");
   x.fillStyle = fondu; x.fillRect(0, 0, 1080, 1920);
   x.fillStyle = "#fff"; x.textAlign = "right"; x.font = "900 38px Inter, sans-serif"; x.fillText("VOLTRA", 1020, 100);
-  // Titre
-  const a = entre(t, 0, 0.6);
+  // Titre : le nombre de niveaux gagnés défile pendant que le corps se colore
+  const a = entre(t, 0, 0.6), scan = entre(t, 0.9, 2.7);
   x.globalAlpha = a; x.textAlign = "left";
-  x.fillStyle = "#9BE84F"; x.font = "800 40px Inter, sans-serif"; x.fillText("MA PROGRESSION", 60, 200 - (1 - a) * 30);
-  x.fillStyle = "#fff"; x.font = "900 76px Inter, sans-serif"; x.fillText("CES 30 DERNIERS JOURS", 60, 282 - (1 - a) * 30);
+  x.fillStyle = "#9BE84F"; x.font = "800 40px Inter, sans-serif"; x.fillText(`MA PROGRESSION${duree ? ` · ${duree.toUpperCase()}` : ""}`, 60, 200 - (1 - a) * 30);
+  const n = Math.round(total * scan);
+  x.fillStyle = "#fff"; x.font = "900 84px Inter, sans-serif";
+  x.fillText(total > 0 ? `+${n} NIVEAU${n > 1 ? "X" : ""}` : "MON NIVEAU ACTUEL", 60, 288 - (1 - a) * 30);
   x.globalAlpha = 1;
-  // Corps : apparaît, puis une ligne de scan remonte et révèle les couleurs
+  // Corps : d'abord au départ, puis une ligne de scan remonte et révèle le niveau d'aujourd'hui
   const L = 760, H = Math.round(L * neutre.height / neutre.width), X = 160, Y = 330;
   x.globalAlpha = entre(t, 0.2, 0.9);
   x.drawImage(neutre, X, Y, L, H);
+  const etat = scan < 0.5 ? "AU DÉPART" : "MAINTENANT";
+  x.font = "800 28px Inter, sans-serif";
+  const ew = x.measureText(etat).width + 40;
+  x.fillStyle = scan < 0.5 ? "rgba(255,255,255,0.12)" : "#9BE84F"; x.beginPath(); x.roundRect(60, Y + 6, ew, 52, 26); x.fill();
+  x.fillStyle = scan < 0.5 ? "#fff" : "#0B0B0C"; x.fillText(etat, 80, Y + 42);
   x.globalAlpha = 1;
-  const scan = entre(t, 0.9, 2.7), ligne = Y + H - scan * H;
+  const ligne = Y + H - scan * H;
   if (scan > 0) {
     x.save(); x.beginPath(); x.rect(0, ligne, 1080, Y + H - ligne); x.clip();
     x.drawImage(colore, X, Y, L, H); x.restore();
@@ -4100,23 +4208,41 @@ function dessinerCartePartage(x, t, { neutre, colore, paires, plus }) {
       x.fillStyle = g; x.fillRect(X - 20, ligne - 40, L + 40, 80);
     }
   }
-  // Étiquette du muscle le plus travaillé
-  if (plus) {
-    const p = entre(t, 2.8, 3.2), [ax, ay] = ANCRES_ZONES[plus.id];
-    if (p > 0) {
-      const texte = `🔥 ${plus.n.charAt(0).toUpperCase()}${plus.n.slice(1)}`;
-      x.font = "800 40px Inter, sans-serif";
-      const lw = x.measureText(texte).width + 56, cx = X + (ax / 100) * L, cy = Y + (ay / 100) * H, k = 0.6 + 0.4 * p;
-      x.save(); x.globalAlpha = p; x.translate(cx, cy); x.scale(k, k);
-      x.fillStyle = "#1C1C1E"; x.beginPath(); x.roundRect(-lw / 2, -38, lw, 76, 38); x.fill();
-      x.fillStyle = "#fff"; x.textAlign = "center"; x.fillText(texte, 0, 14); x.restore();
-    }
-  }
+  // Passage de niveau des muscles qui ont le plus progressé (ou niveau du plus fort s'il n'y a pas encore de progrès)
+  const bulles = gains.length ? gains.slice(0, 2) : plus ? [{ ...plus, a: plus.v }] : [];
+  bulles.forEach((b, i) => {
+    const p = entre(t, 2.8 + i * 0.3, 3.2 + i * 0.3), [ax, ay] = ANCRES_ZONES[b.id];
+    if (p <= 0) return;
+    if (i === 1) { const [bx, by] = ANCRES_ZONES[bulles[0].id]; if ((bx < 50) === (ax < 50) && Math.abs(by - ay) < 16) return; }
+    const nom = b.n.charAt(0).toUpperCase() + b.n.slice(1), de = b.de !== undefined ? `${NIVEAUX_CORPS[b.de]} → ` : "", vers = NIVEAUX_CORPS[b.a];
+    x.font = "800 36px Inter, sans-serif"; const w1 = x.measureText(nom).width;
+    x.font = "700 30px Inter, sans-serif"; const wde = x.measureText(de).width, w2 = wde + x.measureText(vers).width;
+    const lw = Math.max(w1, w2) + 56, cx = Math.min(1040 - lw / 2, Math.max(40 + lw / 2, X + (ax / 100) * L)), cy = Y + (ay / 100) * H, k = 0.6 + 0.4 * p;
+    x.save(); x.globalAlpha = p; x.translate(cx, cy); x.scale(k, k);
+    x.fillStyle = "#1C1C1E"; x.beginPath(); x.roundRect(-lw / 2, -56, lw, 112, 30); x.fill();
+    x.textAlign = "left"; x.fillStyle = "#fff"; x.font = "800 36px Inter, sans-serif"; x.fillText(nom, -lw / 2 + 28, -10);
+    x.font = "700 30px Inter, sans-serif"; x.fillStyle = "#A1A1AA"; x.fillText(de, -lw / 2 + 28, 34);
+    x.fillStyle = "#9BE84F"; x.fillText(vers, -lw / 2 + 28 + wde, 34); x.restore();
+  });
   // Progrès des tests, qui défilent jusqu'à leur valeur
   const bas = Y + H + 40;
+  if (!paires?.length && gains.length) {
+    gains.slice(0, 3).forEach((g, i) => {
+      const p = entre(t, 3.4 + i * 0.25, 4.4 + i * 0.25);
+      if (p <= 0) return;
+      const cy = bas + i * 96 + (1 - p) * 40;
+      x.globalAlpha = p;
+      x.fillStyle = "rgba(255,255,255,0.08)"; x.beginPath(); x.roundRect(60, cy, 960, 80, 24); x.fill();
+      x.textAlign = "left"; x.fillStyle = "#fff"; x.font = "800 32px Inter, sans-serif"; x.fillText(g.n.charAt(0).toUpperCase() + g.n.slice(1), 92, cy + 51);
+      x.textAlign = "right"; x.fillStyle = "#9BE84F"; x.fillText(NIVEAUX_CORPS[g.a], 988, cy + 51);
+      const wv = x.measureText(NIVEAUX_CORPS[g.a]).width;
+      x.fillStyle = "#A1A1AA"; x.font = "700 30px Inter, sans-serif"; x.fillText(`${NIVEAUX_CORPS[g.de]} → `, 988 - wv, cy + 51);
+      x.globalAlpha = 1;
+    });
+  }
   if (paires?.length) {
     paires.slice(0, 3).forEach(({ t: te, a: ta, b: tb }, i) => {
-      const p = entre(t, 3.2 + i * 0.25, 4.4 + i * 0.25);
+      const p = entre(t, 3.4 + i * 0.25, 4.6 + i * 0.25);
       if (p <= 0) return;
       const e = ecartTest(te, ta, tb), cx = 60 + i * 330, cy = bas + (1 - p) * 40;
       x.globalAlpha = p;
@@ -4133,10 +4259,44 @@ function dessinerCartePartage(x, t, { neutre, colore, paires, plus }) {
   const f = entre(t, 4.8, 5.4);
   x.globalAlpha = f; x.textAlign = "center"; x.fillStyle = "#fff"; x.font = "800 44px Inter, sans-serif";
   x.fillText("Ma prépa physique : Voltra", 540, 1800); x.fillStyle = "#9BE84F"; x.fillText("voltra-app.fr", 540, 1862);
+  x.globalAlpha = 1;
+  // Fin de la vidéo : le corps d'avant et celui d'après, côte à côte
+  const v = entre(t, 6.2, 6.8);
+  if (v > 0) {
+    x.globalAlpha = v;
+    x.fillStyle = fondu; x.fillRect(0, 0, 1080, 1920);
+    x.fillStyle = "#fff"; x.textAlign = "right"; x.font = "900 38px Inter, sans-serif"; x.fillText("VOLTRA", 1020, 100);
+    x.textAlign = "left"; x.fillStyle = "#9BE84F"; x.font = "800 40px Inter, sans-serif"; x.fillText(`MA PROGRESSION${duree ? ` · ${duree.toUpperCase()}` : ""}`, 60, 200);
+    x.fillStyle = "#fff"; x.font = "900 84px Inter, sans-serif"; x.fillText(total > 0 ? `+${total} NIVEAU${total > 1 ? "X" : ""}` : "MON NIVEAU ACTUEL", 60, 288);
+    const l2 = 500, h2 = Math.round(l2 * neutre.height / neutre.width), y2 = 420;
+    [[neutre, 27, "AVANT", 6.4], [colore, 553, "APRÈS", 6.9]].forEach(([img, x2, nom, d]) => {
+      const p = entre(t, d, d + 0.5);
+      if (p <= 0) return;
+      x.globalAlpha = v * p;
+      x.drawImage(img, x2, y2 + (1 - p) * 40, l2, h2);
+      x.font = "900 34px Inter, sans-serif"; const w = x.measureText(nom).width + 48, apres = nom === "APRÈS";
+      x.fillStyle = apres ? "#9BE84F" : "rgba(255,255,255,0.12)"; x.beginPath(); x.roundRect(x2 + l2 / 2 - w / 2, y2 - 74, w, 58, 29); x.fill();
+      x.fillStyle = apres ? "#0B0B0C" : "#fff"; x.textAlign = "center"; x.fillText(nom, x2 + l2 / 2, y2 - 33);
+    });
+    x.globalAlpha = v * entre(t, 6.9, 7.4); x.fillStyle = "#9BE84F"; x.textAlign = "center"; x.font = "900 60px Inter, sans-serif"; x.fillText("→", 540, y2 + h2 / 2);
+    gains.slice(0, 3).forEach((g, i) => {
+      const p = entre(t, 7.5 + i * 0.25, 8.1 + i * 0.25);
+      if (p <= 0) return;
+      const cy = y2 + h2 + 50 + i * 96 + (1 - p) * 30;
+      x.globalAlpha = v * p;
+      x.fillStyle = "rgba(255,255,255,0.08)"; x.beginPath(); x.roundRect(60, cy, 960, 80, 24); x.fill();
+      x.textAlign = "left"; x.fillStyle = "#fff"; x.font = "800 32px Inter, sans-serif"; x.fillText(g.n.charAt(0).toUpperCase() + g.n.slice(1), 92, cy + 51);
+      x.textAlign = "right"; x.fillStyle = "#9BE84F"; x.fillText(NIVEAUX_CORPS[g.a], 988, cy + 51);
+      const wv = x.measureText(NIVEAUX_CORPS[g.a]).width;
+      x.fillStyle = "#A1A1AA"; x.font = "700 30px Inter, sans-serif"; x.fillText(`${NIVEAUX_CORPS[g.de]} → `, 988 - wv, cy + 51);
+    });
+    x.globalAlpha = v; x.textAlign = "center"; x.fillStyle = "#fff"; x.font = "800 44px Inter, sans-serif";
+    x.fillText("Ma prépa physique : Voltra", 540, 1800); x.fillStyle = "#9BE84F"; x.fillText("voltra-app.fr", 540, 1862);
+  }
   x.restore();
 }
 
-function PartageProgression({ niveaux, tests, liste, plus, onBack }) {
+function PartageProgression({ corps, tests, liste, onBack }) {
   const ac = DS.colors.isDark ? DS.colors.primary : DS.colors.primaryDark;
   const ref = useRef(null);
   const images = useRef(null);
@@ -4144,9 +4304,9 @@ function PartageProgression({ niveaux, tests, liste, plus, onBack }) {
   const [message, setMessage] = useState("");
   useEffect(() => {
     let fin = false, id;
-    Promise.all([peindreCorps({}), peindreCorps(niveaux), document.fonts?.ready]).then(([neutre, colore]) => {
+    Promise.all([peindreCorps(corps.avant), peindreCorps(corps.niveaux), document.fonts?.ready]).then(([neutre, colore]) => {
       if (fin) return;
-      images.current = { neutre, colore, paires: comparables(liste, tests).filter(c => c.n >= 2), plus };
+      images.current = { ...corps, neutre, colore, paires: comparables(liste, tests).filter(c => c.n >= 2) };
       setPret(true);
       const debut = performance.now();
       const boucle = (m) => {
@@ -4175,7 +4335,7 @@ function PartageProgression({ niveaux, tests, liste, plus, onBack }) {
   const video = async () => {
     const type = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find(t => window.MediaRecorder?.isTypeSupported?.(t));
     if (!type || !HTMLCanvasElement.prototype.captureStream) { setMessage("Ton navigateur ne sait pas créer de vidéo : enregistre l'image."); return; }
-    setMessage("Création de la vidéo… (6 secondes)");
+    setMessage("Création de la vidéo… (10 secondes)");
     enregistrement.current = true;
     try {
       const c = ref.current, x = c.getContext("2d");
@@ -4221,6 +4381,7 @@ function HistoriqueScreen({ user, sport }) {
   const { tests, charger: chargerTests, liste } = useTests(user, sport);
   const [vueTest, setVueTest] = useState(null);
   const series = useSeriesCorps(user);
+  const [partageCorps, setPartageCorps] = useState({});
   const [seancesReelles, setSeancesReelles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalSeances, setTotalSeances] = useState(0);
@@ -4303,7 +4464,7 @@ function HistoriqueScreen({ user, sport }) {
 
   const accentColor = "#FF2D55";
 
-  if (vueTest === "partage") { const l = lireSeries(series); return <PartageProgression niveaux={l.niveaux} tests={tests} liste={liste} plus={l.plus} onBack={() => setVueTest(null)} />; }
+  if (vueTest === "partage") return <PartageProgression corps={corpsPartage(series, partageCorps.choix || user?.user_metadata?.points_corps, partageCorps.periode)} tests={tests} liste={liste} onBack={() => setVueTest(null)} />;
   if (vueTest === "test") return <TestScreen user={user} tests={tests} liste={liste} onSaved={async () => { await chargerTests(); }} onBack={() => setVueTest(null)} onCarrousel={() => setVueTest("carrousel")} />;
   if (vueTest === "carrousel") return <CarrouselScreen tests={tests} liste={liste} onBack={() => setVueTest("test")} />;
 
@@ -4371,8 +4532,8 @@ function HistoriqueScreen({ user, sport }) {
       ) : (
         <div style={{ padding: "20px 20px 0" }}>
 
-          <CarteDuCorps series={series} onPartager={() => setVueTest("partage")} />
-          <AvantMaintenant tests={tests} liste={liste} onTest={() => setVueTest("test")} onPartager={() => setVueTest("partage")} />
+          <CarteDuCorps donnees={series} user={user} onPartager={(o) => { setPartageCorps(o); setVueTest("partage"); }} />
+          <AvantMaintenant tests={tests} liste={liste} onTest={() => setVueTest("test")} onPartager={() => { setPartageCorps({}); setVueTest("partage"); }} />
 
           {/* Graphique séances par semaine — cliquable */}
           <div style={{ background: DS.colors.surfaceHigh, border: `1px solid ${DS.colors.border}`, borderRadius: DS.radius.xl, padding: "18px 16px", marginBottom: 16 }}>
