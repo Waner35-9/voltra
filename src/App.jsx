@@ -12,6 +12,8 @@ const URL_AU_CHARGEMENT = window.location.hash + window.location.search;
 let confirmationEmail = /type=signup|confirmed=true/.test(URL_AU_CHARGEMENT) ? "ok"
   : /error_code=/.test(URL_AU_CHARGEMENT) && !/type=recovery/.test(URL_AU_CHARGEMENT) ? "erreur"
   : null;
+// Lien « mot de passe oublié » : Supabase connecte la personne et efface l'adresse, on retient qu'elle doit choisir un nouveau mot de passe
+let recuperationMdp = /type=recovery/.test(URL_AU_CHARGEMENT);
 
 // Lien d'invitation : le code reste sur l'appareil jusqu'à la création du compte
 const CLE_INVITATION = "voltra_invitation";
@@ -2259,7 +2261,7 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
   const [success, setSuccess] = useState(confirmation === "ok" ? "Compte confirmé ! Connecte-toi pour continuer." : "");
 
   // Detecter si on vient d'un lien reset password
-  const isPasswordRecovery = window.location.hash.includes("type=recovery");
+  const isPasswordRecovery = recuperationMdp || window.location.hash.includes("type=recovery");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -2356,7 +2358,8 @@ function AuthScreen({ onAuth, onBack, confirmation, onboardingData }) {
     setLoading(true);
     const { error: e } = await supabase.auth.updateUser({ password: newPassword });
     setLoading(false);
-    if (e) { setError(e.message); return; }
+    if (e) { setError(e.message === "New password should be different from the old password." ? "Choisis un mot de passe différent de l'ancien." : e.message); return; }
+    recuperationMdp = false;
     // Nettoyer le hash et rediriger
     window.history.replaceState({}, document.title, window.location.pathname);
     setSuccess("Mot de passe mis à jour !");
@@ -7107,6 +7110,7 @@ export default function VoltraApp() {
         // Ne pas rediriger ici — onAuth ou splashDone s'en charge (y compris après la confirmation d'email)
       } else if (_event === "PASSWORD_RECOVERY") {
         // Laisser AuthScreen gérer via isPasswordRecovery
+        recuperationMdp = true;
         setScreen("auth");
       }
     });
@@ -7137,6 +7141,11 @@ export default function VoltraApp() {
           else if (++essais < 15) setTimeout(verifierPro, 2000);
         };
         verifierPro();
+        return;
+      }
+      if (recuperationMdp) {
+        // Vient du lien « mot de passe oublié » : déjà connecté, mais il doit d'abord choisir son nouveau mot de passe
+        setScreen("auth");
         return;
       }
       if (confirmationEmail) {

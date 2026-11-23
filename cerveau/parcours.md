@@ -8,6 +8,7 @@ Le thème suit le réglage du téléphone au premier lancement (plus d'écran de
 - Session enregistrée : tableau de bord directement.
 - Déconnecté : accueil, avec le bouton « Se connecter », sans questionnaire.
 - À la connexion, un compte qui a déjà un programme le garde, même s'il a refait le questionnaire. Sans programme ni réponses, il passe par le questionnaire.
+- Mot de passe oublié : le lien connecte la personne, puis `recuperationMdp` impose l’écran « Nouveau mot de passe » avant l’accueil (sinon elle arrivait connectée sans l’avoir changé).
 - Non-Pro qui démarre une séance : page d'abonnement.
 
 ## Ami invité
