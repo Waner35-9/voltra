@@ -18,6 +18,7 @@ Lien `?invitation=CODE` : le code est gardé dans `voltra_invitation` (localStor
 - Séance : le bouton de lancement passe par « Forme du jour », puis `launchSeance`. La note d'adaptation s'affiche sur l'animation, à la première série.
 - Tableau de bord : carte « Ta semaine, par Ace » (fonction `bilan-semaine`, fermée jusqu'au lundi suivant), carte « Parle à Ace » (`AceScreen`, fonction `coach-chat`, mode `libre`, conversation gardée dans le navigateur), et après le jour J « Découvre ton bilan » (`BilanMissionScreen`).
 - Rappels : réglages dans le profil. Fonction `rappels` lancée par `pg_cron` chaque matin. Le lien de désinscription (`?rappels=stop&t=…`) marche sans connexion. Les e-mails disent « ouvre Voltra » sans lien vers l'app, car sur iPhone un lien s'ouvre dans Safari.
+- Paiement abandonné : la même fonction `rappels` lit chez Stripe les pages de paiement expirées la veille et envoie un seul e-mail « Ton essai gratuit t'attend » (ou « Ton abonnement t'attend » si l'essai est déjà utilisé), sauf aux Pro et à ceux qui ont coupé les relances.
 - `coach-chat` refuse désormais les comptes sans Pro. Il parle d'alimentation avec tout le monde ; régime, perte de poids et compléments seulement si `profiles.age` indique 18 ans ou plus.
 
 ## Progression

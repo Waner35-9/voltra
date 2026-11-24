@@ -417,10 +417,10 @@ Secrets lus (noms seulement) : SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUP
 
 - json : 10-43
 
-## supabase/functions/rappels/index.ts (172 lignes)
+## supabase/functions/rappels/index.ts (238 lignes)
 
 Tables : profiles, programmes, rappels, seances
-Secrets lus (noms seulement) : RAPPELS_SECRET, RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
+Secrets lus (noms seulement) : RAPPELS_SECRET, RESEND_API_KEY, STRIPE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
 
 - repondre : 13-15
 - JOUR_MS : 16-16
@@ -431,17 +431,19 @@ Secrets lus (noms seulement) : RAPPELS_SECRET, RESEND_API_KEY, SUPABASE_SERVICE_
 - echapper : 22-23
 - signer : 24-29
 - egal : 30-36
-- maintenantParis : 37-41
-- contenuEmail : 42-172
+- maintenantParis : 37-43
+- paiementsAbandonnes : 44-65
+- contenuEssai : 66-77
+- contenuEmail : 78-238
 
-## supabase/functions/stripe-checkout/index.ts (111 lignes)
+## supabase/functions/stripe-checkout/index.ts (131 lignes)
 
 Secrets lus (noms seulement) : STRIPE_SECRET_KEY, SUPABASE_ANON_KEY, SUPABASE_URL
 
 - json : 10-23
 - JOURS_ESSAI : 24-31
 - lireStripe : 32-41
-- aDejaEteAbonne : 42-111
+- aDejaEteAbonne : 42-131
 
 ## supabase/functions/stripe-portal/index.ts (187 lignes)
 

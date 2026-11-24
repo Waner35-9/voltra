@@ -90,16 +90,36 @@ serve(async (req) => {
     if (essai) params.append("subscription_data[trial_period_days]", String(JOURS_ESSAI));
     if (COUPONS[plan]) params.append("discounts[0][coupon]", COUPONS[plan]);
 
-    const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+    // Page Stripe aux couleurs de l'app (fond sombre, bouton vert) et phrase rassurante sous le bouton.
+    // Si Stripe refuse cet habillage, on ouvre la page normale : le paiement ne doit jamais être bloqué par le décor.
+    const habillage = new URLSearchParams();
+    habillage.append("branding_settings[display_name]", "Voltra");
+    habillage.append("branding_settings[background_color]", "#0E0F0C");
+    habillage.append("branding_settings[button_color]", "#9BE84F");
+    habillage.append("branding_settings[border_style]", "pill");
+    habillage.append("branding_settings[font_family]", "inter");
+    habillage.append("branding_settings[icon][type]", "url");
+    habillage.append("branding_settings[icon][url]", "https://www.voltra-app.fr/icons/icon-512.png");
+    habillage.append("custom_text[submit][message]", essai
+      ? `Rien n'est prélevé aujourd'hui. On te prévient par e-mail avant le premier paiement, et tu peux annuler en 2 clics depuis ton profil avant la fin des ${JOURS_ESSAI} jours.`
+      : "Sans engagement : tu peux résilier en 2 clics depuis ton profil.");
+
+    const creerSession = (corps: string) => fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${stripeKey}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: params.toString(),
+      body: corps,
     });
 
-    const data = await res.json();
+    let res = await creerSession(`${params.toString()}&${habillage.toString()}`);
+    let data = await res.json();
+    if (!res.ok) {
+      console.error("Habillage refusé, page normale :", data.error?.message);
+      res = await creerSession(params.toString());
+      data = await res.json();
+    }
     if (!res.ok) throw new Error(data.error?.message || "Erreur Stripe");
 
     return json({ url: data.url, session_id: data.id });

@@ -14,6 +14,7 @@
 
 ## Comportement
 - `stripe-checkout` prend le compte et l'e-mail dans le jeton de connexion, jamais dans ce qu'envoie le navigateur.
+- La page Stripe est habillée depuis `stripe-checkout` (fond sombre, bouton vert, icône, phrase « rien n'est prélevé aujourd'hui »), choix A de Waner le 24 novembre 2026. Si Stripe refuse cet habillage, la session est recréée sans lui.
 - Une adresse qui a déjà un abonnement chez Stripe, même résilié, paie tout de suite : pas d'essai, mais le même prix (coupon gardé). `PricingScreen` le demande avec `action: "eligibilite"` pour ne pas annoncer « rien à payer » ; c'est le serveur qui décide.
 - `checkout.session.completed` passe `profiles.is_pro` à vrai, `customer.subscription.deleted` à faux. Répond 500 en cas d'échec pour que Stripe réessaie.
 - **Une résiliation arrive de Stripe avec `cancel_at`, et `cancel_at_period_end` reste faux** : tester les deux champs (`stripe-portal`). Réactiver : vider `cancel_at`.

@@ -39,6 +39,42 @@ function maintenantParis() {
   return { iso, jour: new Date(`${iso}T12:00:00Z`).getUTCDay() };
 }
 
+// Page de paiement Stripe ouverte puis abandonnée : elle expire 24 h après son ouverture.
+// On prend celles ouvertes entre 48 h et 24 h avant ce passage quotidien, donc chacune n'est vue qu'une fois.
+async function paiementsAbandonnes(cleStripe: string, maintenant: number) {
+  const debut = Math.floor((maintenant - 2 * JOUR_MS) / 1000), fin = Math.floor((maintenant - JOUR_MS) / 1000);
+  const abandons: Record<string, { essai: boolean }> = {};
+  let apres = "";
+  for (let page = 0; page < 20; page++) {
+    const res = await fetch(`https://api.stripe.com/v1/checkout/sessions?status=expired&limit=100&created[gte]=${debut}&created[lt]=${fin}${apres}`, {
+      headers: { Authorization: `Bearer ${cleStripe}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || "Erreur Stripe");
+    for (const session of data.data || []) {
+      const userId = session.client_reference_id;
+      if (session.mode !== "subscription" || !userId) continue;
+      // 0 € à payer à l'ouverture = l'essai gratuit était proposé
+      abandons[userId] = { essai: (abandons[userId]?.essai ?? false) || session.amount_total === 0 };
+    }
+    if (!data.has_more || !data.data?.length) break;
+    apres = `&starting_after=${data.data[data.data.length - 1].id}`;
+  }
+  return abandons;
+}
+
+function contenuEssai(prenom: string, essai: boolean, lienStop: string) {
+  const salut = prenom ? `Salut ${echapper(prenom)},` : "Salut,";
+  const sujet = essai ? "Ton essai gratuit t'attend" : "Ton abonnement Voltra t'attend";
+  const corps = essai
+    ? "Ton programme est prêt, il ne manquait qu'une étape pour lancer tes 7 jours d'essai gratuit. Rien n'est prélevé pendant l'essai, on te prévient par e-mail avant le premier paiement, et tu peux annuler en 2 clics depuis ton profil. Ouvre Voltra et lance ta première séance : l'essai démarre en une minute."
+    : "Ton programme est prêt, il ne manquait qu'une étape pour finaliser ton abonnement. Ouvre Voltra quand tu veux pour reprendre là où tu t'es arrêté.";
+  return {
+    sujet,
+    html: `<p>${salut}</p><p>${corps}</p><p>À bientôt,<br>Ace, ton coach Voltra</p><p style="font-size:12px;color:#777"><a href="${lienStop}">Ne plus recevoir ces e-mails</a></p>`,
+  };
+}
+
 function contenuEmail(type: "matin" | "relance", prenom: string, joursAvant: number | null, lienStop: string) {
   const salut = prenom ? `Salut ${echapper(prenom)},` : "Salut,";
   const objectif = joursAvant !== null && joursAvant >= 0 ? ` Ton objectif est dans ${joursAvant} jour${joursAvant > 1 ? "s" : ""}.` : "";
@@ -88,7 +124,7 @@ serve(async (req) => {
       if (!data || data.length < 1000) break;
     }
 
-    const envois: { userId: string; type: "matin" | "relance"; nbRelances: number; email: any }[] = [];
+    const envois: { userId: string; type: "matin" | "relance" | "essai"; nbRelances: number; email: any }[] = [];
     const remises: string[] = [];
 
     for (let i = 0; i < ids.length; i += 200) {
@@ -137,6 +173,36 @@ serve(async (req) => {
       }
     }
 
+    // Page de paiement abandonnée hier : un seul e-mail, sauf si la personne est passée Pro depuis ou a coupé les relances
+    const cleStripe = Deno.env.get("STRIPE_SECRET_KEY");
+    if (cleStripe) {
+      try {
+        const abandons = await paiementsAbandonnes(cleStripe, maintenant);
+        const idsAbandon = Object.keys(abandons).filter((id) => !envois.some((e) => e.userId === id)).slice(0, 300);
+        if (idsAbandon.length) {
+          const [{ data: profils }, { data: prefsAbandon }] = await Promise.all([
+            supabase.from("profiles").select("id, is_pro").in("id", idsAbandon),
+            supabase.from("rappels").select("user_id, relance").in("user_id", idsAbandon),
+          ]);
+          const refus = new Set((prefsAbandon || []).filter((p: any) => p.relance === false).map((p: any) => p.user_id));
+          for (const profil of profils || []) {
+            if (profil.is_pro || refus.has(profil.id)) continue;
+            const { data: { user } } = await supabase.auth.admin.getUserById(profil.id);
+            if (!user?.email) continue;
+            const prenom = String(user.user_metadata?.name || "").trim().split(" ")[0];
+            const lienStop = `${SITE}/?rappels=stop&t=${profil.id}.${await signer(profil.id)}`;
+            const { sujet, html } = contenuEssai(prenom, abandons[profil.id].essai, lienStop);
+            envois.push({
+              userId: profil.id, type: "essai", nbRelances: 0,
+              email: { from: "Voltra <contact@voltra-app.fr>", to: user.email, subject: sujet, html, headers: { "List-Unsubscribe": `<${lienStop}>` } },
+            });
+          }
+        }
+      } catch (err: any) {
+        console.error("Erreur paiements abandonnés :", err?.message);
+      }
+    }
+
     // L'athlète est revenu : ses relances repartent de zéro
     if (remises.length) {
       const { error } = await supabase.from("rappels").update({ nb_relances: 0, derniere_relance: null }).in("user_id", remises);
@@ -162,7 +228,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Rappels : ${envoyes} envoyés sur ${envois.length}`);
+    console.log(`Rappels : ${envoyes} envoyés sur ${envois.length}, dont ${envois.filter((e) => e.type === "essai").length} après un paiement abandonné`);
     return repondre({ ok: true, envoyes, prevus: envois.length });
   } catch (err: any) {
     console.error("ERREUR rappels:", err?.message);
