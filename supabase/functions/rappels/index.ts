@@ -39,21 +39,22 @@ function maintenantParis() {
   return { iso, jour: new Date(`${iso}T12:00:00Z`).getUTCDay() };
 }
 
-// Page de paiement Stripe ouverte puis abandonnée : elle expire 24 h après son ouverture.
-// On prend celles ouvertes entre 48 h et 24 h avant ce passage quotidien, donc chacune n'est vue qu'une fois.
+// Page de paiement Stripe ouverte la veille et pas payée : e-mail le matin suivant.
+// On prend celles ouvertes entre 30 h et 6 h avant ce passage quotidien (fenêtres de 24 h qui se suivent,
+// donc chacune n'est vue qu'une fois). Les 6 h laissent le temps de finir ; un paiement fait entre-temps rend Pro.
 async function paiementsAbandonnes(cleStripe: string, maintenant: number) {
-  const debut = Math.floor((maintenant - 2 * JOUR_MS) / 1000), fin = Math.floor((maintenant - JOUR_MS) / 1000);
+  const debut = Math.floor((maintenant - 30 * 3600000) / 1000), fin = Math.floor((maintenant - 6 * 3600000) / 1000);
   const abandons: Record<string, { essai: boolean }> = {};
   let apres = "";
   for (let page = 0; page < 20; page++) {
-    const res = await fetch(`https://api.stripe.com/v1/checkout/sessions?status=expired&limit=100&created[gte]=${debut}&created[lt]=${fin}${apres}`, {
+    const res = await fetch(`https://api.stripe.com/v1/checkout/sessions?limit=100&created[gte]=${debut}&created[lt]=${fin}${apres}`, {
       headers: { Authorization: `Bearer ${cleStripe}` },
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || "Erreur Stripe");
     for (const session of data.data || []) {
       const userId = session.client_reference_id;
-      if (session.mode !== "subscription" || !userId) continue;
+      if (session.mode !== "subscription" || !userId || session.status === "complete") continue;
       // 0 € à payer à l'ouverture = l'essai gratuit était proposé
       abandons[userId] = { essai: (abandons[userId]?.essai ?? false) || session.amount_total === 0 };
     }
@@ -66,12 +67,34 @@ async function paiementsAbandonnes(cleStripe: string, maintenant: number) {
 function contenuEssai(prenom: string, essai: boolean, lienStop: string) {
   const salut = prenom ? `Salut ${echapper(prenom)},` : "Salut,";
   const sujet = essai ? "Ton essai gratuit t'attend" : "Ton abonnement Voltra t'attend";
-  const corps = essai
-    ? "Ton programme est prêt, il ne manquait qu'une étape pour lancer tes 7 jours d'essai gratuit. Rien n'est prélevé pendant l'essai, on te prévient par e-mail avant le premier paiement, et tu peux annuler en 2 clics depuis ton profil. Ouvre Voltra et lance ta première séance : l'essai démarre en une minute."
-    : "Ton programme est prêt, il ne manquait qu'une étape pour finaliser ton abonnement. Ouvre Voltra quand tu veux pour reprendre là où tu t'es arrêté.";
+  const sousTitre = essai ? "7 jours offerts · 0 € aujourd'hui" : "Sans engagement · résiliable en 2 clics";
+  const paragraphes = essai
+    ? ["Ton programme est prêt, il ne manquait qu'une étape pour lancer tes 7 jours d'essai gratuit.", "Rien n'est prélevé pendant l'essai, on te prévient par e-mail avant le premier paiement, et tu peux annuler en 2 clics depuis ton profil."]
+    : ["Ton programme est prêt, il ne manquait qu'une étape pour finaliser ton abonnement.", "Reprends là où tu t'es arrêté, quand tu veux."];
+  const bouton = essai ? "Lancer mon essai gratuit" : "Ouvrir Voltra";
+  // E-mail en tableaux et styles en ligne : c'est ce que Gmail, Outlook et Mail affichent le mieux
   return {
     sujet,
-    html: `<p>${salut}</p><p>${corps}</p><p>À bientôt,<br>Ace, ton coach Voltra</p><p style="font-size:12px;color:#777"><a href="${lienStop}">Ne plus recevoir ces e-mails</a></p>`,
+    html: `<div style="background:#f4f4f0;padding:24px 12px;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;border-collapse:separate">
+<tr><td style="background:#0E0F0C;border-radius:16px 16px 0 0;padding:32px 24px 28px;text-align:center">
+<img src="${SITE}/icons/icon-192.png" width="64" height="64" alt="Voltra" style="display:block;margin:0 auto;border-radius:14px">
+<p style="color:#9BE84F;font-size:12px;letter-spacing:3px;font-weight:bold;margin:12px 0 0">VOLTRA</p>
+<p style="color:#ffffff;font-size:24px;font-weight:bold;line-height:1.25;margin:18px 0 8px">${sujet}</p>
+<p style="color:#A6A69E;font-size:14px;margin:0">${sousTitre}</p>
+</td></tr>
+<tr><td style="background:#ffffff;border-radius:0 0 16px 16px;padding:28px 24px;color:#151612;font-size:15px;line-height:1.6">
+<p style="margin:0 0 14px">${salut}</p>
+<p style="margin:0 0 14px">${paragraphes[0]}</p>
+<p style="margin:0 0 22px">${paragraphes[1]}</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 22px"><tr><td style="background:#9BE84F;border-radius:999px;text-align:center">
+<a href="${SITE}" style="display:inline-block;padding:14px 32px;color:#0E0F0C;font-size:16px;font-weight:bold;text-decoration:none">${bouton}</a>
+</td></tr></table>
+<p style="margin:0 0 20px">À bientôt,<br>Ace, ton coach Voltra</p>
+<p style="margin:0;font-size:12px;color:#888780;border-top:1px solid #EAEAE4;padding-top:14px"><a href="${lienStop}" style="color:#888780">Ne plus recevoir ces e-mails</a></p>
+</td></tr>
+</table>
+</div>`,
   };
 }
 
@@ -173,7 +196,7 @@ serve(async (req) => {
       }
     }
 
-    // Page de paiement abandonnée hier : un seul e-mail, sauf si la personne est passée Pro depuis ou a coupé les relances
+    // Page de paiement abandonnée la veille : un seul e-mail, sauf si la personne est passée Pro depuis ou a coupé les relances
     const cleStripe = Deno.env.get("STRIPE_SECRET_KEY");
     if (cleStripe) {
       try {

@@ -417,7 +417,7 @@ Secrets lus (noms seulement) : SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUP
 
 - json : 10-43
 
-## supabase/functions/rappels/index.ts (238 lignes)
+## supabase/functions/rappels/index.ts (261 lignes)
 
 Tables : profiles, programmes, rappels, seances
 Secrets lus (noms seulement) : RAPPELS_SECRET, RESEND_API_KEY, STRIPE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
@@ -431,10 +431,10 @@ Secrets lus (noms seulement) : RAPPELS_SECRET, RESEND_API_KEY, STRIPE_SECRET_KEY
 - echapper : 22-23
 - signer : 24-29
 - egal : 30-36
-- maintenantParis : 37-43
-- paiementsAbandonnes : 44-65
-- contenuEssai : 66-77
-- contenuEmail : 78-238
+- maintenantParis : 37-44
+- paiementsAbandonnes : 45-66
+- contenuEssai : 67-100
+- contenuEmail : 101-261
 
 ## supabase/functions/stripe-checkout/index.ts (131 lignes)
 
